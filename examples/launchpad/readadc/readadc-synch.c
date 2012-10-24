@@ -6,13 +6,13 @@
 
 /**
  * \file
- *    readadc.c
+ *    readadc-synch.c
  * \author
  *    Marcus Lunden <marcus.lunden@gmail.com>
  * \brief
  *    ADC reading example. One process periodically reads the ADC on one channel
  *    and updates a blink speed variable. Another sets a LED blink according to
- *    that variable.
+ *    that variable. Program execution is blocked while ADC is converting.
  *    
  */
 
@@ -48,14 +48,14 @@ PROCESS_THREAD(blink_process, ev, data) {
   }
   PROCESS_END();
 }
- 
 /* -------------------------------------------------------------------------- */
 static struct etimer et;
 PROCESS_THREAD(adc_reading_process, ev, data)
 {
   PROCESS_BEGIN();
   while(1) {
-    adc = adc_synch_get(A5);
+    /* read analog in A7, block until done and store result in the variable adc */
+    adc = adc_get(A7);
     etimer_set(&et, CLOCK_SECOND/8);
     printf("ADC: %u\n", adc);
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));

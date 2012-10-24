@@ -149,7 +149,6 @@ adc_asynch_get(uint8_t adc_ch, uint16_t *val)
 uint16_t
 adc_synch_get(uint8_t adc_ch)
 {
-  PH(0);
   /* wait for already running ADC to finish */
   while (adc_busy()) {;}
   state = SYNCH;
@@ -160,15 +159,14 @@ adc_synch_get(uint8_t adc_ch)
     init_pininput(1 << adc_ch);
   }
   ADC10CTL1 |= adc_ch << 12;
-/*  ADC10CTL0 |= ADC10IE;*/   // test wo, then remove XXX
 
   /* set up, start ADC */
   ADC10CTL0 |= ADC10SC | ENC;
 
   /* wait for ADC to finish, return result */
   while (adc_busy()) {;}
-  PL(0);
-  return adcbuf;
+  state = OFF;
+  return ADC10MEM;
 }
 /*--------------------------------------------------------------------------*/
 /*

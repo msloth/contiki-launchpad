@@ -73,35 +73,38 @@ void adc_init(void);
  * use this when you plan on using the conversion a bit later (ca x ms later) 
  * and it is not that important. Will not block while converting.
  *    uint16_t val;
- *    adc_asynch_get(A7, &val);
+ *    adc_get_noblock(A7, &val);
  * 
  */
-void adc_asynch_get(uint8_t adc_ch, uint16_t *val);
+void adc_get_noblock(uint8_t adc_ch, uint16_t *val);
 
 /*
  * use this when you need the result as soon as it is done; it will block until
  * it is finished with the conversion (<50 us)
- *    reading = adc_get_synch(A0);
+ *    reading = adc_get(A0);
  * 
  */
-uint16_t adc_synch_get(uint8_t adc_ch);
+uint16_t adc_get(uint8_t adc_ch);
 
 /*
  * use this when you want to be notified as soon as the conversion is done.
  * The process will be sent an event when conversion is done.
- *    adc_irqevent_get(A0, PROCESS_CURRENT());
+ *    adc_get_event(A0, PROCESS_CURRENT());
  *    PROCESS_WAIT_EVENT_UNTIL(ev == adc_event);
  * 
+ * If the process pointer argument is NULL, then the event is sent to all
+ *    adc_get_event(A7, NULL);
+ * 
  */
-void adc_irqevent_get(uint8_t adc_ch, struct process *p);
+void adc_get_event(uint8_t adc_ch, struct process *p);
 
 /*
  * use this when you want to be notified as soon as the conversion is done.
  * The process will be polled when conversion is done.
- *    adc_irqpoll_get(A7, PROCESS_CURRENT());
- * 
+ *    adc_get_poll(A7, PROCESS_CURRENT());
+ *    
  */
-void adc_irqpoll_get(uint8_t adc_ch, uint16_t *buf, struct process *p);
+void adc_get_poll(uint8_t adc_ch, uint16_t *buf, struct process *p);
 
 /* returns true if the ADC is currently doing a conversion */
 uint8_t adc_busy(void);

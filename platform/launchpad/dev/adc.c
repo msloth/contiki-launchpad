@@ -123,7 +123,7 @@ adc_busy(void)
  * val will contain the result when done.
  */
 void
-adc_asynch_get(uint8_t adc_ch, uint16_t *val)
+adc_get_noblock(uint8_t adc_ch, uint16_t *val)
 {
   if(val == NULL) {
     /* unnecessary to run the ADC as the result will be dropped. */
@@ -151,7 +151,7 @@ adc_asynch_get(uint8_t adc_ch, uint16_t *val)
  * it is finished with the conversion (ca 50 us)
  */
 uint16_t
-adc_synch_get(uint8_t adc_ch)
+adc_get(uint8_t adc_ch)
 {
   /* wait for already running ADC to finish */
   while (adc_busy()) {;}
@@ -176,12 +176,12 @@ adc_synch_get(uint8_t adc_ch)
 /*
  * use this when you want to be notified as soon as the conversion is done.
  * The process p will be sent an event when conversion is done.
- *    adc_irqevent_get(A7, PROCESS_CURRENT());
+ *    adc_get_event(A7, PROCESS_CURRENT());
  *    PROCESS_WAIT_EVENT_UNTIL(ev == adc_event);
  * 
  */
 void
-adc_irqevent_get(uint8_t adc_ch, struct process *p)
+adc_get_event(uint8_t adc_ch, struct process *p)
 {
   PH(0);
   /* wait for already running ADC to finish */
@@ -208,7 +208,7 @@ adc_irqevent_get(uint8_t adc_ch, struct process *p)
  * The process will be polled when conversion is done.
  */
 void
-adc_irqpoll_get(uint8_t adc_ch, uint16_t *buf, struct process *p)
+adc_get_poll(uint8_t adc_ch, uint16_t *buf, struct process *p)
 {
   if(buf == NULL) {
     /* unnecessary to run the ADC as the result will be dropped. */
@@ -239,41 +239,38 @@ adc_irqpoll_get(uint8_t adc_ch, uint16_t *buf, struct process *p)
 /* ADC10 ISR */
 ISR(ADC10, adc10_interrupt)
 {
-  PH(1);
-  /* reset ADC registers as needed; copy conversion result */
-/*  ADC10CTL0 &=~ ADC10IE;*/
-  adcbuf = ADC10MEM;
-
   /* check for how adc was called */
   switch(state) {
-    case POLL:
-      if(calling_process != NULL) {
-        dest = adcbuf;
-        process_poll(calling_process);
-      }
-      break;
-
-    case EVENT:
-      if(calling_process != NULL) {
-        /* should it post to just caller, or broadcast the event to all proc? */
-        process_post(calling_process, adc_event, &adcbuf);
-        //process_post(PROCESS_BROADCAST, adc_event, &adcbuf);
-      }
-      break;
-
-    case ASYNCH:
+  case POLL:
+    if(calling_process != NULL) {
       *dest = ADC10MEM;
-      break;
+      process_poll(calling_process);
+    }
+    break;
 
-    case SYNCH:
-    default:
-      break;
+  case EVENT:
+    adcbuf = ADC10MEM;
+    if(calling_process == NULL) {
+      /* if no calling process was specified, notify all processes */
+      process_post(PROCESS_BROADCAST, adc_event, &adcbuf);
+    } else {
+      /* just this single process should get the event */
+      process_post(calling_process, adc_event, &adcbuf);
+    }
+    break;
+
+  case ASYNCH:
+    *dest = ADC10MEM;
+    break;
+
+  case SYNCH:
+  default:
+    break;
   }
   
   /* wake the mcu up so the event can be handled */
   state = OFF;
   LPM4_EXIT;
-  PL(1);
 }
 /*--------------------------------------------------------------------------*/
 /** @} */

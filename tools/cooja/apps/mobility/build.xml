@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+
+<project name="COOJA: Mobility" default="jar" basedir=".">
+  <property name="src" location="java"/>
+  <property name="build" location="build"/>
+  <property name="lib" location="lib"/>
+  <property name="cooja_jar" value="/home/user/contiki-2.x/tools/cooja/dist/cooja.jar"/>
+
+  <target name="init">
+    <tstamp/>
+  </target>
+
+  <target name="compile" depends="init">
+    <mkdir dir="${build}"/>
+    <javac srcdir="${src}" destdir="${build}" debug="on">
+      <classpath>
+        <pathelement path="."/>
+        <pathelement location="${cooja_jar}"/>
+      </classpath>
+    </javac>
+  </target>
+
+  <target name="clean" depends="init">
+    <delete dir="${build}"/>
+    <delete dir="${lib}"/>
+  </target>
+
+  <target name="jar" depends="init, compile, copy">
+    <mkdir dir="${lib}"/>
+    <jar destfile="${lib}/mobility.jar" basedir="${build}">
+      <manifest>
+        <attribute name="Class-Path" value="."/>
+      </manifest>
+    </jar>
+  </target>
+
+  <target name="copy" depends="init">
+    <mkdir dir="${build}"/>
+  </target>
+
+</project>

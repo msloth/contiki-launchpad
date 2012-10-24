@@ -129,7 +129,6 @@ adc_asynch_get(uint8_t adc_ch, uint16_t *val)
     /* unnecessary to run the ADC as the result will be dropped. */
     return;
   }
-  PH(0);
   dest = val;
 
   /* wait for already running ADC to finish */
@@ -145,8 +144,6 @@ adc_asynch_get(uint8_t adc_ch, uint16_t *val)
   /* this needs irq */
   ADC10CTL0 |= ADC10IE;
   ADC10CTL0 |= ADC10SC | ENC;
-
-  PL(0);
 }
 /*--------------------------------------------------------------------------*/
 /*
@@ -210,16 +207,20 @@ adc_irqevent_get(uint8_t adc_ch, struct process *p)
  * use this when you want to be notified as soon as the conversion is done.
  * The process will be polled when conversion is done.
  */
-static uint16_t *valdest;
 void
 adc_irqpoll_get(uint8_t adc_ch, uint16_t *buf, struct process *p)
 {
+  if(buf == NULL) {
+    /* unnecessary to run the ADC as the result will be dropped. */
+    return;
+  }
   PH(0);
-  /* wait for already running ADC to finish */
-  while (adc_busy()) {;}
   state = POLL;
   calling_process = p;
-  valdest = buf;
+  dest = buf;
+
+  /* wait for already running ADC to finish */
+  while (adc_busy()) {;}
 
   /* set up ports and pins */
   if(adc_ch <= A7) {
@@ -247,9 +248,7 @@ ISR(ADC10, adc10_interrupt)
   switch(state) {
     case POLL:
       if(calling_process != NULL) {
-        if(valdest != NULL) {
-          valdest = adcbuf;
-        }
+        dest = adcbuf;
         process_poll(calling_process);
       }
       break;

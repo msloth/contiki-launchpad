@@ -70,7 +70,9 @@ enum ADC_STATE {
 static uint16_t adcbuf;
 /* ADC current state/mode */
 static uint8_t state = OFF;
-/* ev process calling the adc module */
+/* pointer to where the result should be stored after asynch conversion */
+static uint16_t *dest;
+/* process calling the adc module */
 struct process *calling_process = NULL;
 /*--------------------------------------------------------------------------*/
 static void
@@ -123,7 +125,12 @@ adc_busy(void)
 void
 adc_asynch_get(uint8_t adc_ch, uint16_t *val)
 {
+  if(val == NULL) {
+    /* unnecessary to run the ADC as the result will be dropped. */
+    return;
+  }
   PH(0);
+  dest = val;
 
   /* wait for already running ADC to finish */
   while (adc_busy()) {;}
@@ -144,7 +151,7 @@ adc_asynch_get(uint8_t adc_ch, uint16_t *val)
 /*--------------------------------------------------------------------------*/
 /*
  * use this when you need the result as soon as it is done; it will block until
- * it is finished with the conversion (ca x ms)
+ * it is finished with the conversion (ca 50 us)
  */
 uint16_t
 adc_synch_get(uint8_t adc_ch)
@@ -249,14 +256,16 @@ ISR(ADC10, adc10_interrupt)
 
     case EVENT:
       if(calling_process != NULL) {
-        /* should it post to just caller, or broadcast? */
+        /* should it post to just caller, or broadcast the event to all proc? */
         process_post(calling_process, adc_event, &adcbuf);
-/*        process_post(PROCESS_BROADCAST, adc_event, &adcbuf);*/
+        //process_post(PROCESS_BROADCAST, adc_event, &adcbuf);
       }
       break;
 
     case ASYNCH:
-      /* does nothing (ADC10MEM already copied) */
+      *dest = ADC10MEM;
+      break;
+
     case SYNCH:
     default:
       break;

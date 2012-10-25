@@ -48,7 +48,8 @@
 #include "isr_compat.h"
 #include "dev/leds.h"
 
-#define DEBUG   1
+/* add eg PH(0) and PL(0) macros for debugging, now removed */
+#define DEBUG   0
 #if DEBUG
   #define PH(x)   P2OUT|=(1<<x)
   #define PL(x)   P2OUT&=~(1<<x)
@@ -183,7 +184,6 @@ adc_get(uint8_t adc_ch)
 void
 adc_get_event(uint8_t adc_ch, struct process *p)
 {
-  PH(0);
   /* wait for already running ADC to finish */
   while (adc_busy()) {;}
   state = EVENT;
@@ -199,8 +199,6 @@ adc_get_event(uint8_t adc_ch, struct process *p)
   /* set up, start ADC */
   ADC10CTL0 |= ADC10IE;
   ADC10CTL0 |= ADC10SC | ENC;
-
-  PL(0);
 }
 /*--------------------------------------------------------------------------*/
 /*
@@ -214,7 +212,6 @@ adc_get_poll(uint8_t adc_ch, uint16_t *buf, struct process *p)
     /* unnecessary to run the ADC as the result will be dropped. */
     return;
   }
-  PH(0);
   state = POLL;
   calling_process = p;
   dest = buf;
@@ -232,8 +229,6 @@ adc_get_poll(uint8_t adc_ch, uint16_t *buf, struct process *p)
   /* set up, start ADC */
   ADC10CTL0 |= ADC10IE;
   ADC10CTL0 |= ADC10SC | ENC;
-
-  PL(0);
 }
 /*--------------------------------------------------------------------------*/
 /* ADC10 ISR */

@@ -2,7 +2,7 @@
 # at present, this file contains a whole lot of old Sky rubbish. Clean up.
 
 CONTIKI_TARGET_SOURCEFILES += uart1-putchar.c spi.c i2c.c button.c adc.c \
-    uart1.c uart1-putchar.c
+    uart1.c uart1-putchar.c cc2500.c cc2500-arch-c
 #	sht11.c sht11-sensor.c node-id.c slip_uart1.c pwm.c
 # contiki-launchpad-platform.c sensors.c launchpad-sensors.c light-sensor.c radio-sensor.c battery-sensor.c button-sensor.c
 

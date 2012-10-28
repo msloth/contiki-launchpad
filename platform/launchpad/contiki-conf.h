@@ -66,14 +66,16 @@
 #endif /* NETSTACK_CONF_RDC_CHANNEL_CHECK_RATE */
 
 #ifndef RF_CHANNEL
-#define RF_CHANNEL              1
+#define RF_CHANNEL                  1
 #endif /* RF_CHANNEL */
 
-#define PACKETBUF_CONF_SIZE   64
+#define PACKETBUF_CONF_SIZE         64
 /*    #define PACKETBUF_SIZE 128*/
 #define PACKETBUF_CONF_HDR_SIZE     16
 /*    #define PACKETBUF_HDR_SIZE 48*/
-#define RIMEADDR_CONF_SIZE     2
+#define RIMEADDR_CONF_SIZE          2
+/* save ~80 B RAM */
+#define USE_ANNOUNCEMENTS_CONF      0
 
 
 

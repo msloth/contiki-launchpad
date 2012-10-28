@@ -119,10 +119,9 @@ main(int argc, char **argv)
   #endif
 
 
-/*  #if USE_RIME */
-  #if 1
-  cc2500_init();
-  cc2500_set_channel(0);
+  #if USE_RADIO
+/*  cc2500_init();*/
+/*  cc2500_set_channel(0);*/
 /*  cc2500_set_channel(RF_CHANNEL);*/
 
 /*  set_rime_addr();*/

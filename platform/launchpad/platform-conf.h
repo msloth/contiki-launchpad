@@ -65,7 +65,7 @@
 /* use serial port? (printfs); saves space if not */
 #define USE_SERIAL              1
 /* use the Rime networking stack? (have radio?) */
-#define USE_RIME                1
+#define USE_RADIO               1
 
 /*
  * Does it have an external 32kHz osc? Currently doesn't matter but included for
@@ -125,6 +125,17 @@ project-conf.h)!"
 #if _MCU_ == 2452 && USE_SERIAL
 #error "2452 has no hardware UART, either set 2553 or set USE_SERIAL to 0 in platform-conf.h"
 #endif
+
+
+
+
+
+
+
+
+
+
+
 
 /* other various things ----------------------------*/
 #define BAUD2UBR(baud) ((F_CPU/baud))

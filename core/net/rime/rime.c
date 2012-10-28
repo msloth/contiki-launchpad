@@ -55,11 +55,18 @@
 #include "net/rime.h"
 #include "net/rime/chameleon.h"
 #include "net/rime/route.h"
+#include "net/mac/mac.h"
+#include "lib/list.h"
+
+#ifdef USE_ANNOUNCEMENTS_CONF
+#define USE_ANNOUNCEMENTS  USE_ANNOUNCEMENTS_CONF
+#else
+#define USE_ANNOUNCEMENTS    1
+#endif
+
+#if USE_ANNOUNCEMENTS
 #include "net/rime/announcement.h"
 #include "net/rime/broadcast-announcement.h"
-#include "net/mac/mac.h"
-
-#include "lib/list.h"
 
 #ifdef RIME_CONF_BROADCAST_ANNOUNCEMENT_CHANNEL
 #define BROADCAST_ANNOUNCEMENT_CHANNEL RIME_CONF_BROADCAST_ANNOUNCEMENT_CHANNEL
@@ -84,7 +91,7 @@
 #else /* RIME_CONF_BROADCAST_ANNOUNCEMENT_MAX_TIME */
 #define BROADCAST_ANNOUNCEMENT_MAX_TIME CLOCK_SECOND * 3600UL
 #endif /* RIME_CONF_BROADCAST_ANNOUNCEMENT_MAX_TIME */
-
+#endif    /* USE_ANNOUNCEMENTS */
 
 LIST(sniffers);
 
@@ -126,10 +133,13 @@ init(void)
 {
   queuebuf_init();
   packetbuf_clear();
+#if USE_ANNOUNCEMENTS
   announcement_init();
+#endif    /* USE_ANNOUNCEMENTS */
 
   chameleon_init();
   
+#if USE_ANNOUNCEMENTS
   /* XXX This is initializes the transmission of announcements but it
    * is not currently certain where this initialization is supposed to
    * be. Also, the times are arbitrarily set for now. They should
@@ -142,6 +152,7 @@ init(void)
                               BROADCAST_ANNOUNCEMENT_BUMP_TIME,
                               BROADCAST_ANNOUNCEMENT_MIN_TIME,
                               BROADCAST_ANNOUNCEMENT_MAX_TIME);
+#endif    /* USE_ANNOUNCEMENTS */
 }
 /*---------------------------------------------------------------------------*/
 static void

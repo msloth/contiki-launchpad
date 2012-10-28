@@ -31,7 +31,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+
 #include "contiki.h"
+#include "contiki-net.h"
 #include "dev/leds.h"
 #include "dev/serial-line.h"
 #include "dev/uart1.h"
@@ -39,44 +41,9 @@
 #include "sys/autostart.h"
 #include "dev/button.h"
 #include "dev/adc.h"
-
-#include "netstack.h"
-
-#include "node-id.h"
 #include "lib/random.h"
-
-
-#if DCOSYNCH_CONF_ENABLED
-#undef DCOSYNCH_CONF_ENABLED
-#define DCOSYNCH_CONF_ENABLED 0
-#endif
-#define WITH_UIP 0
-
-/*--------------------------------------------------------------------------*/
-#if SET_NODE_ID
-static void
-set_rime_addr(void)
-{
-  rimeaddr_t addr;
-  int i;
-
-  memset(&addr, 0, sizeof(rimeaddr_t));
-  if(node_id == 0) {
-    for(i = 0; i < sizeof(rimeaddr_t); ++i) {
-      addr.u8[i] = ds2411_id[7 - i];
-    }
-  } else {
-    addr.u8[0] = node_id & 0xff;
-    addr.u8[1] = node_id >> 8;
-  }
-  rimeaddr_set_node_addr(&addr);
-  printf("Rime started with address ");
-  for(i = 0; i < sizeof(addr.u8) - 1; i++) {
-    printf("%d.", addr.u8[i]);
-  }
-  printf("%d\n", addr.u8[i]);
-}
-#endif
+#include "net/rime.h"
+#include "netstack.h"
 
 /*---------------------------------------------------------------------------*/
 /*  P1SEL &=~ (LEDS_RED | LEDS_GREEN);*/
@@ -87,14 +54,13 @@ set_rime_addr(void)
 /*#define LON(x)   (P1OUT |= (x))*/
 /*#define LOFF(x)   (P1OUT &=~ (x))*/
 
-int
-main(int argc, char **argv)
+void
+main(void)
 {
   msp430_cpu_init();
   leds_init();
   leds_on(LEDS_ALL);
   clock_init();
-
 
   #if USE_SERIAL
   /* 
@@ -120,19 +86,30 @@ main(int argc, char **argv)
 
 
   #if USE_RADIO
-/*  cc2500_init();*/
-/*  cc2500_set_channel(0);*/
-/*  cc2500_set_channel(RF_CHANNEL);*/
-
-/*  set_rime_addr();*/
-/*  if(node_id > 0) {*/
-/*    printf("Node id is set to %u.\n", node_id);*/
-/*  } else {*/
-/*    printf("Node id is not set.\n");*/
-/*  }*/
+  {
+    rimeaddr_t addr;
+    /* Check that Magic number and node id first byte are correct */
+    if (NODEID_INFOMEM_LOCATION[0] != 0xBE || NODEID_INFOMEM_LOCATION[1] != 0xEF) {
+      /* error, just set to fail-address */
+      addr.u8[0] = 0xde;    // 222
+      addr.u8[1] = 0xad;    // 173
+    } else {
+      addr.u8[0] = NODEID_INFOMEM_LOCATION[2];
+      addr.u8[1] = NODEID_INFOMEM_LOCATION[3];
+    }
+    rimeaddr_set_node_addr(&addr);
+/*    printf("Rime started with address ");*/
+/*    for(i = 0; i < sizeof(addr.u8) - 1; i++) {*/
+/*      printf("%d.", addr.u8[i]);*/
+/*    }*/
+/*    printf("%d\n", addr.u8[i]);*/
+  }
 
   netstack_init();
       /*  NETSTACK_RADIO.init();*/
+          /*  cc2500_init();*/
+          /*  cc2500_set_channel(0);*/
+          /*  cc2500_set_channel(RF_CHANNEL);*/
       /*  NETSTACK_RDC.init();*/
       /*  NETSTACK_MAC.init();*/
       /*  NETSTACK_NETWORK.init();*/
@@ -171,7 +148,7 @@ main(int argc, char **argv)
       LPM3;   /* LPM4? No, due to SMCLK driving clock (?) */
     }
   }
-  return 0;
+  return;
 }
 /*---------------------------------------------------------------------------*/
 

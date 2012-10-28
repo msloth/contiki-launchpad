@@ -39,13 +39,13 @@
  * RAM and ROM constraints. They are included for compatibility reasons, to 
  * keep the compiler from complaining. */
 #ifndef NETSTACK_CONF_MAC
-#define NETSTACK_CONF_MAC     nullmac_driver
-//#define NETSTACK_CONF_RDC     lean_nullmac_driver    // XXX coming
+//#define NETSTACK_CONF_MAC     nullmac_driver
+#define NETSTACK_CONF_MAC     lean_nullmac_driver
 #endif /* NETSTACK_CONF_MAC */
 
 #ifndef NETSTACK_CONF_RDC
-#define NETSTACK_CONF_RDC     nullrdc_driver
-//#define NETSTACK_CONF_RDC     lean_nullrdc_driver    // XXX coming
+//#define NETSTACK_CONF_RDC     nullrdc_driver
+#define NETSTACK_CONF_RDC     lean_nullrdc_driver
 #endif /* NETSTACK_CONF_RDC */
 
 #ifndef NETSTACK_CONF_RADIO
@@ -53,8 +53,8 @@
 #endif /* NETSTACK_CONF_RADIO */
 
 #ifndef NETSTACK_CONF_FRAMER
-#define NETSTACK_CONF_FRAMER  nullframer_driver
-//#define NETSTACK_CONF_FRAMER  lean_nullframer_driver    // XXX coming
+//#define NETSTACK_CONF_FRAMER  nullframer_driver
+#define NETSTACK_CONF_FRAMER  lean_nullframer_driver
 #endif /* NETSTACK_CONF_FRAMER */
 
 #if 0

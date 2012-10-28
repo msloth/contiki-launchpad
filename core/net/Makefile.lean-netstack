@@ -1,0 +1,2 @@
+CONTIKI_SOURCEFILES += lean-nullmac.c lean-nullrdc.c lean-nullrdc-noframer.c
+CONTIKI_SOURCEFILES += lean-framer-nullmac.c

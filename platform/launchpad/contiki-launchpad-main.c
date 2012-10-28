@@ -119,7 +119,7 @@ main(int argc, char **argv)
   #endif
 
 
-/*  #if WITH_RADIO*/
+/*  #if USE_RIME */
   #if 1
   cc2500_init();
   cc2500_set_channel(0);
@@ -132,9 +132,11 @@ main(int argc, char **argv)
 /*    printf("Node id is not set.\n");*/
 /*  }*/
 
-  NETSTACK_RDC.init();
-  NETSTACK_MAC.init();
-  NETSTACK_NETWORK.init();
+  netstack_init();
+      /*  NETSTACK_RADIO.init();*/
+      /*  NETSTACK_RDC.init();*/
+      /*  NETSTACK_MAC.init();*/
+      /*  NETSTACK_NETWORK.init();*/
   #endif
 
   printf(CONTIKI_VERSION_STRING " started. ");

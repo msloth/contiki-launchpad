@@ -63,9 +63,9 @@
 #define BOARD_OLD_REVISION      1
 
 /* use serial port? (printfs); saves space if not */
-#define USE_SERIAL       1
+#define USE_SERIAL              1
 /* use the Rime networking stack? (have radio?) */
-#define USE_RIME                0
+#define USE_RIME                1
 
 /*
  * Does it have an external 32kHz osc? Currently doesn't matter but included for
@@ -94,8 +94,8 @@
 // XXX not working yet, is only blocking
 #define UART1_CONF_TX_WITH_INTERRUPT    0
 
-#define WITH_UIP6               0
 
+#define WITH_UIP6               0
 /*--------------------------------------------------------------------------*/
 /* some helping defines that normally should not be changed */
 /* Clock resolutions */

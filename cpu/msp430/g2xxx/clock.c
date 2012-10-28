@@ -93,31 +93,21 @@ clock_time(void)
   return t1;
 }
 /*---------------------------------------------------------------------------*/
-#define LON(x)   (P1OUT |= (x))
-#define LOFF(x)   (P1OUT &=~ (x))
-#include "dev/leds.h"
 
 ISR(TIMER0_A0, timera0_interrupt)
 {
   TACCTL0 &= ~CCIFG;
-  //P1OUT |= 1<<4;
 /*  if (TAIV == 2) {*/
     watchdog_start();
-
-    /* HW timer bug fix: Interrupt handler called before TAR==CCR.
-     * Occurs when timer state is toggled between STOP and CONT. */
-    //while(TACTL & MC1 && TACCR0 - TAR == 1);    // NB not ported; old.
-
     TACCR0 += INTERVAL;
-  /*  do {*/
+    do {   // XXX remove?
       ++count;
       if(count % CLOCK_CONF_SECOND == 0) {
         ++seconds;
       }
-  /*  } while((TACCR0 - TAR) > INTERVAL);*/
+    } while((TACCR0 - TAR) > INTERVAL);   // XXX remove?
 
     last_tar = TAR;
-
     if(etimer_pending() && (etimer_next_expiration_time() - count - 1) > MAX_TICKS) {
       etimer_request_poll();
       /* make sure we get out of even the deepest sleep */
@@ -129,7 +119,6 @@ ISR(TIMER0_A0, timera0_interrupt)
     }
     watchdog_stop();
 /*  }*/
-  //P1OUT &=~ (1<<4);
 }
 /*--------------------------------------------------------------------------*/
 void
@@ -137,21 +126,19 @@ clock_init(void)
 {
   dint();
 
-  /* Timer is in up mode, irq when counter reg TAR == CCR0. */
-  /* using ACLK, which is 32768 ext osc; div 4 */
+  /* Timer is in cont up mode, irq when counter TAR == CCR0 */
+  /* using ACLK, which is 32768 ext osc; div 1 */
   TACTL = TASSEL_1 | ID_0;
   TACCR0 = INTERVAL;
   TACCTL0 = CCIE;
   TACTL |= MC_2;
-
   count = 0;
 
-  /* Enable interrupts. */
   eint();
 }
 /*---------------------------------------------------------------------------*/
 /**
- * Delay the CPU for a multiple of 2.83 us.
+ * Delay the CPU for a multiple of x us.
  */
 void
 clock_delay(unsigned int i)

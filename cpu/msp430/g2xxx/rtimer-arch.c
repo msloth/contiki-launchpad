@@ -46,45 +46,43 @@
 #include "dev/watchdog.h"
 #include "isr_compat.h"
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #include <stdio.h>
-#define PRINTF(...) printf(__VA_ARGS__)
+  #define PRINTF(...) printf(__VA_ARGS__)
+  #define PH(x)   P2OUT|=(1<<x)
+  #define PL(x)   P2OUT&=~(1<<x)
 #else
-#define PRINTF(...)
+  #define PRINTF(...)
+  #define PH(x)
+  #define PL(x)
 #endif
 /*--------------------------------------------------------------------------*/
 ISR(TIMER0_A1, rtimer_a01_isr)
 {
+  PH(0);
   TACCTL1 &= ~CCIFG;
   if (TAIV == TA0IV_TACCR1) {
-    //P1OUT |= 1<<5;
     watchdog_start();
     rtimer_run_next();
     if(process_nevents() > 0) {
       LPM0_EXIT;
     }
     watchdog_stop();
-    //P1OUT &=~ (1<<5);
   }
+  PL(0);
 }
 /*---------------------------------------------------------------------------*/
 void
 rtimer_arch_init(void)
 {
-  dint();
-  /* CCR0 interrupt enabled, interrupt occurs when timer equals CCR0. */
   /* input clock source LFXT1 @ 32768 Hz, div by 1; with 16-bit timer = 2s*/
 
-/*  TA1CTL = TASSEL_1 | ID_0;*/
-/*  TA1CCTL0 = CCIE;*/
-/*  TA1CTL |= MC_2;*/
-
-/*  TA0CTL = TASSEL_1 | ID_0;*/
-  TA0CCTL1 = CCIE;
-/*  TACTL |= MC_2;*/
+  /* disable interrupts */
+  dint();
 
   /* Enable interrupts. */
+  TA0CCTL1 = CCIE;
   eint();
 }
 /*---------------------------------------------------------------------------*/
@@ -96,15 +94,16 @@ rtimer_arch_now(void)
     t1 = TAR;
     t2 = TAR;
   } while(t1 != t2);
+  return *((volatile uint16_t*)(0x170));
   return t1;
 }
 /*---------------------------------------------------------------------------*/
 void
 rtimer_arch_schedule(rtimer_clock_t t)
 {
-  //P1OUT |= 1<<7;
+/*  PH(1);*/
   TA0CCR1 = t;
-  //P1OUT &=~ (1<<7);
+/*  PL(1);*/
 }
 /*---------------------------------------------------------------------------*/
 

@@ -57,7 +57,7 @@ are Contiki features that I haven't ported yet.
 *  sensors - was way too complex and hard to add new sensors to (see below)
 
 ### Re-made to simplify/fit
-*  sensors - instead of the sensors API, there is now a generic ADC API
+*  adc - instead of the sensors API, there is now a generic ADC API
 *  button - simple yet powerful button API
   
 

@@ -91,9 +91,9 @@ main(int argc, char **argv)
 {
   msp430_cpu_init();
   leds_init();
+  leds_on(LEDS_ALL);
   clock_init();
 
-  leds_on(LEDS_GREEN);
 
   #if USE_SERIAL
   /* 
@@ -111,7 +111,6 @@ main(int argc, char **argv)
 
   button_init();
   adc_init();
-  leds_on(LEDS_RED);
 
   #if USE_SERIAL
   uart1_set_input(serial_line_input_byte);
@@ -144,10 +143,9 @@ main(int argc, char **argv)
   P1DIR |= (L_RED | L_GREEN);
   P1OUT &= ~(L_RED | L_GREEN);
 
-/*  leds_off(LEDS_RED | LEDS_GREEN);*/
+  leds_off(LEDS_ALL);
   while(1) {
     int r;
-    //P1OUT |= 1<<5;
 
     do {
       watchdog_periodic();
@@ -159,10 +157,8 @@ main(int argc, char **argv)
     #else
       if(process_nevents() == 0) {
     #endif    
-      LPM3;
+      LPM3;   /* LPM4? No, due to SMCLK driving clock (?) */
     }
-
-    //P1OUT &=~ (1<<5);
   }
   return 0;
 }

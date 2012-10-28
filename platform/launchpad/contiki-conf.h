@@ -35,9 +35,6 @@
 
 
 /* -------------------------------------------------------------------------- */
-/* These are assumed to not be of use for the Launchpad w g2553 due to high
- * RAM and ROM constraints. They are included for compatibility reasons, to 
- * keep the compiler from complaining. */
 #ifndef NETSTACK_CONF_MAC
 #define NETSTACK_CONF_MAC     nullmac_driver
 #endif /* NETSTACK_CONF_MAC */
@@ -52,14 +49,24 @@
 #endif /* NETSTACK_CONF_RADIO */
 
 #ifndef NETSTACK_CONF_FRAMER
-#define NETSTACK_CONF_FRAMER  nullframer_driver
+#define NETSTACK_CONF_FRAMER  framer_nullmac
 #endif /* NETSTACK_CONF_FRAMER */
 
-#if 0
-#ifndef CC2420_CONF_AUTOACK
-#define CC2420_CONF_AUTOACK              1
-#endif /* CC2420_CONF_AUTOACK */
-#endif
+
+/* various space-saving configurations */
+/* reduce packetbuf size */
+#define PACKETBUF_CONF_SIZE         64    /* 128 */
+#define PACKETBUF_CONF_HDR_SIZE     16    /* 48 */
+/* make sure to use short Rime addresses */
+#define RIMEADDR_CONF_SIZE          2
+/* save ~80 B RAM by not using Announcements*/
+#define USE_ANNOUNCEMENTS_CONF      0
+/* remove queuebufs */
+#define QUEUEBUF_CONF_NUM           0
+#define QUEUEBUF_CONF_STATS         0
+#define QUEUEBUF_CONF_REF_NUM       0
+
+
 
 #ifndef NETSTACK_CONF_RDC_CHANNEL_CHECK_RATE
 #define NETSTACK_CONF_RDC_CHANNEL_CHECK_RATE 8
@@ -69,13 +76,6 @@
 #define RF_CHANNEL                  1
 #endif /* RF_CHANNEL */
 
-#define PACKETBUF_CONF_SIZE         64
-/*    #define PACKETBUF_SIZE 128*/
-#define PACKETBUF_CONF_HDR_SIZE     16
-/*    #define PACKETBUF_HDR_SIZE 48*/
-#define RIMEADDR_CONF_SIZE          2
-/* save ~80 B RAM */
-#define USE_ANNOUNCEMENTS_CONF      0
 
 
 

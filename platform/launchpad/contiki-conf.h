@@ -40,11 +40,12 @@
  * keep the compiler from complaining. */
 #ifndef NETSTACK_CONF_MAC
 #define NETSTACK_CONF_MAC     nullmac_driver
+//#define NETSTACK_CONF_RDC     lean_nullmac_driver    // XXX coming
 #endif /* NETSTACK_CONF_MAC */
 
 #ifndef NETSTACK_CONF_RDC
 #define NETSTACK_CONF_RDC     nullrdc_driver
-//#define NETSTACK_CONF_RDC     simplerdc_driver    // XXX coming
+//#define NETSTACK_CONF_RDC     lean_nullrdc_driver    // XXX coming
 #endif /* NETSTACK_CONF_RDC */
 
 #ifndef NETSTACK_CONF_RADIO
@@ -53,6 +54,7 @@
 
 #ifndef NETSTACK_CONF_FRAMER
 #define NETSTACK_CONF_FRAMER  nullframer_driver
+//#define NETSTACK_CONF_FRAMER  lean_nullframer_driver    // XXX coming
 #endif /* NETSTACK_CONF_FRAMER */
 
 #if 0
@@ -66,7 +68,7 @@
 #endif /* NETSTACK_CONF_RDC_CHANNEL_CHECK_RATE */
 
 #ifndef RF_CHANNEL
-#define RF_CHANNEL              26
+#define RF_CHANNEL              1
 #endif /* RF_CHANNEL */
 
 #if !WITH_UIP6
@@ -79,11 +81,11 @@
   #define CONTIKIMAC_CONF_ANNOUNCEMENTS    0
 
   #ifndef COLLECT_NEIGHBOR_CONF_MAX_COLLECT_NEIGHBORS
-  #define COLLECT_NEIGHBOR_CONF_MAX_COLLECT_NEIGHBORS     4
+  #define COLLECT_NEIGHBOR_CONF_MAX_COLLECT_NEIGHBORS     0
   #endif /* COLLECT_NEIGHBOR_CONF_MAX_COLLECT_NEIGHBORS */
 
   #ifndef QUEUEBUF_CONF_NUM
-  #define QUEUEBUF_CONF_NUM                4
+  #define QUEUEBUF_CONF_NUM                0
   #endif /* QUEUEBUF_CONF_NUM */
 
   #ifndef TIMESYNCH_CONF_ENABLED
@@ -93,7 +95,7 @@
   #if TIMESYNCH_CONF_ENABLED
   /* CC2420 SDF timestamps must be on if timesynch is enabled. */
   #undef CC2420_CONF_SFD_TIMESTAMPS
-  #define CC2420_CONF_SFD_TIMESTAMPS       1
+  #define CC2420_CONF_SFD_TIMESTAMPS       0
   #endif /* TIMESYNCH_CONF_ENABLED */
 
 #else /* WITH_UIP6 */

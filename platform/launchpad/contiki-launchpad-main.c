@@ -40,6 +40,7 @@
 #include "dev/button.h"
 #include "dev/adc.h"
 
+#include "netstack.h"
 
 #include "node-id.h"
 #include "lib/random.h"

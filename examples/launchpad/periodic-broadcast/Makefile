@@ -4,7 +4,7 @@
 # this defines where to find the Contiki root folder compared with this folder
 # I prefer to have my Contiki projects under eg /contiki/projects/myproject/
 # in which case CONTIKI = ../.. is a proper setting
-CONTIKI = ../..
+CONTIKI = ../../..
 
 # this sets the compilation target (hardware) to be Launchpad
 ifndef TARGET

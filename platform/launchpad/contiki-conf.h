@@ -39,13 +39,12 @@
  * RAM and ROM constraints. They are included for compatibility reasons, to 
  * keep the compiler from complaining. */
 #ifndef NETSTACK_CONF_MAC
-//#define NETSTACK_CONF_MAC     nullmac_driver
-#define NETSTACK_CONF_MAC     lean_nullmac_driver
+#define NETSTACK_CONF_MAC     nullmac_driver
 #endif /* NETSTACK_CONF_MAC */
 
 #ifndef NETSTACK_CONF_RDC
-//#define NETSTACK_CONF_RDC     nullrdc_driver
-#define NETSTACK_CONF_RDC     lean_nullrdc_driver
+#define NETSTACK_CONF_RDC     nullrdc_driver
+//#define NETSTACK_CONF_RDC     nullrdc_noframer_driver
 #endif /* NETSTACK_CONF_RDC */
 
 #ifndef NETSTACK_CONF_RADIO
@@ -53,8 +52,7 @@
 #endif /* NETSTACK_CONF_RADIO */
 
 #ifndef NETSTACK_CONF_FRAMER
-//#define NETSTACK_CONF_FRAMER  nullframer_driver
-#define NETSTACK_CONF_FRAMER  lean_nullframer_driver
+#define NETSTACK_CONF_FRAMER  nullframer_driver
 #endif /* NETSTACK_CONF_FRAMER */
 
 #if 0
@@ -70,6 +68,15 @@
 #ifndef RF_CHANNEL
 #define RF_CHANNEL              1
 #endif /* RF_CHANNEL */
+
+#define PACKETBUF_CONF_SIZE   64
+/*    #define PACKETBUF_SIZE 128*/
+#define PACKETBUF_CONF_HDR_SIZE     16
+/*    #define PACKETBUF_HDR_SIZE 48*/
+#define RIMEADDR_CONF_SIZE     2
+
+
+
 
 #if !WITH_UIP6
   /* Network setup for non-IPv6 (rime). */

@@ -58,6 +58,8 @@ struct rimestats {
 
 extern struct rimestats rimestats;
 
-#define RIMESTATS_ADD(x) rimestats.x++
+/* this removes the entire use of rimestats, saving 72 precious bytes */
+#define RIMESTATS_ADD(x)
+//#define RIMESTATS_ADD(x) rimestats.x++
 
 #endif /* __RIMESTATS_H__ */

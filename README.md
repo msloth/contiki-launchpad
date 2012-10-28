@@ -49,6 +49,10 @@ comes with some limitations. For one, it haven't got much RAM and thus I had to
 cut down on a lot of features and simplify others to make it fit. Other limitations
 are Contiki features that I haven't ported yet.
 
+NOTE: I completely removed the rimestats module; it needs 72 B RAM. It can be
+re-enabled (but doesn't fit) through removing my comment in 
+''contiki/core/net/rime/rimestats.h''.
+
 ### Not working/ported
 *  energest - energy estimation (save RAM)
 *  packetbuf, Rime. Coming later but I have no radio to port for yet.

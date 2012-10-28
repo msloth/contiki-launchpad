@@ -118,13 +118,22 @@ main(int argc, char **argv)
   #endif
 
 
-  #if SET_NODE_ID
-  set_rime_addr();
-  if(node_id > 0) {
-    printf("Node id is set to %u.\n", node_id);
-  } else {
-    printf("Node id is not set.\n");
-  }
+/*  #if WITH_RADIO*/
+  #if 1
+  cc2500_init();
+  cc2500_set_channel(0);
+/*  cc2500_set_channel(RF_CHANNEL);*/
+
+/*  set_rime_addr();*/
+/*  if(node_id > 0) {*/
+/*    printf("Node id is set to %u.\n", node_id);*/
+/*  } else {*/
+/*    printf("Node id is not set.\n");*/
+/*  }*/
+
+  NETSTACK_RDC.init();
+  NETSTACK_MAC.init();
+  NETSTACK_NETWORK.init();
   #endif
 
   printf(CONTIKI_VERSION_STRING " started. ");

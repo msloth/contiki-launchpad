@@ -2,123 +2,92 @@
 #define __CC2500_H__
 
 /*
- * All constants are from the Chipcon CC2500 Data Sheet that at one
- * point in time could be found at
- * http://www.chipcon.com/files/CC2500_Data_Sheet_1_4.pdf
- *
- * The page numbers below refer to pages in this document.
+ * Definitions for TI CC2500 2.4 GHz transceiver. See the datasheet.
  */
 
-// XXX no, was for 2420, simple search-replace
+/* configuration registers */
+#define CC2500_IOCFG2         0x00
+#define CC2500_IOCFG1       	0x01
+#define CC2500_IOCFG0D      	0x02
+#define CC2500_FIFOTHR      	0x03
+#define CC2500_SYNC1        	0x04
+#define CC2500_SYNC0        	0x05
+#define CC2500_PKTLEN       	0x06
+#define CC2500_PKTCTRL1     	0x07
+#define CC2500_PKTCTRL0     	0x08
+#define CC2500_ADDR         	0x09
+#define CC2500_CHANNR       	0x0A
+#define CC2500_FSCTRL1      	0x0B
+#define CC2500_FSCTRL0      	0x0C
+#define CC2500_FREQ2        	0x0D
+#define CC2500_FREQ1        	0x0E
+#define CC2500_FREQ0        	0x0F
+#define CC2500_MDMCFG4      	0x10
+#define CC2500_MDMCFG3      	0x11
+#define CC2500_MDMCFG2      	0x12
+#define CC2500_MDMCFG1      	0x13
+#define CC2500_MDMCFG0      	0x14
+#define CC2500_DEVIATN      	0x15
+#define CC2500_MCSM2        	0x16
+#define CC2500_MCSM1        	0x17
+#define CC2500_MCSM0        	0x18
+#define CC2500_FOCCFG       	0x19
+#define CC2500_BSCFG        	0x1A
+#define CC2500_AGCCTRL2     	0x1B
+#define CC2500_AGCCTRL1     	0x1C
+#define CC2500_AGCCTRL0     	0x1D
+#define CC2500_WOREVT1      	0x1E
+#define CC2500_WOREVT0      	0x1F
+#define CC2500_WORCTRL      	0x20
+#define CC2500_FREND1       	0x21
+#define CC2500_FREND0       	0x22
+#define CC2500_FSCAL3       	0x23
+#define CC2500_FSCAL2       	0x24
+#define CC2500_FSCAL1       	0x25
+#define CC2500_FSCAL0       	0x26
+#define CC2500_RCCTRL1      	0x27
+#define CC2500_RCCTRL0      	0x28
+#define CC2500_FSTEST       	0x29
+#define CC2500_PTEST        	0x2A
+#define CC2500_AGCTEST      	0x2B
+#define CC2500_TEST2        	0x2C
+#define CC2500_TEST1        	0x2D
+#define CC2500_TEST0        	0x2E
 
+/* status registers */
+#define CC2500_PARTNUM      	0x30
+#define CC2500_VERSION      	0x31
+#define CC2500_FREQEST      	0x32
+#define CC2500_LQI          	0x33
+#define CC2500_RSSI         	0x34
+#define CC2500_MARCSTATE    	0x35
+#define CC2500_WORTIME1     	0x36
+#define CC2500_WORTIME0     	0x37
+#define CC2500_PKTSTATUS    	0x38
+#define CC2500_VCO_VC_DAC   	0x39
+#define CC2500_TXBYTES      	0x3A
+#define CC2500_RXBYTES      	0x3B
+#define CC2500_RCCTRL1_STATUS 0x3C
+#define CC2500_RCCTRL0_STATUS 0x3D
+#define CC2500_PATABLE  			0x3E
+#define CC2500_TXFIFO   			0x3F
+#define CC2500_RXFIFO   			0x3F
 
-/* Page 27. */
-enum cc2500_status_byte {
-  CC2500_XOSC16M_STABLE = 6,
-  CC2500_TX_UNDERFLOW	= 5,
-  CC2500_ENC_BUSY	= 4,
-  CC2500_TX_ACTIVE	= 3,
-  CC2500_LOCK		= 2,
-  CC2500_RSSI_VALID	= 1,
-};
+/* command strobes */
+#define CC2500_SRES     			0x30
+#define CC2500_SFSTXON  			0x31
+#define CC2500_SXOFF    			0x32
+#define CC2500_SCAL     			0x33
+#define CC2500_SRX      			0x34
+#define CC2500_STX      			0x35
+#define CC2500_SIDLE    			0x36
+#define CC2500_SAFC     			0x37
+#define CC2500_SWOR     			0x38
+#define CC2500_SPWD     			0x39
+#define CC2500_SFRX     			0x3A
+#define CC2500_SFTX     			0x3B
+#define CC2500_SWORRST  			0x3C
+#define CC2500_SNOP     			0x3D
 
-/* Page 27. */
-enum cc2500_memory_size {
-  CC2500_RAM_SIZE	= 368,
-  CC2500_FIFO_SIZE	= 128,
-};
-
-/* Page 29. */
-enum cc2500_address {
-  CC2500RAM_TXFIFO	= 0x000,
-  CC2500RAM_RXFIFO	= 0x080,
-  CC2500RAM_KEY0	= 0x100,
-  CC2500RAM_RXNONCE	= 0x110,
-  CC2500RAM_SABUF	= 0x120,
-  CC2500RAM_KEY1	= 0x130,
-  CC2500RAM_TXNONCE	= 0x140,
-  CC2500RAM_CBCSTATE	= 0x150,
-  CC2500RAM_IEEEADDR	= 0x160,
-  CC2500RAM_PANID	= 0x168,
-  CC2500RAM_SHORTADDR	= 0x16A,
-};
-
-/* Page 60. */
-enum cc2500_register {
-  CC2500_SNOP		= 0x00,
-  CC2500_SXOSCON	= 0x01,
-  CC2500_STXCAL		= 0x02,
-  CC2500_SRXON		= 0x03,
-  CC2500_STXON		= 0x04,
-  CC2500_STXONCCA	= 0x05,
-  CC2500_SRFOFF		= 0x06,
-  CC2500_SXOSCOFF	= 0x07,
-  CC2500_SFLUSHRX	= 0x08,
-  CC2500_SFLUSHTX	= 0x09,
-  CC2500_SACK		= 0x0A,
-  CC2500_SACKPEND	= 0x0B,
-  CC2500_SRXDEC		= 0x0C,
-  CC2500_STXENC		= 0x0D,
-  CC2500_SAES		= 0x0E,
-  CC2500_foo		= 0x0F,
-  CC2500_MAIN		= 0x10,
-  CC2500_MDMCTRL0	= 0x11,
-  CC2500_MDMCTRL1	= 0x12,
-  CC2500_RSSI		= 0x13,
-  CC2500_SYNCWORD	= 0x14,
-  CC2500_TXCTRL		= 0x15,
-  CC2500_RXCTRL0	= 0x16,
-  CC2500_RXCTRL1	= 0x17,
-  CC2500_FSCTRL		= 0x18,
-  CC2500_SECCTRL0	= 0x19,
-  CC2500_SECCTRL1	= 0x1A,
-  CC2500_BATTMON	= 0x1B,
-  CC2500_IOCFG0		= 0x1C,
-  CC2500_IOCFG1		= 0x1D,
-  CC2500_MANFIDL	= 0x1E,
-  CC2500_MANFIDH	= 0x1F,
-  CC2500_FSMTC		= 0x20,
-  CC2500_MANAND		= 0x21,
-  CC2500_MANOR		= 0x22,
-  CC2500_AGCCTRL	= 0x23,
-  CC2500_AGCTST0	= 0x24,
-  CC2500_AGCTST1	= 0x25,
-  CC2500_AGCTST2	= 0x26,
-  CC2500_FSTST0		= 0x27,
-  CC2500_FSTST1		= 0x28,
-  CC2500_FSTST2		= 0x29,
-  CC2500_FSTST3		= 0x2A,
-  CC2500_RXBPFTST	= 0x2B,
-  CC2500_FSMSTATE	= 0x2C,
-  CC2500_ADCTST		= 0x2D,
-  CC2500_DACTST		= 0x2E,
-  CC2500_TOPTST		= 0x2F,
-  CC2500_RESERVED	= 0x30,
-  /* 0x31 - 0x3D not used */
-  CC2500_TXFIFO		= 0x3E,
-  CC2500_RXFIFO		= 0x3F,
-};
-
-/* Page 69. */
-enum cc2500_secctrl0 {
-  CC2500_SECCTRL0_NO_SECURITY		= 0x0000,
-  CC2500_SECCTRL0_CBC_MAC		= 0x0001,
-  CC2500_SECCTRL0_CTR			= 0x0002,
-  CC2500_SECCTRL0_CCM			= 0x0003,
-
-  CC2500_SECCTRL0_SEC_M_IDX		= 2,
-
-  CC2500_SECCTRL0_RXKEYSEL0		= 0x0000,
-  CC2500_SECCTRL0_RXKEYSEL1		= 0x0020,
-
-  CC2500_SECCTRL0_TXKEYSEL0		= 0x0000,
-  CC2500_SECCTRL0_TXKEYSEL1		= 0x0040,
-
-  CC2500_SECCTRL0_SAKEYSEL0		= 0x0000,
-  CC2500_SECCTRL0_SAKEYSEL1		= 0x0080,
-
-  CC2500_SECCTRL0_SEC_CBC_HEAD		= 0x0100,
-  CC2500_SECCTRL0_RXFIFO_PROTECTION	= 0x0200,
-};
 #endif /* __CC2500_H__ */
 

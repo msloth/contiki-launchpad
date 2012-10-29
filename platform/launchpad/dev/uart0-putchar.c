@@ -1,5 +1,5 @@
-#include "dev/uart0.h"
 #include <stdio.h>
+#include "dev/uart0.h"
 
 int
 putchar(int c)

@@ -92,7 +92,15 @@
 
 /* use irq/dma with UART to save system resources, otherwise synchrous (blocking) */
 // XXX not working yet, is only blocking
-#define UART1_CONF_TX_WITH_INTERRUPT    0
+#define UART0_CONF_TX_WITH_INTERRUPT    0
+
+/* this is where in memory the node id is stored (must first be written with burn-id) */
+#define INFOMEM_D                     ((uint8_t*)0x00001000)
+#define INFOMEM_C                     ((uint8_t*)0x00001040)
+#define INFOMEM_B                     ((uint8_t*)0x00001080)
+#define INFOMEM_A                     ((uint8_t*)0x000010c0)
+#define NODEID_INFOMEM_LOCATION       INFOMEM_D
+
 
 
 #define WITH_UIP6               0

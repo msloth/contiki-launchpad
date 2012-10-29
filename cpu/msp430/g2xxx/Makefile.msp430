@@ -37,7 +37,7 @@ endif
 CONTIKI_CPU_DIRS = $(CONTIKI_CPU_FAM_DIR) . dev $(CONTIKI_CPU_FAM_DIR)/dev
 
 MSP430     = msp430.c flash.c clock.c minileds.c leds-arch.c \
-             watchdog.c lpm.c mtarch.c rtimer-arch.c
+             watchdog.c lpm.c mtarch.c rtimer-arch.c uart0.c
 UIPDRIVERS = me.c me_tabs.c slip.c crc16.c
 ELFLOADER  = elfloader.c elfloader-msp430.c symtab.c
 

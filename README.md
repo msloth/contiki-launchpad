@@ -53,26 +53,40 @@ NOTE: I completely removed the rimestats module; it needs 72 B RAM. It can be
 re-enabled (but doesn't fit) through removing my comment in 
 ''contiki/core/net/rime/rimestats.h''.
 
-### Not working/ported
+### Not working on this port, or not ported yet
 *  energest - energy estimation (save RAM)
 *  packetbuf, Rime. Coming later but I have no radio to port for yet.
 *  uIPv6 - maybe later, depends on how small packetbuf+Rime gets (save RAM).
 *  SPI, I2C - highly application dependent so I haven't done any such yet.
-*  sensors - was way too complex and hard to add new sensors to (see below)
+*  sensors - was way too complex and hard to add new sensors so removed (see below)
 
 ### Re-made to simplify/fit
 *  adc - instead of the sensors API, there is now a generic ADC API
 *  button - simple yet powerful button API
-  
+*  lots and lots of shrinking of buffers etc  
 
 ## Coming features
 
 Subject to change.
 
-*  packetbuffer, Rime
 *  radio drivers for CC2500
 *  node-id, burning and reading
 *  PWM API
 *  UART with interrupts
 *  Contiki serial shell
 *  SPI, I2C
+
+## What did I do to make it fit?
+
+The biggest problem wasn't flash space (program and const variables), it's RAM.
+And by the way Contiki works, it favors static variables. Ie, the
+protothread abstraction basically folds out (preprocessor macro expansion) into 
+function calls with a big switch-case for each process; any YIELD or WAIT_EVENT
+exits the function, hence any automatic (ie non-static or larger scope) variables
+are not saved across the block. So you use static a lot, and so they are stored
+in RAM. So I did simplify some things, removed others and managed to quite easily
+squeeze it into the 16kB/512B of the 2553 without any radio or Rime. With Rime,
+it's harder. The packet buffer, and queue buffer, needs a lot of space. I shrunk
+the packetbuf and removed any queuebufs.
+
+

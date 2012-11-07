@@ -327,11 +327,11 @@ struct packetbuf_addr {
   rimeaddr_t addr;
 };
 
-#define PACKETBUF_ATTR_PACKET_TYPE_DATA      0
-#define PACKETBUF_ATTR_PACKET_TYPE_ACK       1
-#define PACKETBUF_ATTR_PACKET_TYPE_STREAM    2
+#define PACKETBUF_ATTR_PACKET_TYPE_DATA       0
+#define PACKETBUF_ATTR_PACKET_TYPE_ACK        1
+#define PACKETBUF_ATTR_PACKET_TYPE_STREAM     2
 #define PACKETBUF_ATTR_PACKET_TYPE_STREAM_END 3
-#define PACKETBUF_ATTR_PACKET_TYPE_TIMESTAMP 4
+#define PACKETBUF_ATTR_PACKET_TYPE_TIMESTAMP  4
 
 enum {
   PACKETBUF_ATTR_NONE,
@@ -380,13 +380,15 @@ enum {
 
 #define PACKETBUF_IS_ADDR(type) ((type) >= PACKETBUF_ADDR_FIRST)
 
-#if PACKETBUF_CONF_ATTRS_INLINE
 
+
+/*--------------------------------------------------------------------------*/
+#if PACKETBUF_CONF_ATTRS_INLINE
 extern struct packetbuf_attr packetbuf_attrs[];
 extern struct packetbuf_addr packetbuf_addrs[];
 
 static int               packetbuf_set_attr(uint8_t type, const packetbuf_attr_t val);
-static packetbuf_attr_t    packetbuf_attr(uint8_t type);
+static packetbuf_attr_t  packetbuf_attr(uint8_t type);
 static int               packetbuf_set_addr(uint8_t type, const rimeaddr_t *addr);
 static const rimeaddr_t *packetbuf_addr(uint8_t type);
 
@@ -422,13 +424,15 @@ packetbuf_attr_t packetbuf_attr(uint8_t type);
 int               packetbuf_set_addr(uint8_t type, const rimeaddr_t *addr);
 const rimeaddr_t *packetbuf_addr(uint8_t type);
 #endif /* PACKETBUF_CONF_ATTRS_INLINE */
+/*--------------------------------------------------------------------------*/
+
 
 void              packetbuf_attr_clear(void);
-
 void              packetbuf_attr_copyto(struct packetbuf_attr *attrs,
-				      struct packetbuf_addr *addrs);
+        				      struct packetbuf_addr *addrs);
 void              packetbuf_attr_copyfrom(struct packetbuf_attr *attrs,
-					struct packetbuf_addr *addrs);
+            					struct packetbuf_addr *addrs);
+
 
 #define PACKETBUF_ATTRIBUTES(...) { __VA_ARGS__ PACKETBUF_ATTR_LAST }
 #define PACKETBUF_ATTR_LAST { PACKETBUF_ATTR_NONE, 0 }

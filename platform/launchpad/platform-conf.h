@@ -86,13 +86,12 @@
 #define LEDS_CONF_YELLOW        (LEDS_CONF_GREEN | LEDS_CONF_RED)
 
 /* P1.3 is the switch 2 on the Launchpad PCB, but other pins can be used. */
-// XXX not working yet
 #define BUTTON_CONF_PORT        P1
 #define BUTTON_CONF_PIN         3
 
 /* use irq/dma with UART to save system resources, otherwise synchrous (blocking) */
 // XXX not working yet, is only blocking
-#define UART0_CONF_TX_WITH_INTERRUPT    0
+#define UART0_CONF_TX_WITH_INTERRUPT  0
 
 /* this is where in memory the node id is stored (must first be written with burn-id) */
 #define INFOMEM_D                     ((uint8_t*)0x00001000)
@@ -101,9 +100,15 @@
 #define INFOMEM_A                     ((uint8_t*)0x000010c0)
 #define NODEID_INFOMEM_LOCATION       INFOMEM_D
 
+#define WITH_UIP6                     0
 
-
-#define WITH_UIP6               0
+/*--------------------------------------------------------------------------*/
+/*
+ * The CC2500 definitions - pins, ports, interrupt vector etc - is defined in
+ * the following files:
+ *    spi.c, spi.h
+ *    cc2500.c, cc2500.h, cc2500-arch.c, cc2500-const.h
+ */
 /*--------------------------------------------------------------------------*/
 /* some helping defines that normally should not be changed */
 /* Clock resolutions */
@@ -166,45 +171,16 @@ project-conf.h)!"
 #define DCOSYNCH_CONF_PERIOD 30
 #endif /* DCOSYNCH_CONF_PERIOD */
 
+/*--------------------------------------------------------------------------*/
 
-/*
- * SPI bus configuration--------------------------------------------------------
- */
 
-//SPI pins
-  #define SCK           1  /* P3.1 - Output: SPI Serial Clock (SCLK) */
-  #define MOSI          2  /* P3.2 - Output: SPI Master out - slave in (MOSI) */
-  #define MISO          3  /* P3.3 - Input:  SPI Master in - slave out (MISO) */
-/* SPI input/output registers. */
-  #define SPI_TXBUF U0TXBUF
-  #define SPI_RXBUF U0RXBUF
 
 /* USART0 Tx ready? */
-  #define SPI_WAITFOREOTx() while ((U0TCTL & TXEPT) == 0)
-/* USART0 Rx ready? */
-  #define SPI_WAITFOREORx() while ((IFG1 & URXIFG0) == 0)
-/* USART0 Tx buffer ready? */
-  #define SPI_WAITFORTxREADY() while ((IFG1 & UTXIFG0) == 0)
-
-
-// M25P80 external flash configuration SPI
-  //#define FLASH_PWR       3       /* P4.3 Output */
-  //#define FLASH_CS        4       /* P4.4 Output */
-  //#define FLASH_HOLD      7       /* P4.7 Output */
-
-/* Enable/disable flash access to the SPI bus (active low). */
-  //#define SPI_FLASH_ENABLE()  ( P4OUT &= ~BV(FLASH_CS) )
-  //#define SPI_FLASH_DISABLE() ( P4OUT |=  BV(FLASH_CS) )
-  //#define SPI_FLASH_HOLD()                ( P4OUT &= ~BV(FLASH_HOLD) )
-  //#define SPI_FLASH_UNHOLD()              ( P4OUT |=  BV(FLASH_HOLD) )
-
-
-
-
-
-
-
-
+//  #define SPI_WAITFOREOTx() while ((U0TCTL & TXEPT) == 0)
+///* USART0 Rx ready? */
+//  #define SPI_WAITFOREORx() while ((IFG1 & URXIFG0) == 0)
+///* USART0 Tx buffer ready? */
+//  #define SPI_WAITFORTxREADY() while ((IFG1 & UTXIFG0) == 0)
 
 
 /* defines related to CFS (file system) and flash; only relevant if we had
@@ -228,73 +204,6 @@ project-conf.h)!"
 
 
 
-
-// cc2420 stuff; Launchpad has not got one.
-#if 0
-  /*
-   * SPI bus - CC2420 pin configuration.
-   */
-  #define CC2420_CONF_SYMBOL_LOOP_COUNT 800
-
-  /* P1.0 - Input: FIFOP from CC2420 */
-  #define CC2420_FIFOP_PORT(type)   P1##type
-  #define CC2420_FIFOP_PIN          0
-  /* P1.3 - Input: FIFO from CC2420 */
-  #define CC2420_FIFO_PORT(type)     P1##type
-  #define CC2420_FIFO_PIN            3
-  /* P1.4 - Input: CCA from CC2420 */
-  #define CC2420_CCA_PORT(type)      P1##type
-  #define CC2420_CCA_PIN             4
-  /* P4.1 - Input:  SFD from CC2420 */
-  #define CC2420_SFD_PORT(type)      P4##type
-  #define CC2420_SFD_PIN             1
-  /* P4.2 - Output: SPI Chip Select (CS_N) */
-  #define CC2420_CSN_PORT(type)      P4##type
-  #define CC2420_CSN_PIN             2
-  /* P4.5 - Output: VREG_EN to CC2420 */
-  #define CC2420_VREG_PORT(type)     P4##type
-  #define CC2420_VREG_PIN            5
-  /* P4.6 - Output: RESET_N to CC2420 */
-  #define CC2420_RESET_PORT(type)    P4##type
-  #define CC2420_RESET_PIN           6
-
-  #define CC2420_IRQ_VECTOR PORT1_VECTOR
-
-  /* Pin status. */
-  #define CC2420_FIFOP_IS_1 (!!(CC2420_FIFOP_PORT(IN) & BV(CC2420_FIFOP_PIN)))
-  #define CC2420_FIFO_IS_1  (!!(CC2420_FIFO_PORT(IN) & BV(CC2420_FIFO_PIN)))
-  #define CC2420_CCA_IS_1   (!!(CC2420_CCA_PORT(IN) & BV(CC2420_CCA_PIN)))
-  #define CC2420_SFD_IS_1   (!!(CC2420_SFD_PORT(IN) & BV(CC2420_SFD_PIN)))
-
-  /* The CC2420 reset pin. */
-  #define SET_RESET_INACTIVE()   (CC2420_RESET_PORT(OUT) |=  BV(CC2420_RESET_PIN))
-  #define SET_RESET_ACTIVE()     (CC2420_RESET_PORT(OUT) &= ~BV(CC2420_RESET_PIN))
-
-  /* CC2420 voltage regulator enable pin. */
-  #define SET_VREG_ACTIVE()       (CC2420_VREG_PORT(OUT) |=  BV(CC2420_VREG_PIN))
-  #define SET_VREG_INACTIVE()     (CC2420_VREG_PORT(OUT) &= ~BV(CC2420_VREG_PIN))
-
-  /* CC2420 rising edge trigger for external interrupt 0 (FIFOP). */
-  #define CC2420_FIFOP_INT_INIT() do {                  \
-      CC2420_FIFOP_PORT(IES) &= ~BV(CC2420_FIFOP_PIN);  \
-      CC2420_CLEAR_FIFOP_INT();                         \
-  } while(0)
-
-  /* FIFOP on external interrupt 0. */
-  #define CC2420_ENABLE_FIFOP_INT()  do {CC2420_FIFOP_PORT(IE) |= BV(CC2420_FIFOP_PIN);} while(0)
-  #define CC2420_DISABLE_FIFOP_INT() do {CC2420_FIFOP_PORT(IE) &= ~BV(CC2420_FIFOP_PIN);} while(0)
-  #define CC2420_CLEAR_FIFOP_INT()   do {CC2420_FIFOP_PORT(IFG) &= ~BV(CC2420_FIFOP_PIN);} while(0)
-
-  /*
-   * Enables/disables CC2420 access to the SPI bus (not the bus).
-   * (Chip Select)
-   */
-   /* ENABLE CSn (active low) */
-  #define CC2420_SPI_ENABLE()     (CC2420_CSN_PORT(OUT) &= ~BV(CC2420_CSN_PIN))
-   /* DISABLE CSn (active low) */
-  #define CC2420_SPI_DISABLE()    (CC2420_CSN_PORT(OUT) |=  BV(CC2420_CSN_PIN))
-  #define CC2420_SPI_IS_ENABLED() ((CC2420_CSN_PORT(OUT) & BV(CC2420_CSN_PIN)) != BV(CC2420_CSN_PIN))
-#endif /* if 0 */
 
 
 #endif /* __PLATFORM_CONF_H__ */

@@ -36,7 +36,7 @@
 #include "contiki-net.h"
 #include "dev/leds.h"
 #include "dev/serial-line.h"
-#include "dev/uart1.h"
+#include "dev/uart0.h"
 #include "dev/watchdog.h"
 #include "sys/autostart.h"
 #include "dev/button.h"
@@ -68,8 +68,8 @@ main(void)
    * be used with a separate uartserial->usb cable connected to the rxtx pins on
    * the header, but this is kept at a maximum simplicity now, hence 9600.
    */
-  uart1_init(BAUD2UBR(9600));
-  #endif
+  uart0_init(BAUD2UBR(9600));
+  #endif  /* USE_SERIAL */
 
   rtimer_init();
   process_init();
@@ -80,14 +80,15 @@ main(void)
   adc_init();
 
   #if USE_SERIAL
-  uart1_set_input(serial_line_input_byte);
+  uart0_set_input(serial_line_input_byte);
   serial_line_init();
-  #endif
+  #endif  /* USE_SERIAL */
 
 
   #if USE_RADIO
   {
     rimeaddr_t addr;
+    uint8_t i;
     /* Check that Magic number and node id first byte are correct */
     if (NODEID_INFOMEM_LOCATION[0] != 0xBE || NODEID_INFOMEM_LOCATION[1] != 0xEF) {
       /* error, just set to fail-address */
@@ -98,11 +99,13 @@ main(void)
       addr.u8[1] = NODEID_INFOMEM_LOCATION[3];
     }
     rimeaddr_set_node_addr(&addr);
-/*    printf("Rime started with address ");*/
-/*    for(i = 0; i < sizeof(addr.u8) - 1; i++) {*/
-/*      printf("%d.", addr.u8[i]);*/
-/*    }*/
-/*    printf("%d\n", addr.u8[i]);*/
+  #if USE_SERIAL
+    printf("Rime started with address ");
+    for(i = 0; i < sizeof(addr.u8) - 1; i++) {
+      printf("%d.", addr.u8[i]);
+    }
+    printf("%d\n", addr.u8[i]);
+  #endif  /* USE_SERIAL */
   }
 
   netstack_init();
@@ -113,7 +116,7 @@ main(void)
       /*  NETSTACK_RDC.init();*/
       /*  NETSTACK_MAC.init();*/
       /*  NETSTACK_NETWORK.init();*/
-  #endif
+  #endif  /* USE_RADIO */
 
   printf(CONTIKI_VERSION_STRING " started. ");
   watchdog_start();
@@ -124,12 +127,14 @@ main(void)
   
   
   /* ugly temporary fix until I find what is setting the P1.6 (green LED) to sth else */
+  #if 0
   #define L_RED    (1)
   #define L_GREEN  (1<<6)
   P1SEL &= ~(L_RED | L_GREEN);
   P1SEL2 &= ~(L_RED | L_GREEN);
   P1DIR |= (L_RED | L_GREEN);
   P1OUT &= ~(L_RED | L_GREEN);
+  #endif
 
   leds_off(LEDS_ALL);
   while(1) {
@@ -141,11 +146,11 @@ main(void)
     } while(r > 0);
 
     #if USE_SERIAL
-      if(process_nevents() == 0 && !uart1_active()) {
+      if(process_nevents() == 0 && !uart0_active()) {
     #else
       if(process_nevents() == 0) {
-    #endif    
-      LPM3;   /* LPM4? No, due to SMCLK driving clock (?) */
+    #endif  /* USE_SERIAL */
+      LPM3;   /* No LPM4 due to SMCLK driving clock (?) */  // XXX check this LPM3/4
     }
   }
   return;

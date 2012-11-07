@@ -45,7 +45,8 @@
 #define NODEID_SIZE   4
 #define MAGIC_SIZE    2
 
-unsigned short node_id[NODEID_SIZE];
+/* store the node id, and magic bytes */
+uint8_t node_id[NODEID_SIZE];
 
 /*---------------------------------------------------------------------------*/
 void
@@ -66,13 +67,14 @@ node_id_restore(void)
 void
 node_id_burn(unsigned short id)
 {
-  unsigned char buf[4];
-  buf[0] = 0xad;
-  buf[1] = 0xde;
-  buf[2] = id >> 8;
-  buf[3] = id & 0xff;
-  xmem_erase(XMEM_ERASE_UNIT_SIZE, NODE_ID_XMEM_OFFSET);
-  xmem_pwrite(buf, 4, NODE_ID_XMEM_OFFSET);
+  /*
+  no, do not use this. Instead, create a burn-id application and leave this out.
+    unsigned char buf[4];
+    buf[0] = 0xad;
+    buf[1] = 0xde;
+    buf[2] = id >> 8;
+    buf[3] = id & 0xff;
+  */
 }
 /*---------------------------------------------------------------------------*/
 static void
@@ -80,5 +82,6 @@ create_address(void)
 {
   /* create a random address */
   /* store in InfoMem */
+  node_id_burn(buf);
 }
 /*--------------------------------------------------------------------------*/

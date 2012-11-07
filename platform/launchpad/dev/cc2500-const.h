@@ -1,11 +1,11 @@
-#ifndef __CC2500_H__
-#define __CC2500_H__
+#ifndef __CC2500_CONST_H__
+#define __CC2500_CONST_H__
 
 /*
  * Definitions for TI CC2500 2.4 GHz transceiver. See the datasheet.
  */
 
-/* configuration registers */
+/* configuration registers, can be read and written in burst. */
 #define CC2500_IOCFG2         0x00
 #define CC2500_IOCFG1       	0x01
 #define CC2500_IOCFG0D      	0x02
@@ -53,8 +53,13 @@
 #define CC2500_TEST2        	0x2C
 #define CC2500_TEST1        	0x2D
 #define CC2500_TEST0        	0x2E
+/* 0x2F is reserved */
 
-/* status registers */
+/*
+ * status registers; Read with 'burst-reading' bit set, like so:
+ *    cc2500_read_burst(CC2500_RSSI, &save, 1);
+ *  Only 1 reg can be read at a time.
+ */
 #define CC2500_PARTNUM      	0x30
 #define CC2500_VERSION      	0x31
 #define CC2500_FREQEST      	0x32
@@ -89,6 +94,50 @@
 #define CC2500_SWORRST  			0x3C
 #define CC2500_SNOP     			0x3D
 
+/*
+ * State definitions if reading SPI statusbyte; several definitions have the same
+ * value to be compatible with MARCSTATE definition names.
+ */
+#define CC2500_STATE_IDLE             0
+#define CC2500_STATE_RX               1
+#define CC2500_STATE_TX               2
+#define CC2500_STATE_FSTXON           3
+#define CC2500_STATE_CAL              4
+#define CC2500_STATE_SETTLING         5
+#define CC2500_STATE_RXFIFO_OVERFLOW  6
+#define CC2500_STATE_TXFIFO_UNDERFLOW 7
+#define CC2500_STATUSBYTE_STATUSBITS  0x70
+
+/* SPI addressing modes */
+#define CC2500_WRITE          0x00
+#define CC2500_BURSTWRITE     0x40
+#define CC2500_READ           0x80
+#define CC2500_BURSTREAD      0xC0
+
+/* Bit fields for GDO regs*/
+        /* Checked OK! */
+/* invert assert/de-assert */
+#define IOCFG_GDO_CFG_INVERT             (1<<6)
+/* drive strength; NB ONLY GDO1 */
+#define IOCFG_GDO_CFG_GDO1_DS            (1<<7)
+/* enable temp sensor (all other bits in this reg should be 0) NB GDO0 ONLY */
+#define IOCFG_GDO_CFG_GDO0_TEMP_EN       (1<<7)
+
+/* GDO functionality */
+        /* Checked OK! */
+/* Assert when THR is reached or EOP; de-assert on empty RxFIFO */
+#define IOCFG_GDO_CFG_RXFIFO_THR_PKT     1   
+/* assert on SYNC recv/sent, de-assert on EOP. NB XXX Will also de-assert on over-/underflow so check that! */
+#define IOCFG_GDO_CFG_PKT_SYNC_RXTX      6  
+/* CCA; RSSI < threshold ? assert : de-assert */
+#define IOCFG_GDO_CFG_CCA                9
+/* Carrier sense; RSSI > threshold ? assert : de-assert; inverted of CCA */
+#define IOCFG_GDO_CFG_CS                 14
+/* high impedance */
+#define IOCFG_GDO_CFG_HIGHZ              46
+
+/*--------------------------------------------------------------------------*/
+/* old and backups */
 /* MARCSTATE states */
 // XXX CHECK!
 #if 0
@@ -117,52 +166,55 @@
 #define CC2500_STATE_TXFIFO_UNDERFLOW 22
 #endif
 
-/* State definitions if reading SPI statusbyte; several definitions have the same
- * value to be compatible with MARCSTATE definition names */
-// XXX CHECK!
-#define CC2500_STATE_RX               1
-#define CC2500_STATE_RX_END           1
-#define CC2500_STATE_TX               2
-#define CC2500_STATE_TX_END           2
-#define CC2500_STATE_FSTXON           3
-#define CC2500_STATE_STARTCAL         4
-#define CC2500_STATE_MANCAL           4
-#define CC2500_STATE_ENDCAL           4
-#define CC2500_STATE_CAL              4
-#define CC2500_STATE_SETTLING         5
-#define CC2500_STATE_RXFIFO_OVERFLOW  6
-#define CC2500_STATE_TXFIFO_UNDERFLOW 7
-#define CC2500_STATUSBYTE_STATUSBITS  0x70
-
-/* Bit fields */
-// XXX CHECK!
-/* invert assert/de-assert */
-#define IOCFG_GPIO_CFG_INVERT             BV(6)
-/* set pin as "Analog transfer" (==pin not used as GPIO) */
-#define IOCFG_GPIO_CFG_ATRAN              BV(7)
-
-/* GPIO functionality */
-/* Assert when THR is reached or EOP; de-assert on empty RxFIFO */
-#define IOCFG_GPIO_CFG_RXFIFO_THR_PKT     1   
-/* assert on SYNC recv/sent, de-assert on EOP */
-#define IOCFG_GPIO_CFG_PKT_SYNC_RXTX      6  
-/* CS valid ? assert : de-assert */
-#define IOCFG_GPIO_CFG_CS_VALID           16  
-/* Carrier Sense ? assert : de-assert */
-#define IOCFG_GPIO_CFG_CS                 17  
-/* assert when in TX, de-assert in Rx/IDLE/settling */ 
-#define IOCFG_GPIO_CFG_RXIDLE_OR_TX       26  
-/* assert if in rx or tx, de-assert if idle/settling (MARC_2PIN_STATUS[0]) */ 
-#define IOCFG_GPIO_CFG_RXTX_OR_IDLE       38
-/* high impedance */
-#define IOCFG_GPIO_CFG_HIGHZ              48  
 
 
-
-
-
+/*
+          Checked OK!
+  PATable settings; only OOK uses more than PATABLE[0], and [1:7] are lost on SLEEP
+  from the datasheet
+  dBm -- setting -- current consumption mA
+    -30 -- 0x50 -- .9
+    -28 -- 0x44 -- .7
+    -26 -- 0xC0 -- 0.2
+    -24 -- 0x84 -- 0.1
+    -22 -- 0x81 -- 0.0
+    -20 -- 0x46 -- 0.1
+    -18 -- 0x93 -- 1.7
+    -16 -- 0x55 -- 0.8
+    -14 -- 0x8D -- 2.2
+    -12 -- 0xC6 -- 1.1
+    -10 -- 0x97 -- 2.2
+    -8 -- 0x6E -- 4.1
+    -6 -- 0x7F -- 5.0
+    -4 -- 0xA9 -- 6.2
+    -2 -- 0xBB -- 7.7
+    0 -- 0xFE -- 1.2
+    +1 -- 0xFF -- 1.5
+-30
+  -28
+-26
+  -24
+  -22
+  -20
+-18
+  -16
+  -14
+  -12
+-10
+  -8
+  -6
+-4
+  -2
+  0
++1
+*/
 
 
 
-#endif /* __CC2500_H__ */
+//uint8_t cc2500_txp[] = {0x50, 0x44, 0xC0, 0x84, 0x81, 0x46, 0x93, 0x55, 0x8D, 0xC6, 0x97, 0x6E, 0x7F, 0xA9, 0xBB, 0xFE, 0xFF};
+
+
+
+
+#endif /* __CC2500_CONST_H__ */
 

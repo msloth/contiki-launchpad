@@ -3,8 +3,8 @@
 
 CONTIKI_TARGET_SOURCEFILES += spi.c i2c.c button.c adc.c cc2500.c cc2500-arch.c \
     uart0-putchar.c uart0.c
-#	sht11.c sht11-sensor.c  slip_uart1.c pwm.c node-id.c
-# contiki-launchpad-platform.c sensors.c launchpad-sensors.c light-sensor.c radio-sensor.c battery-sensor.c button-sensor.c
+#	sht11.c sht11-sensor.c  slip_uart1.c pwm.c node-id.c contiki-launchpad-platform.c
+# sensors.c launchpad-sensors.c light-sensor.c radio-sensor.c battery-sensor.c button-sensor.c
 
 ifndef SMALL
 SMALL=1

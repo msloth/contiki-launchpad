@@ -54,7 +54,7 @@ static volatile uint8_t transmitting = 0;
 /*--------------------------------------------------------------------------*/
 // shouldn't really be here (in uart0-putchar.c) but makes compiler warnings go away..
 // why isn't the real one linked in?
-#warning "Verify that int putchar(int c) works!"
+/*#warning "Verify that int putchar(int c) works!"*/
 int
 /*putchar(int c)*/
 putchar(unsigned char c)

@@ -8,34 +8,69 @@
 #include "dev/radio.h"
 #include "dev/cc2500-const.h"
 
-#define CC2500_MAX_PACKET_LEN      63   // XXX 64?
-int cc2500_init(void);
-int cc2500_set_channel(int channel);
-int cc2500_get_channel(void);
-int cc2500_rssi(void);
-void cc2500_set_pan_addr(unsigned pan,
-                                unsigned addr,
-                                const uint8_t *ieee_addr);
+/*--------------------------------------------------------------------------*/
+#define CC2500_MAX_PACKET_LEN       63   // XXX 64?
+/*
+ * The transmission power setting refers to the vector of settings for txp; 
+ * their corresponding dBm value is this (starting with 0x50==-30)
+ *    {-30, -26, -18, -10, -4, +1}
+ * hence the txp is used like this:
+ *  packetbuf_attr(TRANSMISSION_POWER, CC2500_TXPOWER_MAX);
+ *  packetbuf_attr(TRANSMISSION_POWER, 3);
+ */
+uint8_t cc2500_txp[] = {0x50, 0xC0, 0x93, 0x97, 0xA9, 0xFF};
+#define CC2500_TXPOWER(x)           cc2500_txp[x]
+#define CC2500_TXPOWER_MAX          5
+#define CC2500_TXPOWER_MIN          0
 
-//param power Between 1 and 31.
-void cc2500_set_txpower(uint8_t power);
-int cc2500_get_txpower(void);
-#define CC2500_TXPOWER_MAX  31
-#define CC2500_TXPOWER_MIN   0
-int cc2500_interrupt(void);
-int cc2500_on(void);
-int cc2500_off(void);
-void cc2500_set_cca_threshold(int value);
+/* SPI interface and helper functionality */
+#define CC2500_SPI_PORT(type)       P1##type      
+#define CC2500_SPI_ENABLE_PIN       (1<<4)
+#define CC2500_CSN_PORT(type)       P1##type      
+#define CC2500_SPI_ENABLE()         (CC2500_CSN_PORT(OUT) &= ~CC2500_SPI_ENABLE_PIN)
+#define CC2500_SPI_DISABLE()        (CC2500_CSN_PORT(OUT) |=  CC2500_SPI_ENABLE_PIN)
 
-#if 0
-extern signed char cc2500_last_rssi;
-extern uint8_t cc2500_last_correlation;
+
+/*
+  this is the minimum required for the radio driver, must be implemented or stubbed
+  cc2500_init,
+  cc2500_prepare,
+  cc2500_transmit,
+  cc2500_send,
+  cc2500_read,
+  cc2500_cca,
+  cc2500_receiving_packet,
+  pending_packet,
+  cc2500_on,
+  cc2500_off,
+*/
+
+/*
+  cc2420 functions that are not implemented for cc2500
+  int cc2500_get_txpower(void);
+  void cc2500_set_cca_threshold(int value);
+  int cc2500_set_channel(int channel);
+  int cc2500_get_channel(void);
+  int cc2500_rssi(void);
+  void cc2500_set_pan_addr(unsigned pan,
+                                  unsigned addr,
+                                  const uint8_t *ieee_addr);
+*/
 extern const struct radio_driver cc2500_driver;
-extern rtimer_clock_t cc2500_time_of_arrival,
-  cc2500_time_of_departure;
-extern int cc2500_authority_level_of_sender;
-#endif
+/*--------------------------------------------------------------------------*/
+int     cc2500_init(void);
+void    cc2500_set_txpower(uint8_t power);
+int     cc2500_interrupt(void);
+int     cc2500_on(void);
+int     cc2500_off(void);
 
+uint8_t cc2500_strobe(uint8_t strobe);
+uint8_t cc2500_read_single(uint8_t adr);
+uint8_t cc2500_read_burst(uint8_t adr, uint8_t *dest, uint8_t len);
+uint8_t cc2500_write_single(uint8_t adr, uint8_t data);
+uint8_t cc2500_write_burst(uint8_t adr, uint8_t *src, uint8_t len);
+/*--------------------------------------------------------------------------*/
+#if 0
 #define CC2500_STROBE(s)                                   \
   do {                                                  \
     CC2500_SPI_ENABLE();                                \
@@ -106,43 +141,7 @@ extern int cc2500_authority_level_of_sender;
     SPI_WAITFORTx_ENDED();                                              \
     CC2500_SPI_DISABLE();                                               \
   } while(0)
-
-/* Write to RAM in the CC2500 */
-#define CC2500_WRITE_RAM(buffer,adr,count)                 \
-  do {                                                       \
-    uint8_t i;                                               \
-    CC2500_SPI_ENABLE();                                     \
-    SPI_WRITE_FAST(0x80 | ((adr) & 0x7f));                   \
-    SPI_WRITE_FAST(((adr) >> 1) & 0xc0);                     \
-    for(i = 0; i < (count); i++) {                           \
-      SPI_WRITE_FAST(((uint8_t*)(buffer))[i]);               \
-    }                                                        \
-    SPI_WAITFORTx_ENDED();                                   \
-    CC2500_SPI_DISABLE();                                    \
-  } while(0)
-
-/* Read from RAM in the CC2500 */
-#define CC2500_READ_RAM(buffer,adr,count)                    \
-  do {                                                       \
-    uint8_t i;                                               \
-    CC2500_SPI_ENABLE();                                     \
-    SPI_WRITE(0x80 | ((adr) & 0x7f));                        \
-    SPI_WRITE((((adr) >> 1) & 0xc0) | 0x20);                 \
-    SPI_RXBUF;                                               \
-    for(i = 0; i < (count); i++) {                           \
-      SPI_READ(((uint8_t*)(buffer))[i]);                     \
-    }                                                        \
-    CC2500_SPI_DISABLE();                                    \
-  } while(0)
-
-/* Read status of the CC2500 */
-#define CC2500_GET_STATUS(s)                       \
-  do {                                          \
-    CC2500_SPI_ENABLE();                        \
-    SPI_WRITE(CC2500_SNOP);                     \
-    s = SPI_RXBUF;                              \
-    CC2500_SPI_DISABLE();                       \
-  } while (0)
+#endif
 
 #endif /* __CC2500_H__ */
 

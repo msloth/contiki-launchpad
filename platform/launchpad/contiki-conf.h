@@ -41,7 +41,6 @@
 
 #ifndef NETSTACK_CONF_RDC
 #define NETSTACK_CONF_RDC     nullrdc_driver
-//#define NETSTACK_CONF_RDC     nullrdc_noframer_driver
 #endif /* NETSTACK_CONF_RDC */
 
 #ifndef NETSTACK_CONF_RADIO
@@ -79,7 +78,7 @@
 
 
 
-
+/*--------------------------------------------------------------------------*/
 #if !WITH_UIP6
   /* Network setup for non-IPv6 (rime). */
   #define NETSTACK_CONF_NETWORK            rime_driver
@@ -125,26 +124,25 @@
   #define QUEUEBUF_CONF_NUM                8
   #endif
 #endif /* WITH_UIP6 */
+/*--------------------------------------------------------------------------*/
 
 
 
 
-
-/* less interesting (now) configurations------------------------------------ */
-
+/*--------------------------------------------------------------------------*/
 /* Specify whether the RDC layer should enable
    per-packet power profiling. */
-#define CONTIKIMAC_CONF_COMPOWER         0
-#define XMAC_CONF_COMPOWER               0
-#define CXMAC_CONF_COMPOWER              0
+#define CONTIKIMAC_CONF_COMPOWER                0
+#define XMAC_CONF_COMPOWER                      0
+#define CXMAC_CONF_COMPOWER                     0
 
-#define PACKETBUF_CONF_ATTRS_INLINE 1
-#define CONTIKIMAC_CONF_BROADCAST_RATE_LIMIT 0
+#define PACKETBUF_CONF_ATTRS_INLINE             1
+#define CONTIKIMAC_CONF_BROADCAST_RATE_LIMIT    0
 
 #define IEEE802154_CONF_PANID       0xABCD
 
-#define SHELL_VARS_CONF_RAM_BEGIN 0x1100
-#define SHELL_VARS_CONF_RAM_END 0x2000
+//#define SHELL_VARS_CONF_RAM_BEGIN 0x1100
+//#define SHELL_VARS_CONF_RAM_END 0x2000
 
 #define PROFILE_CONF_ON 0
 #ifndef ENERGEST_CONF_ON
@@ -152,12 +150,12 @@
 #endif /* ENERGEST_CONF_ON */
 
 #define ELFLOADER_CONF_TEXT_IN_ROM 0
-#ifndef ELFLOADER_CONF_DATAMEMORY_SIZE
-#define ELFLOADER_CONF_DATAMEMORY_SIZE 0x400
-#endif /* ELFLOADER_CONF_DATAMEMORY_SIZE */
-#ifndef ELFLOADER_CONF_TEXTMEMORY_SIZE
-#define ELFLOADER_CONF_TEXTMEMORY_SIZE 0x800
-#endif /* ELFLOADER_CONF_TEXTMEMORY_SIZE */
+//#ifndef ELFLOADER_CONF_DATAMEMORY_SIZE
+//#define ELFLOADER_CONF_DATAMEMORY_SIZE 0x400
+//#endif /* ELFLOADER_CONF_DATAMEMORY_SIZE */
+//#ifndef ELFLOADER_CONF_TEXTMEMORY_SIZE
+//#define ELFLOADER_CONF_TEXTMEMORY_SIZE 0x800
+//#endif /* ELFLOADER_CONF_TEXTMEMORY_SIZE */
 
 #define AODV_COMPLIANCE
 #define AODV_NUM_RT_ENTRIES 32

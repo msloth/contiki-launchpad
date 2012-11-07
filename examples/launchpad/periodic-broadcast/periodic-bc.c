@@ -23,14 +23,13 @@ PROCESS(blink_process, "Blink process");
 AUTOSTART_PROCESSES(&blink_process, &button_process);
 /*---------------------------------------------------------------------------*/
 /* Broadcast receive callback */
-static uint8_t buf[20];
+static uint8_t buf[15];
 static void
 bcr(struct broadcast_conn *c, const rimeaddr_t *f)
 {
   memcpy(buf, packetbuf_dataptr(), packetbuf_datalen());
   buf[packetbuf_datalen()] = 0; // null-terminate string
-  printf("Broadcast Received:%s\n", buf);
-  printf("From %u.%u\n", f->u8[0], f->u8[1]);
+  printf("[%u] Broadcast Received from %u.%u:%s\n", clock_seconds(), f->u8[0], f->u8[1], buf);
 }
 /*---------------------------------------------------------------------------*/
 static struct broadcast_conn bc;

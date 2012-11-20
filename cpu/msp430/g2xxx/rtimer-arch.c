@@ -33,36 +33,22 @@
 
 /**
  * \file
- *         MSP430-specific rtimer code
+ *         rtimer implementation for msp430g2553 and 2452
  * \author
- *         Adam Dunkels <adam@sics.se>
+ *         Marcus Lunden <marcus.lunden@gmail.com>
  */
 
 #include "contiki.h"
-
 #include "sys/energest.h"
 #include "sys/rtimer.h"
 #include "sys/process.h"
 #include "dev/watchdog.h"
 #include "isr_compat.h"
-
-#define DEBUG 1
-#if DEBUG
-#include <stdio.h>
-  #define PRINTF(...) printf(__VA_ARGS__)
-  #define PH(x)   P2OUT|=(1<<x)
-  #define PL(x)   P2OUT&=~(1<<x)
-#else
-  #define PRINTF(...)
-  #define PH(x)
-  #define PL(x)
-#endif
 /*--------------------------------------------------------------------------*/
 ISR(TIMER0_A1, rtimer_a01_isr)
 {
-  PH(0);
-  TACCTL1 &= ~CCIFG;
-  if (TAIV == TA0IV_TACCR1) {
+  if(TA0IV == TA0IV_TACCR1) {
+    TA0CCTL1 &= ~CCIFG;
     watchdog_start();
     rtimer_run_next();
     if(process_nevents() > 0) {
@@ -70,20 +56,14 @@ ISR(TIMER0_A1, rtimer_a01_isr)
     }
     watchdog_stop();
   }
-  PL(0);
 }
 /*---------------------------------------------------------------------------*/
 void
 rtimer_arch_init(void)
 {
-  /* input clock source LFXT1 @ 32768 Hz, div by 1; with 16-bit timer = 2s*/
-
-  /* disable interrupts */
-  dint();
-
-  /* Enable interrupts. */
+  /* uses the same timer as the clock timer so use compare register 1 */
+  /* Enable interrupt on CCR1. */
   TA0CCTL1 = CCIE;
-  eint();
 }
 /*---------------------------------------------------------------------------*/
 rtimer_clock_t
@@ -94,16 +74,12 @@ rtimer_arch_now(void)
     t1 = TAR;
     t2 = TAR;
   } while(t1 != t2);
-  return *((volatile uint16_t*)(0x170));
   return t1;
 }
 /*---------------------------------------------------------------------------*/
 void
 rtimer_arch_schedule(rtimer_clock_t t)
 {
-/*  PH(1);*/
   TA0CCR1 = t;
-/*  PL(1);*/
 }
 /*---------------------------------------------------------------------------*/
-

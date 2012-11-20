@@ -96,29 +96,35 @@ clock_time(void)
 
 ISR(TIMER0_A0, timera0_interrupt)
 {
+  /* update the timer */
   TACCTL0 &= ~CCIFG;
-/*  if (TAIV == 2) {*/
-    watchdog_start();
-    TACCR0 += INTERVAL;
-    do {   // XXX remove?
-      ++count;
-      if(count % CLOCK_CONF_SECOND == 0) {
-        ++seconds;
-      }
-    } while((TACCR0 - TAR) > INTERVAL);   // XXX remove?
+  TACCR0 += INTERVAL;
 
-    last_tar = TAR;
-    if(etimer_pending() && (etimer_next_expiration_time() - count - 1) > MAX_TICKS) {
-      etimer_request_poll();
-      /* make sure we get out of even the deepest sleep */
-      LPM4_EXIT;
-    }
+  watchdog_start();
 
-    if(process_nevents() >= 0) {
-      LPM4_EXIT;
+  /* update system time/clock */
+  do {
+    ++count;
+    if(count % CLOCK_CONF_SECOND == 0) {
+      ++seconds;
     }
-    watchdog_stop();
-/*  }*/
+  } while((TACCR0 - TAR) > INTERVAL);
+
+  /* remember last counter value */
+  last_tar = TAR;
+
+  /* check if any etimer is expired - wake up if so */
+  if(etimer_pending() && (etimer_next_expiration_time() - count - 1) > MAX_TICKS) {
+    etimer_request_poll();
+    LPM4_EXIT;
+  }
+
+  /* check for pending process events - wake up if so */
+  if(process_nevents() >= 0) {
+    LPM4_EXIT;
+  }
+
+  watchdog_stop();
 }
 /*--------------------------------------------------------------------------*/
 void

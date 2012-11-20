@@ -99,48 +99,30 @@ main(void)
       addr.u8[1] = NODEID_INFOMEM_LOCATION[3];
     }
     rimeaddr_set_node_addr(&addr);
-  #if USE_SERIAL
     printf("Rime started with address ");
     for(i = 0; i < sizeof(addr.u8) - 1; i++) {
       printf("%d.", addr.u8[i]);
     }
     printf("%d\n", addr.u8[i]);
-  #endif  /* USE_SERIAL */
   }
 
   netstack_init();
-      /*  NETSTACK_RADIO.init();*/
-          /*  cc2500_init();*/
-          /*  cc2500_set_channel(0);*/
-          /*  cc2500_set_channel(RF_CHANNEL);*/
-      /*  NETSTACK_RDC.init();*/
-      /*  NETSTACK_MAC.init();*/
-      /*  NETSTACK_NETWORK.init();*/
   #endif  /* USE_RADIO */
 
   printf(CONTIKI_VERSION_STRING " started. ");
   watchdog_start();
   autostart_start(autostart_processes);
 
-  /* The Contiki main loop, greatly simplified and shortened compared with eg
-   * msp430f1611 due to severe memory constraints (mainly RAM) */
-  
-  
-  /* ugly temporary fix until I find what is setting the P1.6 (green LED) to sth else */
-  #if 0
-  #define L_RED    (1)
-  #define L_GREEN  (1<<6)
-  P1SEL &= ~(L_RED | L_GREEN);
-  P1SEL2 &= ~(L_RED | L_GREEN);
-  P1DIR |= (L_RED | L_GREEN);
-  P1OUT &= ~(L_RED | L_GREEN);
-  #endif
-
   leds_off(LEDS_ALL);
-  while(1) {
-    int r;
 
+  while(1) {
+    /* The Contiki main loop, greatly simplified and shortened compared with eg
+     * msp430f1611 due to severe memory constraints (mainly RAM).
+     * As soon as we are not doing anything, we spend the time in LPM3.
+     */
+    int r;
     do {
+      /* handle all events */
       watchdog_periodic();
       r = process_run();
     } while(r > 0);
@@ -150,6 +132,7 @@ main(void)
     #else
       if(process_nevents() == 0) {
     #endif  /* USE_SERIAL */
+      /* we are ready to go to sleep, LPM3 */
       LPM3;   /* No LPM4 due to SMCLK driving clock (?) */  // XXX check this LPM3/4
     }
   }

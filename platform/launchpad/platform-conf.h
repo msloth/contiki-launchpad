@@ -78,16 +78,18 @@
  * on other pins.
  */
 #define LEDS_PORT(type)         P1##type
-
 #define LEDS_PxDIR              P1DIR
 #define LEDS_PxOUT              P1OUT
 #define LEDS_CONF_RED           (1<<0)
 #define LEDS_CONF_GREEN         (1<<6)
 #define LEDS_CONF_YELLOW        (LEDS_CONF_GREEN | LEDS_CONF_RED)
+#define LEDS_CONF_ALL           (LEDS_CONF_GREEN | LEDS_CONF_RED)
 
 /* P1.3 is the switch 2 on the Launchpad PCB, but other pins can be used. */
-#define BUTTON_CONF_PORT        P1
-#define BUTTON_CONF_PIN         3
+//nb now defined in button.h
+//#define BUTTON_CONF_PORT        P1
+//#define BUTTON_CONF_PIN         (1<<3)
+
 
 /* use irq/dma with UART to save system resources, otherwise synchrous (blocking) */
 // XXX not working yet, is only blocking

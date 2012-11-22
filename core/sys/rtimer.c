@@ -52,12 +52,8 @@
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
-#define PH(x)   P2OUT|=(1<<x)
-#define PL(x)   P2OUT&=~(1<<x)
 #else
 #define PRINTF(...)
-#define PH(x)
-#define PL(x)
 #endif
 
 static struct rtimer *next_rtimer;
@@ -74,7 +70,6 @@ rtimer_set(struct rtimer *rtimer, rtimer_clock_t time,
 	   rtimer_clock_t duration,
 	   rtimer_callback_t func, void *ptr)
 {
-  PH(2);
   int first = 0;
 
   PRINTF("rtimer_set time %d\n", time);
@@ -92,7 +87,6 @@ rtimer_set(struct rtimer *rtimer, rtimer_clock_t time,
   if(first == 1) {
     rtimer_arch_schedule(time);
   }
-  PL(2);
   return RTIMER_OK;
 }
 /*---------------------------------------------------------------------------*/

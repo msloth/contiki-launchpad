@@ -6,7 +6,6 @@
 *.elf
 *.ihex
 obj_*
-symbols.*
 Makefile.target
 doc/html
 patches-*

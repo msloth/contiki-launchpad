@@ -23,7 +23,7 @@ PROCESS_THREAD(red_process, ev, data)
   PROCESS_POLLHANDLER();
   PROCESS_EXITHANDLER();
   PROCESS_BEGIN();
-  while (1) {
+  while(1) {
     leds_toggle(LEDS_RED);
     etimer_set(&etr, CLOCK_SECOND/8);
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
@@ -48,7 +48,7 @@ PROCESS_THREAD(blink_process, ev, data)
      * is doing so instead of just toggling, turn on when even seconds and
      * turn off on uneven seconds.
      */
-    if (clock_seconds() & 1) {
+    if(clock_seconds() & 1) {
       leds_on(LEDS_GREEN);
     } else {
       leds_off(LEDS_GREEN);

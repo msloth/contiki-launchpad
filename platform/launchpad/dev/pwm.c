@@ -44,9 +44,6 @@
 /*
  * The PWM module; starts and handles PWM on pins. 
  * 
- * Assumes PWM freq of no slower than 128 Hz (7.8 ms period due to otherwise
- * variables have to be 16-bit so we save some RAM this way.
- * 
  * There are checks for MCU being an MSP430G2553 as the '2452 does not have two
  * hardware timers, which this module needs.
  */
@@ -91,7 +88,7 @@ struct pwm_s {
   /* pin is pin on port 1 */
   uint8_t pin;
   /* on_time is time in on-state; duty cycle == on_time/period */
-  uint8_t on_time;
+  uint16_t on_time;
 
   /* possible enhancement 1: store port as well to enable PWM on several ports */
 /*  char *port;*/
@@ -161,7 +158,7 @@ pwm_on(uint8_t pwmdevice, uint8_t pin, uint8_t dc)
 /* For finer control, this function can be used to set duty time in ticks instead
 of a duty cycle in percent, eg for servo motor control. */
 void
-pwm_on_fine(uint8_t pwmdevice, uint8_t pin, uint8_t finetime)
+pwm_on_fine(uint8_t pwmdevice, uint8_t pin, uint16_t finetime)
 {
 #if _MCU_ == 2553
   /* sanity checks */
@@ -254,10 +251,10 @@ ISR(TIMER1_A0, pwm_periodstart_ta1ccr0_isr)
 
   /* clear PWM-devices output pins */
   if(pwms[0].on_time != 0) {
-    P1OUT &= ~(1 << pwms[0].pin);
+    P1OUT |= (1 << pwms[0].pin);
   }
   if(pwms[1].on_time != 0) {
-    P1OUT &= ~(1 << pwms[1].pin);
+    P1OUT |= (1 << pwms[1].pin);
   }
 }
 #endif    /* _MCU_ == 2553 */
@@ -273,7 +270,7 @@ ISR(TIMER1_A1, pwm_ccrmatch_ta1ccrX_isr)
     TA1CCTL1 &= ~CCIFG;
     /* set output */
     if(pwms[0].on_time != 0) {
-      P1OUT |= (1 << pwms[0].pin);
+      P1OUT &= ~(1 << pwms[0].pin);
     }
 
   } else if(ivreg & TA1IV_TACCR2) {
@@ -281,7 +278,7 @@ ISR(TIMER1_A1, pwm_ccrmatch_ta1ccrX_isr)
     TA1CCTL2 &= ~CCIFG;
     /* set output */
     if(pwms[1].on_time != 0) {
-      P1OUT |= (1 << pwms[1].pin);
+      P1OUT &= ~(1 << pwms[1].pin);
     }
   }
 }

@@ -1,5 +1,16 @@
 
-# at present, this file contains a whole lot of old Sky rubbish. Clean up.
+# at present, this file contains a whole lot of old Sky legacy. Clean up.
+
+# set mcu
+# XXX todo, something to automatically switch between these depending on _MCU_ define in platform-conf.h
+MCU=msp430g2553
+#MCU=msp430g2452
+
+
+
+
+
+
 
 CONTIKI_TARGET_SOURCEFILES += spi.c i2c.c button.c adc.c cc2500.c cc2500-arch.c \
     uart0-putchar.c uart0.c pwm.c
@@ -19,13 +30,7 @@ CFLAGS += -DWITH_UIP6=0
 # output is intel hex format so it can be uploaded to target with mspdebug
 CFLAGS += -Wl,--oihex
 
-# set mcu
-# XXX todo, something to automatically switch between these depending on _MCU_ define in platform-conf.h
-MCU=msp430g2553
-#MCU=msp430g2452
-
 include $(CONTIKI)/cpu/msp430/Makefile.msp430
-
 
 contiki-$(TARGET).a: ${addprefix $(OBJECTDIR)/,symbols.o}
 #	$(AR) rcf $@ $^

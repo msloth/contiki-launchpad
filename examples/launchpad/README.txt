@@ -5,15 +5,23 @@ adc-modules.
 
 I suggest you start by checking out the examples in roughly this order:
   blink
+    etimers, processes
   button
+    button API
   readadc
+    ADC API
   pwm
-  readserial-printf
-  blink-rtimer
-  
-and if you are interested in these, and have the hardware for it,
-  periodic-broadcast
+    PWM API
   servomotor
+    PWM API with absolute period setting, using project-conf.h, changing PWM freq
+  readserial-printf
+    getting serial input
+  blink-rtimer
+    rtimers
+  
+and if you are interested and have the hardware for it,
+  periodic-broadcast
+    radio communication, Rime networking stack
 
 
 

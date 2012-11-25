@@ -2,14 +2,12 @@
 # at present, this file contains a whole lot of old Sky rubbish. Clean up.
 
 CONTIKI_TARGET_SOURCEFILES += spi.c i2c.c button.c adc.c cc2500.c cc2500-arch.c \
-    uart0-putchar.c uart0.c
-#	sht11.c sht11-sensor.c  slip_uart1.c pwm.c node-id.c contiki-launchpad-platform.c
-# sensors.c launchpad-sensors.c light-sensor.c radio-sensor.c battery-sensor.c button-sensor.c
+    uart0-putchar.c uart0.c pwm.c
+#	sht11.c sht11-sensor.c  slip_uart1.c node-id.c contiki-launchpad-platform.c
 
 ifndef SMALL
 SMALL=1
 endif
-
 
 CONTIKI_TARGET_DIRS = . dev
 ifndef CONTIKI_TARGET_MAIN
@@ -22,15 +20,11 @@ CFLAGS += -DWITH_UIP6=0
 CFLAGS += -Wl,--oihex
 
 # set mcu
-# todo, something to automatically switch between these depending on MCU_IS setting
+# XXX todo, something to automatically switch between these depending on _MCU_ define in platform-conf.h
 MCU=msp430g2553
 #MCU=msp430g2452
 
 include $(CONTIKI)/cpu/msp430/Makefile.msp430
-
-
-
-
 
 
 contiki-$(TARGET).a: ${addprefix $(OBJECTDIR)/,symbols.o}
@@ -38,7 +32,6 @@ contiki-$(TARGET).a: ${addprefix $(OBJECTDIR)/,symbols.o}
 
 ifdef IAR
 # IAR not tested yet
-
 #CFLAGS += -D__MSP430G2452__=1 -e --vla -Ohz --multiplier=16s --core=430 --double=32
 CFLAGS += -D__MSP430G2553__=1 -e --vla -Ohz --multiplier=16s --core=430 --double=32
 CFLAGSNO = --dlib_config "$(IAR_PATH)/LIB/DLIB/dl430fn.h" $(CFLAGSWERROR)

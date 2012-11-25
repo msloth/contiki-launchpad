@@ -50,9 +50,13 @@ ISR(TIMER0_A1, rtimer_a01_isr)
   if(TA0IV == TA0IV_TACCR1) {
     TA0CCTL1 &= ~CCIFG;
     watchdog_start();
+
+    /* check for and run any pending rtimers */
     rtimer_run_next();
+
+    /* also check for any pending events and wake up if needed */
     if(process_nevents() > 0) {
-      LPM0_EXIT;
+      LPM4_EXIT;
     }
     watchdog_stop();
   }
@@ -80,6 +84,7 @@ rtimer_arch_now(void)
 void
 rtimer_arch_schedule(rtimer_clock_t t)
 {
+  /* set the compare register; interrupt will fire on this count */
   TA0CCR1 = t;
 }
 /*---------------------------------------------------------------------------*/

@@ -29,6 +29,14 @@
  * This file is part of the Contiki operating system.
  */
 
+/**
+ * \file
+ *         Clock drivers for MSP430G2xxx chips
+ * \author
+ *         Marcus Lunden <marcus.lunden@gmail.com>
+ *         and others
+ */
+
 #include "contiki.h"
 #include "sys/clock.h"
 #include "sys/etimer.h"

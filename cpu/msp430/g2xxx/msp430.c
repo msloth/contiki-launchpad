@@ -29,6 +29,14 @@
  * This file is part of the Contiki operating system.
  */
 
+/**
+ * \file
+ *         MCU drivers for MSP430G2xxx chips
+ * \author
+ *         Marcus Lunden <marcus.lunden@gmail.com>
+ *         and others
+ */
+
 #include <msp430.h>
 #include "contiki.h"
 #include "dev/watchdog.h"
@@ -112,8 +120,7 @@ msp430_init_dco(void)
 
   
 #if 0
-
-  16,12,8,1 MHz factory calibrations
+  for reference, some settings and registers; 16,12,8,1 MHz factory calibrations
   #define CALDCO_16MHZ_         0x10F8    /* DCOCTL  Calibration Data for 16MHz */
   #define CALBC1_16MHZ_         0x10F9    /* BCSCTL1 Calibration Data for 16MHz */
   #define CALDCO_12MHZ_         0x10FA    /* DCOCTL  Calibration Data for 12MHz */
@@ -130,14 +137,13 @@ msp430_init_dco(void)
   #define DIVM_1              (0x10)   /* MCLK Divider 1: /2 */
   #define DIVM_2              (0x20)   /* MCLK Divider 2: /4 */
   #define DIVM_3              (0x30)   /* MCLK Divider 3: /8 */
-
 #endif
 }
 /*---------------------------------------------------------------------------*/
 static void
 init_ports(void)
 {
-  /* All available outputs */
+  /* All available pins are outputs, saves the most power */
   P1SEL = 0;
   P1DIR = 0;
   P1OUT = 0;
@@ -147,13 +153,6 @@ init_ports(void)
   P2DIR = 0;
   P2OUT = 0;
   P2IE = 0;
-
-  // debug pins, remove later
-  P1SEL &=~ (1<<4 | 1<<5 | 1<<7);
-  P1DIR |= (1<<4 | 1<<5 | 1<<7);
-  P2SEL &=~ (1<<0 | 1<<1 | 1<<5);
-  P2DIR |= (1<<0 | 1<<1 | 1<<5);
-
 }
 /*---------------------------------------------------------------------------*/
 /* msp430-ld may align _end incorrectly. Workaround in cpu_init. */
@@ -161,7 +160,24 @@ init_ports(void)
 extern int _end;		/* Not in sys/unistd.h */
 static char *cur_break = (char *)&_end;
 #endif
-
+/*---------------------------------------------------------------------------*/
+void
+msp430_cpu_init(void)
+{
+  dint();
+  watchdog_init();
+  init_ports();
+  msp430_init_dco();
+  eint();
+#if defined(__MSP430__) && defined(__GNUC__)
+  if((uintptr_t)cur_break & 1) { /* Workaround for msp430-ld bug! */
+    cur_break++;
+  }
+#endif
+}
+/*---------------------------------------------------------------------------*/
+#if 0
+// XXX these are old legacy and not used in this port
 /*---------------------------------------------------------------------------*/
 /* add/remove_lpm_req - for requiring a specific LPM mode. currently Contiki */
 /* jumps to LPM3 to save power, but DMA will not work if DCO is not clocked  */
@@ -178,24 +194,7 @@ void
 msp430_remove_lpm_req(int req)
 {
 }
-
 /*--------------------------------------------------------------------------*/
-void
-msp430_cpu_init(void)
-{
-  dint();
-  watchdog_init();
-  init_ports();
-  msp430_init_dco();
-  eint();
-#if defined(__MSP430__) && defined(__GNUC__)
-  if((uintptr_t)cur_break & 1) { /* Workaround for msp430-ld bug! */
-    cur_break++;
-  }
-#endif
-}
-/*---------------------------------------------------------------------------*/
-
 #define STACK_EXTRA 32
 
 /*
@@ -243,20 +242,6 @@ splhigh_(void)
   return sr & GIE;		/* Ignore other sr bits. */
 }
 /*---------------------------------------------------------------------------*/
-/*
- * Restore previous interrupt mask.
- */
-/* void */
-/* splx_(int sr) */
-/* { */
-/* #ifdef __IAR_SYSTEMS_ICC__ */
-/*   __bis_SR_register(sr); */
-/* #else */
-/*   /\* If GIE was set, restore it. *\/ */
-/*   asmv("bis %0, r2" : : "r" (sr)); */
-/* #endif */
-/* } */
-/*---------------------------------------------------------------------------*/
 #ifdef __IAR_SYSTEMS_ICC__
 int __low_level_init(void)
 {
@@ -272,55 +257,5 @@ int __low_level_init(void)
 }
 #endif
 /*---------------------------------------------------------------------------*/
-#if DCOSYNCH_CONF_ENABLED
-/* this code will always start the TimerB if not already started */
-void
-msp430_sync_dco(void) {
-#if 0
-  uint16_t last;
-  uint16_t diff;
-/*   uint32_t speed; */
-  /* DELTA_2 assumes an ACLK of 32768 Hz */
-#define DELTA_2    ((MSP430_CPU_SPEED) / 32768)
+#endif    /* old, not used */
 
-  /* Select SMCLK clock, and capture on ACLK for TBCCR6 */
-  TBCTL = TBSSEL1 | TBCLR;
-  TBCCTL6 = CCIS0 + CM0 + CAP;
-  /* start the timer */
-  TBCTL |= MC1;
-
-  /* wait for next Capture */
-  TBCCTL6 &= ~CCIFG;
-  while(!(TBCCTL6 & CCIFG));
-  last = TBCCR6;
-
-  TBCCTL6 &= ~CCIFG;
-  /* wait for next Capture - and calculate difference */
-  while(!(TBCCTL6 & CCIFG));
-  diff = TBCCR6 - last;
-
-  /* Stop timer - conserves energy according to user guide */
-  TBCTL = 0;
-
-/*   speed = diff; */
-/*   speed = speed * 32768; */
-/*   printf("Last TAR diff:%d target: %ld ", diff, DELTA_2); */
-/*   printf("CPU Speed: %lu DCOCTL: %d\n", speed, DCOCTL); */
-
-  /* resynchronize the DCO speed if not at target */
-  if(DELTA_2 < diff) {        /* DCO is too fast, slow it down */
-    DCOCTL--;
-    if(DCOCTL == 0xFF) {              /* Did DCO role under? */
-      BCSCTL1--;
-    }
-  } else if(DELTA_2 > diff) {
-    DCOCTL++;
-    if(DCOCTL == 0x00) {              /* Did DCO role over? */
-      BCSCTL1++;
-    }
-  }
-#endif
-}
-
-#endif /* DCOSYNCH_CONF_ENABLED */
-/*---------------------------------------------------------------------------*/

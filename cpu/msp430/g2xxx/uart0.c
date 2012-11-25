@@ -28,9 +28,12 @@
  *
  */
 
-/*
- * Machine dependent MSP430 UART0 code. Actually, right now, this is not using the UART0,
- but rather the UCA UART0
+/**
+ * \file
+ *         MSP430 UART0 code
+ * \author
+ *         Marcus Lunden <marcus.lunden@gmail.com>
+ *         and others
  */
 
 #include "contiki.h"
@@ -50,14 +53,11 @@ static volatile uint8_t transmitting = 0;
 #define   RXBUF        UCA0RXBUF
 #endif /* _MCU_ */
 
-
 /*--------------------------------------------------------------------------*/
 // shouldn't really be here (in uart0-putchar.c) but makes compiler warnings go away..
-// why isn't the real one linked in?
-/*#warning "Verify that int putchar(int c) works!"*/
 int
-/*putchar(int c)*/
 putchar(unsigned char c)
+/*putchar(int c)*/
 {
   uart0_writeb(c);
   return c;
@@ -204,71 +204,3 @@ ISR(USCIAB0TX, uartA0B0_tx_interrupt)
 #endif /* TX_WITH_INTERRUPT */
 #endif /* _MCU_ */
 /*---------------------------------------------------------------------------*/
-
-
-
-
-
-
-
-
-
-#if FROM_OLD_VERSION
-
-#if F_CPU == 1000000ul
-  /*
-    clock: 1000000Hz
-    desired baud rate: 115200bps
-    division factor: 8.7
-    effective baud rate: 114943bps
-    maximum error: 0.6388us   7.36%
-  */
-  // XXX rather, use lower speed that has lower max error
-  UBR00=0x08; UBR10=0x00; UMCTL0=0x5B; /* uart0 1000000Hz 114942bps */
-
-#elif F_CPU == 4000000ul
-  /*
-    clock: 4000000Hz
-    desired baud rate: 115200bps
-    division factor: 34.7
-    effective baud rate: 115274bps
-    maximum error: 0.1249us   1.44%
-  */
-  UBR00=0x22; UBR10=0x00; UMCTL0=0xDD; /* uart0 4000000Hz 115273bps */
-
-#elif F_CPU == 8000000ul
-  /*
-    clock: 8000000Hz
-    desired baud rate: 115200bps
-    division factor: 69.5
-    effective baud rate: 115108bps
-    maximum error: 0.0694us   0.80%
-  */
-  UBR00=0x45; UBR10=0x00; UMCTL0=0xAA; /* uart0 8000000Hz 115107bps */
-
-#elif F_CPU == 12000000ul
-  /*
-    clock: 12000000Hz
-    desired baud rate: 115200bps
-    division factor: 104.1
-    effective baud rate: 115274bps
-    maximum error: 0.0555us   0.64%
-  */
-  UBR00=0x68; UBR10=0x00; UMCTL0=0x04; /* uart0 12000000Hz 115273bps */
-
-#elif F_CPU == 16000000ul
-/*
-  clock: 16000000Hz
-  desired baud rate: 115200bps
-  division factor: 138.9
-  effective baud rate: 115191bps
-  maximum error: 0.0277us   0.32%
-*/
-UBR00=0x8A; UBR10=0x00; UMCTL0=0xEF; /* uart0 16000000Hz 115190bps */
-#else
-#error CPU speed not defined, check settings in uart0.c!
-#endif
-
-
-
-#endif

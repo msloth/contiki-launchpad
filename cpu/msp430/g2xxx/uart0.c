@@ -56,8 +56,8 @@ static volatile uint8_t transmitting = 0;
 /*--------------------------------------------------------------------------*/
 // shouldn't really be here (in uart0-putchar.c) but makes compiler warnings go away..
 int
-putchar(unsigned char c)
-/*putchar(int c)*/
+/*putchar(unsigned char c)*/
+putchar(int c)
 {
   uart0_writeb(c);
   return c;

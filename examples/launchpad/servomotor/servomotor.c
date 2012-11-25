@@ -78,17 +78,23 @@ PROCESS_THREAD(servo_process, ev, data)
     /* find new servo position control setting */
     if(up) {
       i++;
-      if(i > SERVO_MAX) {
+      if(i == SERVO_MAX) {
         up = 0;
-        i = SERVO_MAX;
         leds_toggle(LEDS_GREEN);
+        /* wait a little while */
+        pwm_off(0);
+        etimer_set(&etr, CLOCK_SECOND/2);
+        PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
       }
     } else {
       i--;
-      if(i < SERVO_MIN) {
+      if(i == SERVO_MIN) {
         up = 1;
-        i = SERVO_MIN;
         leds_toggle(LEDS_GREEN);
+        /* wait a little while */
+        pwm_off(0);
+        etimer_set(&etr, CLOCK_SECOND/2);
+        PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
       }
     }
 

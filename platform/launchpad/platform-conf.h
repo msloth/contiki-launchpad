@@ -47,7 +47,6 @@
 //#define F_CPU                   4000000uL
 
 //#define F_CPU                   12000000uL    // don't use the 12 MHz just yet, not ready (UART etc)
-// 1 Mhz not used as it is too constraining on UART and timer speeds etc.
 
 /* is it an 2452 or 2553 mcu? Only these two can be defined for now. */
 #define _MCU_                   2553
@@ -60,16 +59,31 @@
  * 2 mm) rectangular thing in the spot where it says R34, close to the top of
  * the left pin headers (when USB is facing up). If it is there, set this to 1.
  */
-#define BOARD_OLD_REVISION      1
+// XXX this is not tested yet as I only have old boards!
+#if 0
+  LaunchPad revisions 1.3 and 1.4 come with R34 populated; the resistor is used as a pullup for the button S2.
+  To reduce the power consumption, the port should stay in input mode or the resistor should be removed if button S2 is not used.
+  The internal pullup of the MSP430G2xx can be used instead.
+
+  old board: REN disabled
+  new board: REN enabled, pull-down
+
+  enabling the P1REN
+  set to input P1DIR
+  enable pull-down P1OUT
+#endif
+#define BOARD_OLD_REVISION      0
 
 /* use serial port? (printfs); saves space if not */
 #define USE_SERIAL              1
-/* use the Rime networking stack? (have radio?) */
-#define USE_RADIO               1
+
+/* use the Rime networking stack and a radio driver? */
+#define USE_RADIO               0
 
 /*
- * Does it have an external 32kHz osc? Currently doesn't matter but included for
- * future use so clocks and timers can use the DCO instead.
+ * Does the board have an external 32kHz osc? Currently mandatory and this switch
+ * won't make a difference, but included for ev future use so clocks and timers
+ * can use the DCO instead.
  */
 #define HAS_EXT_OSC             1
 
@@ -86,7 +100,7 @@
 #define LEDS_CONF_ALL           (LEDS_CONF_GREEN | LEDS_CONF_RED)
 
 /* P1.3 is the switch 2 on the Launchpad PCB, but other pins can be used. */
-//nb now defined in button.h
+//XXX now defined in button.h
 //#define BUTTON_CONF_PORT        P1
 //#define BUTTON_CONF_PIN         (1<<3)
 
@@ -101,8 +115,6 @@
 #define INFOMEM_B                     ((uint8_t*)0x00001080)
 #define INFOMEM_A                     ((uint8_t*)0x000010c0)
 #define NODEID_INFOMEM_LOCATION       INFOMEM_D
-
-#define WITH_UIP6                     0
 
 /*--------------------------------------------------------------------------*/
 /*
@@ -121,7 +133,6 @@
 typedef unsigned short uip_stats_t;
 typedef unsigned long clock_time_t;
 typedef unsigned long off_t;
-
 
 /* errors ------------------------------------*/
 #if _MCU_ != 2452 && _MCU_ != 2553

@@ -105,7 +105,7 @@
 
 
 /* use irq/dma with UART to save system resources, otherwise synchrous (blocking) */
-// XXX not working yet, is only blocking
+// XXX not working yet, is only blocking so leave as 0
 #define UART0_CONF_TX_WITH_INTERRUPT  0
 
 /* this is where in memory the node id is stored (must first be written with burn-id) */

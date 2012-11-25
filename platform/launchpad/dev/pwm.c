@@ -65,18 +65,6 @@
         the microcontroller can't go to LPM3.
 */
 /*---------------------------------------------------------------------------*/
-
-/* PWM freq; can be higher and lower; setting to lower will increase accuracy of
-  the duty cycle (rounding errors) calculated in pwm_on(). */
-#ifdef PWM_CONF_FREQ
-#define PWM_FREQ          PWM_CONF_FREQ
-#else
-#define PWM_FREQ          128
-#endif
-
-/* PWM module is sourced from external crystal osc @ 32.768 kHz, hence do not change this */
-#define PWM_CLOCK_SPEED   32768
-
 /*
  * a PWM-device is here a combination of a pin and an time for which to be in 
  * 'on'-state. If time is zero, then the device is off. All PWM-devices has a
@@ -100,7 +88,7 @@ struct pwm_s {
 
 } pwms[PWMDEVS];
 
-const uint16_t period = (PWM_CLOCK_SPEED / PWM_FREQ) - 1;    /* don't change */
+const uint16_t period = (PWM_SECOND / PWM_FREQ) - 1;    /* don't change */
 /*---------------------------------------------------------------------------*/
 /* Init the PWM; up mode to CCR0, PWM periods CCR1, CCR2, clock source XT1 @ 32.768 */
 void

@@ -39,6 +39,19 @@
 #ifndef __PWM_H__
 #define __PWM_H__
 
+/*--------------------------------------------------------------------------*/
+/* PWM module is sourced from external crystal osc @ 32.768 kHz, hence do not change this */
+#define PWM_SECOND        32768UL
+
+/* PWM freq; can be higher and lower; setting to lower will increase accuracy of
+  the duty cycle (rounding errors) calculated in pwm_on(). */
+#ifdef PWM_CONF_FREQ
+#define PWM_FREQ          PWM_CONF_FREQ
+#else
+#define PWM_FREQ          128
+#endif
+
+/*--------------------------------------------------------------------------*/
 void      pwm_init(void);
 uint8_t   pwm_dc(uint8_t pwmdevice);
 uint16_t  pwm_period(void);
@@ -47,7 +60,7 @@ void      pwm_on(uint8_t pwmdevice, uint8_t pin, uint8_t dc);
 void      pwm_on_fine(uint8_t pwmdevice, uint8_t pin, uint16_t finetime);
 void      pwm_off(uint8_t pwmdevice);
 void      pwm_all_off(void);
-
+/*--------------------------------------------------------------------------*/
 #endif /* __PWM_H__ */
 
 

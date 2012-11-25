@@ -72,18 +72,16 @@ PROCESS_THREAD(pwmled_process, ev, data)
     /* find next PWM setting */
     if(up) {
       i++;
-      if(i == 100) {
+      if(i == 99) {
         up = 0;
-        i = 99;
       }
     } else {
       i--;
-      if(i == 0) {
+      if(i == 3) {
         up = 1;
-        i = 1;
       }
     }
-    etimer_set(&etr, CLOCK_SECOND/32);
+    etimer_set(&etr, CLOCK_SECOND/64);
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
   }
 

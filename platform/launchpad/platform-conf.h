@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, Swedish Institute of Computer Science.
+ * Copyright (c) 2012
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,13 @@
  *
  */
 
+/**
+ * \file
+ *         Platform configuration header file
+ * \author
+ *         Marcus Lunden <marcus.lunden@gmail.com>
+ */
+
 #ifndef __PLATFORM_CONF_H__
 #define __PLATFORM_CONF_H__
 
@@ -52,26 +59,18 @@
 #define _MCU_                   2553
 //#define _MCU_                   2452
 
-/* board revision: older boards had a pull-up resistor connected to the button
- * which was removed to conserve power. If the resistor is there, the button
- * needs some extra care behind the curtains, which will happen if this is
+/* 
+ * board revision: older boards had a pull-up resistor connected to the button
+ * which was removed to conserve power and save money. If the resistor is there,
+ * the button needs some extra care behind the curtains, which will happen if this is
  * set to 1. To check if you need to set this to 1, check for a small (ca 1 by
  * 2 mm) rectangular thing in the spot where it says R34, close to the top of
- * the left pin headers (when USB is facing up). If it is there, set this to 1.
+ * the left pin headers (when the USB connector is facing up). If it is there,
+ * set this to 1.
+ * Note: setting this to 1 will save power on old boards but button will not work
+ * on >=rev1.5 boards; if set to 0 the button will work on rev1.3, 1.4 and 1.5 but
+ * draw more power on the 1.3 and 1.4 revisions.
  */
-// XXX this is not tested yet as I only have old boards!
-#if 0
-  LaunchPad revisions 1.3 and 1.4 come with R34 populated; the resistor is used as a pullup for the button S2.
-  To reduce the power consumption, the port should stay in input mode or the resistor should be removed if button S2 is not used.
-  The internal pullup of the MSP430G2xx can be used instead.
-
-  old board: REN disabled
-  new board: REN enabled, pull-down
-
-  enabling the P1REN
-  set to input P1DIR
-  enable pull-down P1OUT
-#endif
 #define BOARD_OLD_REVISION      0
 
 /* use serial port? (printfs); saves space if not */

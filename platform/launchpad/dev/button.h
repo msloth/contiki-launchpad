@@ -32,16 +32,15 @@
 #ifndef BUTTON_H
 #define BUTTON_H
 
-#define BUTTON_MSG_TYPE       1
-
 /* P1.3 is the switch 2 on the Launchpad PCB, but other pins can be used. */
 #define BUTTON_PORT(type)     P1##type
 /* the switch on the LP */
-#define SWITCH_2              (1<<3)
-/* add all defined pins here */
-#define BUTTON_PINS           (SWITCH_2)
+#define BUTTON_2              (1<<3)
+/* add all defined pins here, like this: (BUTTON_2 | BUTTON_HOME) */
+#define BUTTON_PINS           (BUTTON_2)
 /* convenience macro used for checking what button was pressed */
-#define BUTTON_IS(x)          ((uint8_t)*data & x)
+// XXX not working
+//#define BUTTON_IS(x)          ((uint8_t)*data & x)
 
 /*
   this example shows how you define more buttons; NB they all have to be on
@@ -52,8 +51,9 @@
     PROCESS_WAIT_EVENT_UNTIL(ev == button_event && BUTTON_IS(SwITCH_2));
 */
 
-process_event_t button_event;
-void button_init(void);
-uint8_t button_pressed(void);
+process_event_t   button_event;
+
+void              button_init(void);
+uint8_t           button_pressed(void);
 
 #endif /* BUTTON_H */

@@ -88,13 +88,18 @@ struct pwm_s {
 
 } pwms[PWMDEVS];
 
-const uint16_t period = (PWM_SECOND / PWM_FREQ) - 1;    /* don't change */
+static uint16_t period = (PWM_SECOND / PWM_FREQ) - 1;
 /*---------------------------------------------------------------------------*/
-/* Init the PWM; up mode to CCR0, PWM periods CCR1, CCR2, clock source XT1 @ 32.768 */
+/* Init the PWM; up mode to CCR0, PWM periods CCR1, CCR2, clock source 
+  XT1 @ 32.768. At lower freqs we get higher resolution as we have more available
+  ticks at our disposal. */
 void
-pwm_init(void)
+pwm_init(uint16_t freq)
 {
 #if _MCU_ == 2553
+  if(freq > PWM_SECOND) {
+    return;
+  }
   dint();
 
   /* null out both PWM-devices */
@@ -104,6 +109,7 @@ pwm_init(void)
   pwms[1].on_time = 0;
 
   /* count up to CCR0 == period, clock source external crystal @ 32.768 kHz */
+  period = (PWM_SECOND / freq) - 1;
   TA1CCTL0 = CCIE;
   TA1CCR0 = period;
   TA1CTL = TASSEL_1 | ID_0;
@@ -120,25 +126,62 @@ void
 pwm_on(uint8_t pwmdevice, uint8_t pin, uint8_t dc)
 {
 #if _MCU_ == 2553
-  if(pin > 7 || dc == 0 || dc > 100 || pwmdevice >= PWMDEVS) {
+  if(pin > 7 || dc > 100 || pwmdevice >= PWMDEVS) {
     return;
 
   } else {
     /* convert duty cycle to PWM clock ticks */
     uint8_t finetime = (dc * period) / 100;
-
-    /* set PWM accordingly */
-    if(pwmdevice == 0) {
-      TA1CCR1 = finetime;
-      TA1CCTL1 = CCIE;
-    } else {
-      TA1CCR2 = finetime;
-      TA1CCTL2 = CCIE;
+    if(finetime == 0 && dc != 0) {
+      /* rounding errors */
+      finetime = 2;
     }
 
-    /* set up a compare match for the next PWM period */
-    pwms[pwmdevice].pin = pin;
-    pwms[pwmdevice].on_time = finetime;
+    /* set PWM accordingly; two cornercases: 0 & 100, then all between */
+    if(pwmdevice == 0) {
+      /* PWM-device 0 */
+      pwms[0].pin = pin;
+      if(dc == 100) {
+        TA1CCTL1 &= ~CCIE;  /* no need for interrupt */
+        pwms[0].on_time = period;
+        P1OUT |= (1 << pwms[0].pin);
+
+      } else if(dc == 0) {
+        TA1CCTL1 &= ~CCIE;  /* no need for interrupt */
+        pwms[0].on_time = 0;
+        P1OUT &= ~(1 << pwms[0].pin);
+
+      } else {
+        /* set up a compare match for the next PWM period */
+        TA1CCR1 = finetime;
+        TA1CCTL1 = CCIE;
+        pwms[0].on_time = finetime;
+      }
+      printf("dev1 %u %u\n", dc, finetime);
+
+    } else {
+      /* PWM-device 1 */
+      pwms[1].pin = pin;
+      if(dc == 100) {
+        TA1CCTL2 &= ~CCIE;  /* no need for interrupt */
+        pwms[1].on_time = period;
+        P1OUT |= (1 << pwms[1].pin);
+
+      } else if(dc == 0) {
+        TA1CCTL2 &= ~CCIE;  /* no need for interrupt */
+        pwms[1].on_time = 0;
+        P1OUT &= ~(1 << pwms[1].pin);
+
+      } else {
+        /* set up a compare match for the next PWM period */
+        TA1CCR2 = finetime;
+        TA1CCTL2 = CCIE;
+        pwms[1].on_time = finetime;
+      }
+      printf("dev2 %u %u\n", dc, finetime);
+
+    }
+
   }
 #endif    /* _MCU_ == 2553 */
 }
@@ -146,7 +189,7 @@ pwm_on(uint8_t pwmdevice, uint8_t pin, uint8_t dc)
 /* For finer control, this function can be used to set duty time in ticks instead
 of a duty cycle in percent, eg for servo motor control. */
 void
-pwm_on_fine(uint8_t pwmdevice, uint8_t pin, uint16_t finetime)
+pwm_pulsetime(uint8_t pwmdevice, uint8_t pin, uint16_t finetime)
 {
 #if _MCU_ == 2553
   /* sanity checks */
@@ -234,14 +277,13 @@ pwm_all_off(void)
 #if _MCU_ == 2553
 ISR(TIMER1_A0, pwm_periodstart_ta1ccr0_isr)
 {
-  /* ensure next period interrupt happens at correct time */
   TA1CCTL0 &= ~CCIFG;
 
-  /* clear PWM-devices output pins */
-  if(pwms[0].on_time != 0) {
+  /* clear PWM-devices output pins; don't touch them if not set to */
+  if(pwms[0].on_time != 0 && pwms[0].on_time != period) {
     P1OUT |= (1 << pwms[0].pin);
   }
-  if(pwms[1].on_time != 0) {
+  if(pwms[1].on_time != 0 && pwms[1].on_time != period) {
     P1OUT |= (1 << pwms[1].pin);
   }
 }
@@ -254,18 +296,16 @@ ISR(TIMER1_A1, pwm_ccrmatch_ta1ccrX_isr)
   /* store the IV register as any read/write resets interrupt flags */
   uint16_t ivreg = TA1IV;
   if(ivreg & TA1IV_TACCR1) {
-    /* ensure next PWM interrupt happens at correct time */
     TA1CCTL1 &= ~CCIFG;
     /* set output */
-    if(pwms[0].on_time != 0) {
+    if(pwms[0].on_time != 0 && pwms[0].on_time != period) {
       P1OUT &= ~(1 << pwms[0].pin);
     }
 
   } else if(ivreg & TA1IV_TACCR2) {
-    /* ensure next PWM interrupt happens at correct time */
     TA1CCTL2 &= ~CCIFG;
     /* set output */
-    if(pwms[1].on_time != 0) {
+    if(pwms[1].on_time != 0 && pwms[1].on_time != period) {
       P1OUT &= ~(1 << pwms[1].pin);
     }
   }

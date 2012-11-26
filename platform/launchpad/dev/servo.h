@@ -30,13 +30,19 @@
 
 /**
  * \file
- *         Project configuration header file for servo motor control
+ *         Simple servo driver header file
  * \author
  *         Marcus Lunden <marcus.lunden@gmail.com>
  */
 
-#ifndef __PROJECT_CONF_H__
-#define __PROJECT_CONF_H__
+#ifndef __SERVO_H__
+#define __SERVO_H__
 
+/*--------------------------------------------------------------------------*/
+void      servo_init(uint8_t controlpin);
+void      servo_set_position(uint16_t position);
+void      servo_off(void);
+/*--------------------------------------------------------------------------*/
 
-#endif /* __PROJECT_CONF_H__ */
+#endif /* __SERVO_H__ */
+

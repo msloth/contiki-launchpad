@@ -97,7 +97,7 @@ main(void)
   #if _MCU_ == 2553
   #if HAS_EXT_OSC
   /* pwm only available on 2553 with external crystal as it has two hw timers */
-  pwm_init();
+  pwm_init(PWM_FREQ);
   #endif    /* HAS_EXT_OSC */
   #endif    /* _MCU_ == 2553 */
 
@@ -129,15 +129,15 @@ main(void)
   }
 
   netstack_init();
-
-  //XXX sth in this clause (radio driver?) messes with LEDs; find and fix
-  leds_init();  // XXX remove when fixed.
   #endif  /* USE_RADIO */
 
   watchdog_start();
   autostart_start(autostart_processes);
   leds_off(LEDS_ALL);
   printf(CONTIKI_VERSION_STRING " started. ");
+
+  //XXX sth messes with LEDs; find and fix
+  leds_init();  // XXX remove when fixed.
 
   while(1) {
     /*

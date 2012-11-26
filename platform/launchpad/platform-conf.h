@@ -56,6 +56,7 @@
 //#define F_CPU                   12000000uL    // don't use the 12 MHz just yet, not ready (UART etc)
 
 /* is it an 2452 or 2553 mcu? Only these two can be defined for now. */
+// XXX for now, the 
 #define _MCU_                   2553
 //#define _MCU_                   2452
 
@@ -97,6 +98,20 @@
 #define LEDS_CONF_GREEN         (1<<6)
 #define LEDS_CONF_YELLOW        (LEDS_CONF_GREEN | LEDS_CONF_RED)
 #define LEDS_CONF_ALL           (LEDS_CONF_GREEN | LEDS_CONF_RED)
+
+
+
+
+/* PWM freq; can be higher and lower; setting to lower will increase accuracy of
+  the duty cycle (rounding errors) calculated in pwm_on(). */
+#define PWM_CONF_FREQ           128   /* change this one if you want to */
+
+#ifdef PWM_CONF_FREQ
+#define PWM_FREQ                PWM_CONF_FREQ
+#else
+#define PWM_FREQ                128
+#endif
+
 
 /* P1.3 is the switch 2 on the Launchpad PCB, but other pins can be used. */
 //XXX now defined in button.h

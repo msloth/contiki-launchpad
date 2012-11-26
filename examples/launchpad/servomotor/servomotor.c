@@ -40,7 +40,7 @@
 #include <stdio.h>
 #include "contiki.h"
 #include "dev/leds.h"
-#include "dev/pwm.h"
+#include "dev/servo.h"
 #include "dev/button.h"
 
 /*
@@ -55,8 +55,6 @@
  * 
  */
 #define SERVOCONTROL_PIN      (0)   // P1.0
-#define SERVO_MAX             65
-#define SERVO_MIN             26
 /*---------------------------------------------------------------------------*/
 PROCESS(button_process, "Button catcher");
 PROCESS(servo_process, "Servo motor control process");
@@ -74,32 +72,34 @@ PROCESS_THREAD(servo_process, ev, data)
   static uint8_t up = 1;
 
   PROCESS_BEGIN();
+
+  servo_init(SERVOCONTROL_PIN);
   while(1) {
-    /* find new servo position control setting */
+    /* find new servo position control setting; go between 0..180 deg and back */
     if(up) {
       i++;
-      if(i == SERVO_MAX) {
+      if(i == 180) {
         up = 0;
         leds_toggle(LEDS_GREEN);
         /* wait a little while */
-        pwm_off(0);
+        servo_off();
         etimer_set(&etr, CLOCK_SECOND/2);
         PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
       }
     } else {
       i--;
-      if(i == SERVO_MIN) {
+      if(i == 0) {
         up = 1;
         leds_toggle(LEDS_GREEN);
         /* wait a little while */
-        pwm_off(0);
+        servo_off();
         etimer_set(&etr, CLOCK_SECOND/2);
         PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
       }
     }
 
-    /* set new control */
-    pwm_on_fine(0, SERVOCONTROL_PIN, i);
+    /* set new position */
+    servo_set_position(i);
 
     /* wait a little while */
     etimer_set(&etr, CLOCK_SECOND/16);
@@ -118,7 +118,7 @@ PROCESS_THREAD(button_process, ev, data)
 
   /* when the button is pressed, kill the servo! */
   PROCESS_WAIT_EVENT_UNTIL(ev == button_event);
-  pwm_off(0);
+  servo_off();
   process_exit(&servo_process);
 
   leds_off(LEDS_ALL);

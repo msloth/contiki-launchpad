@@ -52,6 +52,8 @@
 #include "dev/button.h"
 #include "dev/adc.h"
 #include "dev/pwm.h"
+#include "contiki-launchpad.h"
+
 
 /*---------------------------------------------------------------------------*/
 /*  P1SEL &=~ (LEDS_RED | LEDS_GREEN);*/
@@ -61,6 +63,26 @@
 /*  while (1) { }*/
 /*#define LON(x)   (P1OUT |= (x))*/
 /*#define LOFF(x)   (P1OUT &=~ (x))*/
+
+static volatile uint8_t dcoreq = 0;
+
+/*--------------------------------------------------------------------------*/
+void
+msp430_request_lpm_dco(void)
+{
+  if(dcoreq <= 254) {
+    dcoreq++;
+  }
+}
+/*--------------------------------------------------------------------------*/
+void
+msp430_return_lpm_dco(void)
+{
+  if(dcoreq > 0) {
+    dcoreq--;
+  }
+}
+/*--------------------------------------------------------------------------*/
 
 void
 main(void)
@@ -159,7 +181,13 @@ main(void)
       if(process_nevents() == 0) {
     #endif  /* USE_SERIAL */
       /* we are ready to go to sleep, LPM3 */
-      LPM3;   /* No LPM4 due to SMCLK driving clock (?) */  // XXX check this LPM3/4
+      if(dcoreq == 0) {
+        LPM3;
+      } else {
+        LPM0;
+      }
+      asm("NOP;");
+
     }
   }
   return;

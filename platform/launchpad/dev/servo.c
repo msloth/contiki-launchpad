@@ -63,9 +63,10 @@ servo_init(uint8_t controlpin)
     return;
   }
   cpin = controlpin;
-  P1DIR |= (1 << cpin);
-  P1SEL &= ~((1 << cpin));
-  P1SEL2 &= ~((1 << cpin));
+  pwm_confpin(controlpin);
+/*  P1DIR |= (1 << cpin);*/
+/*  P1SEL &= ~((1 << cpin));*/
+/*  P1SEL2 &= ~((1 << cpin));*/
 
   pwm_init(SERVO_PWMFREQ);
 #endif    /* _MCU_ == 2553 */

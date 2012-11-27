@@ -157,7 +157,6 @@ pwm_on(uint8_t pwmdevice, uint8_t pin, uint8_t dc)
         TA1CCTL1 = CCIE;
         pwms[0].on_time = finetime;
       }
-      printf("dev1 %u %u\n", dc, finetime);
 
     } else {
       /* PWM-device 1 */
@@ -178,7 +177,6 @@ pwm_on(uint8_t pwmdevice, uint8_t pin, uint8_t dc)
         TA1CCTL2 = CCIE;
         pwms[1].on_time = finetime;
       }
-      printf("dev2 %u %u\n", dc, finetime);
 
     }
 
@@ -311,4 +309,17 @@ ISR(TIMER1_A1, pwm_ccrmatch_ta1ccrX_isr)
   }
 }
 #endif    /* _MCU_ == 2553 */
+/*---------------------------------------------------------------------------*/
+/* configure pin for PWM */
+void
+pwm_confpin(uint8_t pin)
+{
+  if(pin > 7) {
+    return;
+  }
+  PWM_PORT(IE) &= ~(1<<7);
+  PWM_PORT(OUT) |= (1<<7);
+  PWM_PORT(SEL) &= ~(1<<7);
+  PWM_PORT(SEL2) &= ~(1<<7);
+}
 /*---------------------------------------------------------------------------*/

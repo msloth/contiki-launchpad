@@ -43,16 +43,27 @@
 /* PWM module is sourced from external crystal osc @ 32.768 kHz, hence do not change this */
 #define PWM_SECOND        32768UL
 
+/* configure freq and port */
 #ifdef PWM_CONF_FREQ
 #define PWM_FREQ          PWM_CONF_FREQ
 #else
 #define PWM_FREQ          128
+#endif
+
+
+/* there are at least two approaches to this: use the timer hardware mapped pins,
+or use arbitrary pins. Hw-mapped is leaner but has less flexibility. */
+#ifdef PWM_CONF_PORT
+#define PWM_PORT(type)          PWM_CONF_PORT(type)
+#else
+#define PWM_PORT(type)          P1##type
 #endif
 /*--------------------------------------------------------------------------*/
 void      pwm_init(uint16_t freq);
 uint8_t   pwm_dc(uint8_t pwmdevice);
 uint16_t  pwm_period(void);
 
+void      pwm_confpin(uint8_t pin);
 void      pwm_on(uint8_t pwmdevice, uint8_t pin, uint8_t dc);
 void      pwm_pulsetime(uint8_t pwmdevice, uint8_t pin, uint16_t finetime);
 void      pwm_off(uint8_t pwmdevice);

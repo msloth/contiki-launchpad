@@ -55,6 +55,8 @@
  * 
  */
 #define SERVOCONTROL_PIN      (0)   // P1.0
+#define PWM_CONF_PORT         P1
+
 /*---------------------------------------------------------------------------*/
 PROCESS(button_process, "Button catcher");
 PROCESS(servo_process, "Servo motor control process");

@@ -1,9 +1,9 @@
 # Contiki for Launchpad
 
 This repo contains a port of Contiki for the TI MSP430 Launchpad.
-It is aimed at the msp430g2553 (out of the mcus delivered with LP)
-as the 'g2452 has some limitations (RAM, no hw UART etc) that requires
-extra care that is at best rudimentary now.
+It is aimed at the msp430g2553 as the 'g2452 has some limitations (RAM, no hw 
+UART etc) that requires extra care that is at best rudimentary now and likely
+won't happen soon.
 
 ## Why Contiki @ LP?
 Contiki serves an excellent middleground compared with the extremes of Arduino
@@ -23,10 +23,11 @@ course, you learn a lot by doing it, and it is the way I started out myself, but
 I think there is a lot of people that stopped playing with and enjoying stuff
 like the LP just because it is too hard. Still, after several years, I find
 doing the low-level stuff hard. Not to comprehend anymore, but to implement.
-Accidently used ''__bic_SR(...)'' instead of ''__bic_SR_onexit(...)''? Or ''DIVS_2'' instead
-of ''DIVS__2''? This takes away a lot of that pain, giving you a simple way of
-doing simple things like a periodic ADC sample with LED blink and actuator control.
-
+Have you accidently used ''__bic_SR(...)'' instead of ''__bic_SR_onexit(...)''?
+Or ''DIVS_2'' instead of ''DIVS__2''? The former will end up stuck in an ISR and
+the latter will set the wrong clock speed. This Contiki port takes away a lot of
+that pain, giving you an easy way to build stuff while being very open for you
+to get down and dirty with the nitty-gritty details should you like to.
 
 ## Usage
 
@@ -36,51 +37,82 @@ virtual machine with mspgcc and other tools installed from start.
   software for virtual machines. They are free for personal use.
 * download and run the Instant Contiki VM.
   see www.contiki-os.org for download links to the latest version.
-* clone this repository
-* Check the examples in contiki/projects/
-  start with hello-world and get a feel for how to use processes,
-  timers etc, working your way through and experimenting with
-  processes 
+* in the virtual machine, open a terminal and clone this repository
+    ''git clone git://github.com/MarcusLunden/contiki-launchpad.git contiki-launchpad''
+* check that your compiler path is ok by going into eg 
+    contiki-launchpad/examples/launchpad/blink
+  and running
+    ''msp430-gcc --version''
+  Then try compiling it with
+    ''make all''
+  and uploading it to the Launchpad with
+    ''make ul''
+  (I don't remember if mspdebug is included in the VM, otherwise you may need to
+  download it first and make sure it is in the path)
+* Check the examples in contiki/examples/launchpad
+  Follow the README in that folder and experiment. Learn and get a feel for 
+  how to use processes, timers etc, working your way through and experimenting
+  with processes.
 
 ## Limitations
 
-The 2553 is very capable for being such a small and inexpensive device, but it
-comes with some limitations. For one, it haven't got much RAM and thus I had to
-cut down on a lot of features and simplify others to make it fit. Other limitations
-are Contiki features that I haven't ported yet.
+The msp430g2553 is very capable for being such a small and inexpensive device but
+is first and foremost limited in peripherals and RAM. For example, it has only
+two timers and not much RAM and thus I had to cut down on a lot of Contiki 
+features and simplify others to make it fit. Other limitations are some Contiki
+features that I haven't ported yet.
 
-NOTE: I completely removed the rimestats module; it needs 72 B RAM. It can be
-re-enabled (but doesn't fit) through removing my comment in 
-''contiki/core/net/rime/rimestats.h''.
-
-### Not working on this port, or not ported yet
+### Not working on this port, not ported yet or very limited support
 *  energest - energy estimation (save RAM)
-*  packetbuf, Rime. Coming later but I have no radio to port for yet.
 *  uIPv6 - maybe later, depends on how small packetbuf+Rime gets (save RAM).
-*  SPI, I2C - highly application dependent so I haven't done any such yet.
-*  sensors - was way too complex and hard to add new sensors so removed (see below)
+*  SPI, I2C are highly application dependent so they have to be adjusted should
+   you build something with SPI or I2C. Check out the CC2500 radio drivers.
+*  the sensors module was way too complex and hard to add new sensors so it is
+   now removed (see below).
+*  the rimestats module - it needs 72 B RAM = too much. see ''contiki/core/net/rime/rimestats.h''.
+*  packetbuf/Rime. I have removed quite many packetbuf attributes as they take a
+   lot of RAM and are allocated even if they are used or not. This means that
+   some Rime communication primitives do not work out of the box as they depend
+   on eg the attribute for 'reliable' (ACK and retransmissions) so if you need
+   those they will have to be re-implemented on top of this leaner Rime.
 
-### Re-made to simplify/fit
-*  adc - instead of the sensors API, there is now a generic ADC API
+### Re-written to simplify/fit and new stuff
+*  adc - instead of the sensors API, there is now a generic ADC API with functions
+   for synchronous and asynch conversions etc. Pick your flavor.
 *  button - simple yet powerful button API
-*  lots and lots of shrinking of buffers etc  
+*  PWM API for doing simple pulse width modulation, for eg dimming LEDs, with a
+   straight-forward API and flexible regarding pins, period and duty cycle
+*  Servo motor API
+*  lots and lots of shrinking of buffers etc.
 
 ## Coming features
 
-Subject to change.
+Of course, this is subject to change and this file might not be up-to-date.
 
-*  radio drivers for CC2500
-*  node-id, burning and reading
-*  PWM API
-*  UART with interrupts
-*  Contiki serial shell
-*  SPI, I2C
+*  radio drivers for CC2500 (very, very soon! dec-12)
+*  node-id, burning and reading (very, very soon! dec-12)
+*  really simple (eg likely not that reliable or high performance) network stuff
+   like leaf nodes to sink data routing, data dissemination through polite gossip
+   and similar things.
+*  simple power-saving MAC protocol, like a re-implementation of X-MAC or ContikiMAC
+   to reduce complexity and RAM/ROM-requirements
+*  UART with interrupts; now it is just blocking which works but as the speed is
+   limited in hardware to 9600 baud any printf's can block the mcu quite long time
+*  Contiki serial shell; now serial input works (wait for serial_input_events)
+   but you have to parse the input yourself. I'll see how much space this takes,
+   might have to skip it.
+*  SPI, I2C; generic APIs for this is tricky as many chips add their own twist on
+   how to do this efficiently so I might just do sth half-hearted for this
 
 ## What did I do to make it fit?
 
 The biggest problem wasn't flash space (program and const variables), it's RAM.
-And by the way Contiki works, it favors static variables. Ie, the
-protothread abstraction basically folds out (preprocessor macro expansion) into 
+By the way Contiki works, you use static variables a lot. This has the benefit
+that an application becomes more easy to analyze as you know more about it at
+compile time but the RAM requirements become harder. There is little hope of
+doing any serious routing on these for example.
+
+The protothread abstraction basically folds out (preprocessor macro expansion) into 
 function calls with a big switch-case for each process; any YIELD or WAIT_EVENT
 exits the function, hence any automatic (ie non-static or larger scope) variables
 are not saved across the block. So you use static a lot, and so they are stored
@@ -89,4 +121,15 @@ squeeze it into the 16kB/512B of the 2553 without any radio or Rime. With Rime,
 it's harder. The packet buffer, and queue buffer, needs a lot of space. I shrunk
 the packetbuf and removed any queuebufs.
 
+## Why no love for the 2452? And what about the 2231 and 2331?
+
+The 2452, compared with the 2553, has one timer less, no hardware UART and only
+256 byte RAM. This makes it much messier to use the 2452 with a Contiki that can
+printf as the timer would be needed for software UART but is now used for clock
+and rtimer. And just 256B RAM is quite narrow... But if you disable serial in
+the platform/launchpad/contiki-conf.h you can still fit Contiki on it to do
+simple things like buttons and LEDs and the like.
+
+The 2231 and 2331 (?) where shipped with the early versions of Launchpad but are
+even more restrained than the 2452 so I won't spread the love to them.
 

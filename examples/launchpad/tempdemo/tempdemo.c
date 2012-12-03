@@ -30,10 +30,9 @@
 
 /**
  * \file
- *         Blink example application,
- *          Demonstrates starting another process from one, setting timers, using LEDs.
- *          expected result from running it:
- *          red LED flashing fast (toggling every 125 ms), green every second.
+ *         Re-implementation of the TI temp demo.
+ *          Starts in "pre-application mode", then at button press goes into
+ *          temperature sense and LED dim mode.
  * \author
  *         Marcus Lunden <marcus.lunden@gmail.com>
  */
@@ -41,54 +40,58 @@
 #include <stdio.h>
 #include "contiki.h"
 #include "dev/leds.h"
+#include "dev/adc.h"
+#include "dev/button.h"
+#include "dev/pwm.h"
 
-/* -------------------------------------------------------------------------- */
-PROCESS(red_process, "Red light process");
-PROCESS(blink_process, "Blink");
-AUTOSTART_PROCESSES(&blink_process);
 /*---------------------------------------------------------------------------*/
-/* This process is started from the other process and blinks an LED fast.
-*/
-static struct etimer etr;
-PROCESS_THREAD(red_process, ev, data)
-{
-  PROCESS_POLLHANDLER();
-  PROCESS_EXITHANDLER();
-  PROCESS_BEGIN();
-  while(1) {
-    leds_toggle(LEDS_RED);
-    etimer_set(&etr, CLOCK_SECOND/8);
-    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
-  }
-  PROCESS_END();
-}
-
-/*--------------------------------------------------------------------------*/
-/* this process starts another process and then periodically blinks an LED */
+#define MAVG_LEN  8
+#define LED_PIN   0   // P1.0
+#define TEMP_MIN  100 // minimum possible temp sensor reading
+#define TEMP_MAX  500 // maximum possible temp sensor reading
+/*---------------------------------------------------------------------------*/
+static uint16_t temp_sense[MAVG_LEN];   /* ADC buffer for moving average */
+static uint16_t temp_avg;               /* calculated average */
+static uint8_t mavg_ix = 0;             /* index in buffer */
+static uint8_t led_pwmdc;               /* LED PWM setting */
+/*---------------------------------------------------------------------------*/
+PROCESS(tempdemo_process, "My Process");
+AUTOSTART_PROCESSES(&tempdemo_process);
+/*---------------------------------------------------------------------------*/
 static struct etimer et;
-
-PROCESS_THREAD(blink_process, ev, data)
+PROCESS_THREAD(tempdemo_process, ev, data)
 {
+  PROCESS_EXITHANDLER(pwm_off(0); leds_off(LEDS_ALL););
   PROCESS_BEGIN();
-
-  etimer_set(&et, CLOCK_SECOND);
-  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-  process_start(&red_process, NULL);
-
+  /* pre-application mode: toggle LEDs */
+  while(ev != button_event) {
+    leds_toggle(LEDS_ALL);
+    etimer_set(&et, CLOCK_SECOND/5);
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+  }
+  
+  /* application mode: get ADC of internal temp, showing avg (trend?) with LED */
+  memset(temp_sense, 0, MAVG_LEN * sizeof(uint16_t));
   while(1) {
-    /* unnecessary, messy but wanted sth else than what the red process 
-     * is doing so instead of just toggling, turn on when even seconds and
-     * turn off on uneven seconds.
-     */
-    if(clock_seconds() & 1) {
-      leds_on(LEDS_GREEN);
-    } else {
-      leds_off(LEDS_GREEN);
+    uint8_t i;
+    temp_sense[mavg_ix] = adc_get(TEMP);
+    mavg_ix++;    /* mavg_ix = mavg_ix < (MAVG_LEN - 1) ? mavg_ix++ : 0; */
+    if(mavg_ix == MAVG_LEN) {
+      mavg_ix = 0;
     }
-    etimer_set(&et, CLOCK_SECOND);
+
+    temp_avg = 0;
+    for(i = 0; i < MAVG_LEN; i += 1) {
+      temp_avg += temp_sense[i];
+    }
+    temp_avg = temp_avg / MAVG_LEN;
+    /* 100% duty cycle if full temp, 0% if lowest temp */
+    led_pwmdc = (100 * (temp_avg - TEMP_MIN) / (TEMP_MAX - TEMP_MIN));
+    pwm_on(0, LED_PIN, led_pwmdc);
+
+    etimer_set(&et, CLOCK_SECOND/8);
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
   }
   PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
-

@@ -36,7 +36,7 @@ ul:
  
  
 erase:
-	mspdebug rf2500 "erase ERASE_ALL"
+	mspdebug rf2500 "erase"
 
 # must be here, it makes sure Contiki is included :)
 include $(CONTIKI)/Makefile.include

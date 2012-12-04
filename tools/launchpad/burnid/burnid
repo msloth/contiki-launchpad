@@ -1,0 +1,27 @@
+#! /bin/bash
+
+# Script for burning id to a Launchpad node
+#     Author Marcus Lunden
+#
+# You need to have a Launchpad connected and mspdebug in your path.
+# Assumes being called with two 8-bit decimals to write as address
+#     eg burnid 24 0 
+# burns node id 24.0 into the node
+#
+
+# convert from decimal to hex
+IDHD=$1
+IDLD=$2
+IDHH=`echo "obase=16;ibase=10; $IDHD" | bc`
+IDLH=`echo "obase=16;ibase=10; $IDLD" | bc`
+
+# erase and print out contents of memory segment 0x1040 == Infomem C
+echo "\n\n\n*** Erasing Infomem C on the Launchpad"
+mspdebug rf2500 "erase segment 0x1040"
+mspdebug rf2500 "md 0x1040 30"
+
+# write address and print out contents of memory to verify
+echo "\n\n\n*** Writing node ID $IDHD.$IDLD ($IDHH.$IDLH) to the node"
+mspdebug rf2500 "mw 0x1040 0xbe 0xef 0x$IDHH 0x$IDHL"
+mspdebug rf2500 "md 0x1040 30"
+

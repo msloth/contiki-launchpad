@@ -31,6 +31,19 @@
 /**
  * \file
  *         Periodic broadcast example
+ *         For this to work you need at least two Launchpads with 2553 and external
+ *         32.768 kHz oscillator and cc2500 radios. The nodes will periodically
+ *         transmit a broadcast that will be received by any node that "hears" it
+ *         and has opened a broadcast on that Rime channel.
+ *         For addresses to work, each Launchpad must have an address burnt into
+ *         it. To do so you need to connect the Launchpad, have mspdebug installed
+ *         and on the path, go to contiki-launchpad/tools/launchpad/burnid and run
+ *         the burnid script. Eg for node id 240.0
+ *            burnid 240 0
+ *         To save RAM, each address is just 2 bytes (compare with IPv6 or even
+ *         IPv4 address that are much longer). This makes eg routing tables and
+ *         neighbor tables smaller if you want to use/implement such.
+ *         
  * \author
  *         Marcus Lunden <marcus.lunden@gmail.com>
  */
@@ -39,52 +52,69 @@
 #include "contiki.h"
 #include "contiki-net.h"
 #include "dev/leds.h"
-#include "button.h"
+#include "dev/button.h"
+#include "dev/cc2500.h"
 
+/* time between transmissions */
+#define TRANSMISSION_INTERVAL     (CLOCK_SECOND/2)
+
+/* Channel; any number from 129..65535 (0..128 are reserved) */
+#define BROADCAST_CH              2674
+
+#define MSGMIN  1
+#define MSGMAX  30
+static const uint8_t msg[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+     14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30};
+static uint8_t msglen = MSGMIN;
 /*---------------------------------------------------------------------------*/
-PROCESS(button_process, "Button process");
-PROCESS(blink_process, "Blink process");
-AUTOSTART_PROCESSES(&blink_process, &button_process);
+PROCESS(hello_process, "Hello process");
+AUTOSTART_PROCESSES(&hello_process);
 /*---------------------------------------------------------------------------*/
-/* Broadcast receive callback */
-static uint8_t buf[15];
+/* Broadcast receive callback; this is invoked on each broadcast received on the
+Rime-channel associated to this broadcast connection, here BROADCAST_CH */
+
 static void
 bcr(struct broadcast_conn *c, const rimeaddr_t *f)
 {
-  memcpy(buf, packetbuf_dataptr(), packetbuf_datalen());
-  buf[packetbuf_datalen()] = 0; // null-terminate string
-  printf("[%u] Broadcast Received from %u.%u:%s\n", clock_seconds(), f->u8[0], f->u8[1], buf);
+  uint8_t *buf;
+  /* this is unsafe as it opens up for a smash the stack attack, but that's
+    quite unlikely to happen in this context. Should sanitize input and have
+    an upper bound on size, now it will just print happily until first 0. */
+/*  printf("[%u] Received fr %u.%u:%s\n", clock_seconds(), f->u8[0], f->u8[1], buf);*/
+  leds_toggle(LEDS_RED);
 }
 /*---------------------------------------------------------------------------*/
+/* the broadcast connection */
 static struct broadcast_conn bc;
+
+/* the callback struct; first *receive*-callback, then *sent*-callback */
 static struct broadcast_callbacks bccb = {bcr, NULL};
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(button_process, ev, data)
+/* This process holds a broadcast connection and transmits a periodic message */
+
+static struct etimer transmission_et;
+PROCESS_THREAD(hello_process, ev, data)
 {
   PROCESS_POLLHANDLER();
-  PROCESS_EXITHANDLER();
+  PROCESS_EXITHANDLER(broadcast_close(&bc););
   PROCESS_BEGIN();
-  broadcast_open(&bc, 2001, &bccb);
-  while (1) {
-    /* At button press, transmit a Hello message */
-    PROCESS_WAIT_EVENT_UNTIL(ev == button_event && (*((uint8_t *)data) & SWITCH_2));
-    leds_toggle(LEDS_RED);
-    packetbuf_copyfrom("Hello", sizeof("Hello"));
-    broadcast_send(&bc);
-  }
-  PROCESS_END();
-}
-/*--------------------------------------------------------------------------*/
-/* this process periodically blinks an LED */
-static struct etimer et;
 
-PROCESS_THREAD(blink_process, ev, data)
-{
-  PROCESS_BEGIN();
+  /* open a connection on a specified channel, much ports in TCP/UDP */
+  broadcast_open(&bc, BROADCAST_CH, &bccb);
+
   while(1) {
-    leds_toggle(LEDS_GREEN);
-    etimer_set(&et, CLOCK_SECOND/8);
-    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+    etimer_set(&transmission_et, TRANSMISSION_INTERVAL);
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&transmission_et));
+    if(msglen < MSGMAX) {
+      msglen++;
+    } else {
+      msglen = MSGMIN;
+    }
+/*    leds_toggle(LEDS_RED);*/
+    packetbuf_copyfrom(msg, 9);   /* XXX for now, just tx one size packets */
+/*    packetbuf_copyfrom(msg, msglen);*/
+    broadcast_send(&bc);
+/*    cc2500_send(msg, msglen);*/
   }
   PROCESS_END();
 }

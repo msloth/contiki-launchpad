@@ -56,10 +56,52 @@
 //#define F_CPU                   12000000uL    // don't use the 12 MHz just yet, not ready (UART etc)
 
 /* is it an 2452 or 2553 mcu? Only these two can be defined for now. */
-// XXX for now, the 
 #define _MCU_                   2553
 //#define _MCU_                   2452
+/* 
+Here is a short summary of the Launchpad mcu's
+                 2211     2231    2452      2553
+    ROM             2        2       8        16
+    RAM           128      128     256       512
+    UART                                       1
+    SPI/I2C                  1       1         1
+    GPIO           10       10      16        24
+    touch-IO                         y         y
+    Timers-16       1        1       1         2
+    WDT             y        y       y         y
+    ADC10                    8       8         8
+    ADC12
+    PDIP-x         14       14      20        20
+    tempsensor               y       y         y
+        1.8 V to 3.6 V
+        16 MHz
+        Wake-Up Less Than 1 µs
+          Active Mode: 230 µA at 1 MHz, 2.2 V
+          Standby Mode: 0.5 µA
+          Off Mode (RAM Retention): 0.1 µA
+  For Contiki,
+    timer 1 (two CCR's) is used for the two internal clocks.
+    Timer 2 for PWM.
+    USCI 1 for UART serial/printfs.
+    USCI 2 for SPI to radio (blocking so won't go to LPM while communicating).
+  Thus we see that 2452 has an SPI USCI but not enough RAM for radio+Rime, nor
+    will it accomodate the PWM or serial modules as they use the second timer.
+*/
 
+
+/* use serial port? (printfs); saves space if not */
+#define USE_SERIAL              1
+
+/* use the Rime networking stack and a radio driver? */
+#define USE_RADIO               1
+
+/*
+ * Does the board have an external 32kHz osc? Currently mandatory and this switch
+ * won't make a difference, but included for ev future use so clocks and timers
+ * can use the DCO instead.
+ */
+#define HAS_EXT_OSC             1
+  
 /* 
  * board revision: older boards had a pull-up resistor connected to the button
  * which was removed to conserve power and save money. If the resistor is there,
@@ -74,19 +116,6 @@
  */
 #define BOARD_OLD_REVISION      0
 
-/* use serial port? (printfs); saves space if not */
-#define USE_SERIAL              1
-
-/* use the Rime networking stack and a radio driver? */
-#define USE_RADIO               0
-
-/*
- * Does the board have an external 32kHz osc? Currently mandatory and this switch
- * won't make a difference, but included for ev future use so clocks and timers
- * can use the DCO instead.
- */
-#define HAS_EXT_OSC             1
-
 /* 
  * LEDs; only change if you are not using the Launchpad board and have LEDs
  * on other pins.
@@ -100,8 +129,6 @@
 #define LEDS_CONF_ALL           (LEDS_CONF_GREEN | LEDS_CONF_RED)
 
 
-
-
 /* PWM freq; can be higher and lower; setting to lower will increase accuracy of
   the duty cycle (rounding errors) calculated in pwm_on(). */
 #define PWM_CONF_FREQ           128   /* change this one if you want to */
@@ -112,23 +139,26 @@
 #define PWM_FREQ                128
 #endif
 
-
 /* P1.3 is the switch 2 on the Launchpad PCB, but other pins can be used. */
 //XXX now defined in button.h
 //#define BUTTON_CONF_PORT        P1
 //#define BUTTON_CONF_PIN         (1<<3)
 
-
 /* use irq/dma with UART to save system resources, otherwise synchrous (blocking) */
-// XXX not working yet, is only blocking so leave as 0
+// XXX not working yet, is only blocking so leave as 0 now.
 #define UART0_CONF_TX_WITH_INTERRUPT  0
 
-/* this is where in memory the node id is stored (must first be written with burn-id) */
+/* this is where in memory the node id is stored (must first be written by burn),
+  these memory locations are non-volatile and will not be erased by a 'full erase'
+  unless explicitly told to, hence we can save some data here that will survive
+  reboots and periods without power. Infomem A has some factory calibration data.
+  Store node id in infomem C as it is normally empty (A is occupied and D seems
+  not empty). 64 B each. Node id is prepended with the magic bytes 0xBEEF. */
 #define INFOMEM_D                     ((uint8_t*)0x00001000)
 #define INFOMEM_C                     ((uint8_t*)0x00001040)
 #define INFOMEM_B                     ((uint8_t*)0x00001080)
 #define INFOMEM_A                     ((uint8_t*)0x000010c0)
-#define NODEID_INFOMEM_LOCATION       INFOMEM_D
+#define NODEID_INFOMEM_LOCATION       INFOMEM_C
 
 /*--------------------------------------------------------------------------*/
 /*
@@ -166,8 +196,9 @@ project-conf.h)!"
 #error "2452 has no hardware UART, either set 2553 or set USE_SERIAL to 0 in platform-conf.h"
 #endif
 
-
-
+#if HAS_EXT_OSC != 1
+#error "You must have the external 32.768 oscillator populated on board."
+#endif
 
 
 
@@ -190,6 +221,7 @@ project-conf.h)!"
 #endif /* __GNUC__ &&  __MSP430__ && MSP430_MEMCPY_WORKAROUND */
 #include "msp430def.h"
 
+#if 0
 /* DCO speed periodic resynchronization for more robust UART, etc. */
 #ifndef DCOSYNCH_CONF_ENABLED
 #define DCOSYNCH_CONF_ENABLED 0
@@ -197,7 +229,7 @@ project-conf.h)!"
 #ifndef DCOSYNCH_CONF_PERIOD
 #define DCOSYNCH_CONF_PERIOD 30
 #endif /* DCOSYNCH_CONF_PERIOD */
-
+#endif
 /*--------------------------------------------------------------------------*/
 
 

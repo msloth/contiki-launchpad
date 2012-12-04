@@ -69,7 +69,7 @@
 // dev/serial-line.h
 #define SERIAL_LINE_CONF_BUFSIZE            32
 
-// g2xxxx/uart1.c
+// g2xxxx/uart1.c; XXX until interrupt driven UART is done, these have no effect (and no RAM will be allocated either)
 #define TX_INTERRUPT_BUFSIZE_CONF           32
 #define RX_INTERRUPT_BUFSIZE_CONF           32
 
@@ -95,6 +95,7 @@
 
 /* set packetbuf buffer sizes */
 #define PACKETBUF_CONF_SIZE         64    /* 128 */
+//#define PACKETBUF_CONF_SIZE         66
 #define PACKETBUF_CONF_HDR_SIZE     16    /* 48 */  // XXX how do they relate?
 
 /* what channel to start at */
@@ -199,7 +200,6 @@ future use, compiler errors, and completeness */
   #define CONTIKIMAC_CONF_WITH_CONTIKIMAC_HEADER 0
 
   #define CXMAC_CONF_ANNOUNCEMENTS         0
-  #define XMAC_CONF_ANNOUNCEMENTS          0
 
   #ifndef QUEUEBUF_CONF_NUM
   #define QUEUEBUF_CONF_NUM                8

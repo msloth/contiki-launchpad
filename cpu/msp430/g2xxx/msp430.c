@@ -81,7 +81,8 @@ w_memset(void *out, int value, size_t n)
 void
 msp430_init_dco(void)
 {
-  /* this sets the following:
+  /* 
+  this sets the following:
     DCO = 1,4,8,16 MHz
     MCLK source DCO, div suitable for the clock
     SMCLK source DCO, div -> 4 MHz

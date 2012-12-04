@@ -54,9 +54,10 @@
  *    SERVO_MIN = 0.8*(32768/1000) ~= 26
  * 
  */
-#define SERVOCONTROL_PIN      (0)   // P1.0
-#define PWM_CONF_PORT         P1
 
+/* define port and pin for servo motor */
+#define PWM_CONF_PORT         P1
+#define SERVOCONTROL_PIN      (0)
 /*---------------------------------------------------------------------------*/
 PROCESS(button_process, "Button catcher");
 PROCESS(servo_process, "Servo motor control process");
@@ -123,6 +124,7 @@ PROCESS_THREAD(button_process, ev, data)
   servo_off();
   process_exit(&servo_process);
 
+  /* then blink indefinitely */
   leds_off(LEDS_ALL);
   printf("[%u] Emergency stop pressed! Motor stopped.\n", clock_seconds());
   while(1) {

@@ -54,18 +54,8 @@
 #include "dev/pwm.h"
 #include "contiki-launchpad.h"
 
-
 /*---------------------------------------------------------------------------*/
-/*  P1SEL &=~ (LEDS_RED | LEDS_GREEN);*/
-/*  P1DIR |= (LEDS_RED | LEDS_GREEN);*/
-/*  P1OUT |= (LEDS_RED);*/
-/*  P1OUT |= (LEDS_GREEN);*/
-/*  while (1) { }*/
-/*#define LON(x)   (P1OUT |= (x))*/
-/*#define LOFF(x)   (P1OUT &=~ (x))*/
-
 static volatile uint8_t dcoreq = 0;
-
 /*--------------------------------------------------------------------------*/
 void
 msp430_request_lpm_dco(void)
@@ -133,9 +123,11 @@ main(void)
   {
     rimeaddr_t addr;
     uint8_t i;
-    /* Check that Magic number and node id first byte are correct */
-    if (NODEID_INFOMEM_LOCATION[0] != 0xBE || NODEID_INFOMEM_LOCATION[1] != 0xEF) {
-      /* error, just set to fail-address */
+    /* Check that Magic number exists and node id first byte is not zero */
+    if (NODEID_INFOMEM_LOCATION[0] != 0xBE || 
+        NODEID_INFOMEM_LOCATION[1] != 0xEF ||
+        NODEID_INFOMEM_LOCATION[2] == 0) {
+      /* error - no address stored, just set to fail-address */
       addr.u8[0] = 0xde;    // 222
       addr.u8[1] = 0xad;    // 173
     } else {

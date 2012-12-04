@@ -12,6 +12,7 @@
 # convert from decimal to hex
 IDHD=$1
 IDLD=$2
+# XXX check that less than 255 and IDHD != 0
 IDHH=`echo "obase=16;ibase=10; $IDHD" | bc`
 IDLH=`echo "obase=16;ibase=10; $IDLD" | bc`
 

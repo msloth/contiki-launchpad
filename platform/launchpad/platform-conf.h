@@ -93,7 +93,7 @@ Here is a short summary of the Launchpad mcu's
 #define USE_SERIAL              1
 
 /* use the Rime networking stack and a radio driver? */
-#define USE_RADIO               1
+#define USE_RADIO               0
 
 /*
  * Does the board have an external 32kHz osc? Currently mandatory and this switch

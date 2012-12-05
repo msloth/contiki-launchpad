@@ -319,8 +319,16 @@ PROCESS_THREAD(cc2500_process, ev, data)
     //packetbuf_set_attr(PACKETBUF_ATTR_TIMESTAMP, last_packet_timestamp);
 
     len = cc2500_read(packetbuf_dataptr(), PACKETBUF_SIZE);
-    packetbuf_set_datalen(len);
-    NETSTACK_RDC.input();
+    if(len > 0) {
+      packetbuf_set_datalen(len);
+      NETSTACK_RDC.input();
+    } else {
+      /* no received data or bad data that was dropped. Do nothing. */
+    }
+    
+    /* re-poll the radio process so it can check for any packet received while
+    we were handling this one (it will check the rxfifo for data). */
+    cc2500_interrupt();
   }
 
   PROCESS_END();

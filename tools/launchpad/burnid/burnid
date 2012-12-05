@@ -1,5 +1,6 @@
 #! /bin/bash
 
+# ------------------------------------------------------------------------------
 # Script for burning id to a Launchpad node
 #     Author Marcus Lunden
 #
@@ -8,21 +9,58 @@
 #     eg burnid 24 0 
 # burns node id 24.0 into the node
 #
+# ------------------------------------------------------------------------------
 
-# convert from decimal to hex
+MSPDEBUG="mspdebug"
+
+# show help
+usage()
+{
+  echo "Burn node ID to Launchpad"
+  echo "   Usage: burnid nodeidHIGH nodeidLOW"
+  echo "   * neither may be over 255"
+  echo "   * nodeidHIGH must not be zero"
+  echo "   * mspdebug must be in path"
+  echo ""
+  echo "   eg, for 5.0: burnid 5 0"
+  which $MSPDEBUG > /dev/null || echo "mspdebug is not in path."
+  exit
+}
+
+# check that argument is integer
+check_integer()
+{
+  test "$1" -ge 0 -o "$1" -lt 0 2>&- && return 0
+  return 1
+}
+
+# ------------------------------------------------------------------------------
+# check number of input arguments
+[ $# -ne 2 ] && usage
 IDHD=$1
 IDLD=$2
-# XXX check that less than 255 and IDHD != 0
+
+# check arguments are integers, <= 255 and nodeidHIGH != 0
+check_integer $IDHD || usage && A=$IDHD
+check_integer $IDLD || usage && B=$IDLD
+[ $1 -gt 255 ] && usage
+[ $2 -gt 255 ] && usage
+[ $1 -eq 0 ] && usage
+
+# check that we can find mspdebug in path
+which $MSPDEBUG > /dev/null || usage
+
+# convert from decimal to hex
 IDHH=`echo "obase=16;ibase=10; $IDHD" | bc`
 IDLH=`echo "obase=16;ibase=10; $IDLD" | bc`
 
 # erase and print out contents of memory segment 0x1040 == Infomem C
-echo "\n\n\n*** Erasing Infomem C on the Launchpad"
+printf "\n*** Erasing Infomem C on the Launchpad\n"
 mspdebug rf2500 "erase segment 0x1040"
 mspdebug rf2500 "md 0x1040 30"
 
 # write address and print out contents of memory to verify
-echo "\n\n\n*** Writing node ID $IDHD.$IDLD ($IDHH.$IDLH) to the node"
+printf "\n*** Writing node ID $IDHD.$IDLD ($IDHH.$IDLH) to the node\n"
 mspdebug rf2500 "mw 0x1040 0xbe 0xef 0x$IDHH 0x$IDHL"
 mspdebug rf2500 "md 0x1040 30"
 

@@ -317,9 +317,10 @@ pwm_confpin(uint8_t pin)
   if(pin > 7) {
     return;
   }
-  PWM_PORT(IE) &= ~(1<<7);
-  PWM_PORT(OUT) |= (1<<7);
-  PWM_PORT(SEL) &= ~(1<<7);
-  PWM_PORT(SEL2) &= ~(1<<7);
+  PWM_PORT(IE) &= ~(1 << pin);
+  PWM_PORT(DIR) |= (1 << pin);
+  PWM_PORT(OUT) |= (1 << pin);
+  PWM_PORT(SEL) &= ~(1 << pin);
+  PWM_PORT(SEL2) &= ~(1 << pin);
 }
 /*---------------------------------------------------------------------------*/

@@ -50,7 +50,6 @@
 #define PWM_FREQ          128
 #endif
 
-
 /* there are at least two approaches to this: use the timer hardware mapped pins,
 or use arbitrary pins. Hw-mapped is leaner but has less flexibility. */
 #ifdef PWM_CONF_PORT

@@ -144,12 +144,12 @@ pwm_on(uint8_t pwmdevice, uint8_t pin, uint8_t dc)
       if(dc == 100) {
         TA1CCTL1 &= ~CCIE;  /* no need for interrupt */
         pwms[0].on_time = period;
-        P1OUT |= (1 << pwms[0].pin);
+        PWM_PORT(OUT) |= (1 << pwms[0].pin);
 
       } else if(dc == 0) {
         TA1CCTL1 &= ~CCIE;  /* no need for interrupt */
         pwms[0].on_time = 0;
-        P1OUT &= ~(1 << pwms[0].pin);
+        PWM_PORT(OUT) &= ~(1 << pwms[0].pin);
 
       } else {
         /* set up a compare match for the next PWM period */
@@ -164,12 +164,12 @@ pwm_on(uint8_t pwmdevice, uint8_t pin, uint8_t dc)
       if(dc == 100) {
         TA1CCTL2 &= ~CCIE;  /* no need for interrupt */
         pwms[1].on_time = period;
-        P1OUT |= (1 << pwms[1].pin);
+        PWM_PORT(OUT) |= (1 << pwms[1].pin);
 
       } else if(dc == 0) {
         TA1CCTL2 &= ~CCIE;  /* no need for interrupt */
         pwms[1].on_time = 0;
-        P1OUT &= ~(1 << pwms[1].pin);
+        PWM_PORT(OUT) &= ~(1 << pwms[1].pin);
 
       } else {
         /* set up a compare match for the next PWM period */
@@ -232,7 +232,7 @@ pwm_off(uint8_t pwmdevice)
   } else {
     TA1CCTL2 &= ~(CCIE);
   }
-  P1OUT &= ~(1 << pwms[pwmdevice].pin);
+  PWM_PORT(OUT) &= ~(1 << pwms[pwmdevice].pin);
   pwms[pwmdevice].on_time = 0;
 #endif    /* _MCU_ == 2553 */
 }
@@ -258,13 +258,13 @@ pwm_all_off(void)
 {
 #if _MCU_ == 2553
   if(pwms[0].on_time != 0) {
-    P1OUT &= ~(1 << pwms[0].pin);
+    PWM_PORT(OUT) &= ~(1 << pwms[0].pin);
     pwms[0].on_time = 0;
   }
   TA1CCTL1 &= ~(CCIE);
 
   if(pwms[1].on_time != 0) {
-    P1OUT &= ~(1 << pwms[1].pin);
+    PWM_PORT(OUT) &= ~(1 << pwms[1].pin);
     pwms[1].on_time = 0;
   }
   TA1CCTL2 &= ~(CCIE);
@@ -279,10 +279,10 @@ ISR(TIMER1_A0, pwm_periodstart_ta1ccr0_isr)
 
   /* clear PWM-devices output pins; don't touch them if not set to */
   if(pwms[0].on_time != 0 && pwms[0].on_time != period) {
-    P1OUT |= (1 << pwms[0].pin);
+    PWM_PORT(OUT) |= (1 << pwms[0].pin);
   }
   if(pwms[1].on_time != 0 && pwms[1].on_time != period) {
-    P1OUT |= (1 << pwms[1].pin);
+    PWM_PORT(OUT) |= (1 << pwms[1].pin);
   }
 }
 #endif    /* _MCU_ == 2553 */
@@ -297,14 +297,14 @@ ISR(TIMER1_A1, pwm_ccrmatch_ta1ccrX_isr)
     TA1CCTL1 &= ~CCIFG;
     /* set output */
     if(pwms[0].on_time != 0 && pwms[0].on_time != period) {
-      P1OUT &= ~(1 << pwms[0].pin);
+      PWM_PORT(OUT) &= ~(1 << pwms[0].pin);
     }
 
   } else if(ivreg & TA1IV_TACCR2) {
     TA1CCTL2 &= ~CCIFG;
     /* set output */
     if(pwms[1].on_time != 0 && pwms[1].on_time != period) {
-      P1OUT &= ~(1 << pwms[1].pin);
+      PWM_PORT(OUT) &= ~(1 << pwms[1].pin);
     }
   }
 }

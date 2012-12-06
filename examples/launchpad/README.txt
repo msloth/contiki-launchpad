@@ -1,6 +1,6 @@
 
 This folder contains some examples that demonstrates different things with
-Contiki and stuff I wrote for my Launchpad Contiki port, such as the pwm- or
+Contiki and stuff I wrote for my Launchpad Contiki port, such as the pwm- and
 adc-modules.
 
 I suggest you start by checking out the examples in roughly this order:
@@ -22,6 +22,6 @@ I suggest you start by checking out the examples in roughly this order:
 and if you are interested and have the hardware for it,
   periodic-broadcast
     radio communication, Rime networking stack
-
+    use contiki/tools/launchpad/burnid/burnid to burn a node id to the nodes
 
 

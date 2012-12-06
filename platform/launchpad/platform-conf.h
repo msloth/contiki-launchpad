@@ -55,9 +55,15 @@
 
 //#define F_CPU                   12000000uL    // don't use the 12 MHz just yet, not ready (UART etc)
 
-/* is it an 2452 or 2553 mcu? Only these two can be defined for now. */
+/* is it an 2452 or 2553 mcu? Only these two can be defined for now.
+XXX I will fix (later) so that the Makefile automatically choses the right mcu define
+but until then you also have to change that in the Makefile.launchpad. You'll
+see, if you get lots of "undefined reference to UCSB0..." it's because the wrong
+mcu is defined there. This define just removes lots of code that, should you have
+a 2452, it will compile anyway. */
 #define _MCU_                   2553
 //#define _MCU_                   2452
+
 /* 
 Here is a short summary of the Launchpad mcu's
                  2211     2231    2452      2553
@@ -110,6 +116,7 @@ Here is a short summary of the Launchpad mcu's
  * 2 mm) rectangular thing in the spot where it says R34, close to the top of
  * the left pin headers (when the USB connector is facing up). If it is there,
  * set this to 1.
+ *
  * Note: setting this to 1 will save power on old boards but button will not work
  * on >=rev1.5 boards; if set to 0 the button will work on rev1.3, 1.4 and 1.5 but
  * draw more power on the 1.3 and 1.4 revisions.

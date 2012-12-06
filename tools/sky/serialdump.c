@@ -1,3 +1,4 @@
+#define _GNU_SOURCE 
 #include <stdio.h>
 #include <fcntl.h>
 #include <termios.h>
@@ -100,12 +101,21 @@ int main(int argc, char **argv)
       switch(argv[index][1]) {
       case 'b':
 	/* set speed */
-	if (strcmp(&argv[index][2], "38400") == 0) {
-	  speed = B38400;
-	  speedname = "38400";
+	if (strcmp(&argv[index][2], "2400") == 0) {
+	  speed = B2400;
+	  speedname = "2400";
+	} else if (strcmp(&argv[index][2], "4800") == 0) {
+	  speed = B4800;
+	  speedname = "4800";
+	} else if (strcmp(&argv[index][2], "9600") == 0) {
+	  speed = B9600;
+	  speedname = "9600";
 	} else if (strcmp(&argv[index][2], "19200") == 0) {
 	  speed = B19200;
 	  speedname = "19200";
+	} else if (strcmp(&argv[index][2], "38400") == 0) {
+	  speed = B38400;
+	  speedname = "38400";
 	} else if (strcmp(&argv[index][2], "57600") == 0) {
 	  speed = B57600;
 	  speedname = "57600";

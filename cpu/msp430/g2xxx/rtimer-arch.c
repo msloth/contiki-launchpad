@@ -44,10 +44,28 @@
 #include "sys/process.h"
 #include "dev/watchdog.h"
 #include "isr_compat.h"
+#include "simple-pwm.h"
+
+
+/* for simple_pwm */
+struct pwm_s {
+  /* pin on pre-configured port */
+  uint8_t pin;
+  /* on_time is time in on-state; duty cycle == on_time/period */
+  uint16_t on_time;
+} spwm;
+
+static const uint16_t period = (SIMPLE_PWM_SECOND / SIMPLE_PWM_FREQ) - 1;
+/* we are using the same CCR for both end of period and end of pulse */
+static uint8_t period_end = 0;
 /*--------------------------------------------------------------------------*/
 ISR(TIMER0_A1, rtimer_a01_isr)
 {
-  if(TA0IV == TA0IV_TACCR1) {
+  /* store the IV register as any read/write resets interrupt flags */
+  uint16_t ivreg = TA0IV;
+
+  if(ivreg & TA0IV_TACCR1) {
+    /* rtimer interrupt */
     TA0CCTL1 &= ~CCIFG;
     watchdog_start();
 
@@ -59,15 +77,42 @@ ISR(TIMER0_A1, rtimer_a01_isr)
       LPM4_EXIT;
     }
     watchdog_stop();
+
+  } else if(ivreg & TA0IV_TACCR2) {
+    /* simple pwm interrupt */
+    TA0CCTL2 &= ~CCIFG;
+
+    if(spwm.on_time > 0) {
+      if(spwm.on_time == period) {
+        TA0CCTL2 &= ~CCIE;  /* no need for interrupt, is at 100% DC */
+        SIMPLE_PWM_PORT(OUT) |= (1 << spwm.pin);
+
+      } else {
+        /* normal on-case */
+        if(period_end) {
+          period_end = 0;
+          TA0CCR2 = TAR + spwm.on_time;
+          SIMPLE_PWM_PORT(OUT) |= (1 << spwm.pin);
+        } else {
+          period_end = 1;
+          TA0CCR2 = TAR + (period - spwm.on_time);
+          SIMPLE_PWM_PORT(OUT) &= ~(1 << spwm.pin);
+        }
+      }
+    }
   }
 }
 /*---------------------------------------------------------------------------*/
 void
 rtimer_arch_init(void)
 {
-  /* uses the same timer as the clock timer so use compare register 1 */
+  /* uses the same timer as the clock timer so use compare register 1 for rtimers */
   /* Enable interrupt on CCR1. */
   TA0CCTL1 = CCIE;
+
+  /* init simple_pwm */
+  spwm.pin = 0;   /* default is P1.0 ie LED 1 */
+  spwm.on_time = 0;
 }
 /*---------------------------------------------------------------------------*/
 rtimer_clock_t
@@ -86,5 +131,99 @@ rtimer_arch_schedule(rtimer_clock_t t)
 {
   /* set the compare register; interrupt will fire on this count */
   TA0CCR1 = t;
+}
+/*---------------------------------------------------------------------------*/
+
+/* these are the simple_pwm functions; bad place here but shared ISR with rtimer
+means they should reside closeby */
+
+/*---------------------------------------------------------------------------*/
+/* set up a pin as the pin to use for simple pwm. Must be done before any on() */
+void
+simple_pwm_confpin(uint8_t pin)
+{
+  if(pin > 7) {
+    return;
+  }
+  spwm.pin = pin;
+  SIMPLE_PWM_PORT(IE) &= ~(1 << pin);
+  SIMPLE_PWM_PORT(DIR) |= (1 << pin);
+  SIMPLE_PWM_PORT(OUT) |= (1 << pin);
+  SIMPLE_PWM_PORT(SEL) &= ~(1 << pin);
+  SIMPLE_PWM_PORT(SEL2) &= ~(1 << pin);
+}
+/*---------------------------------------------------------------------------*/
+/*
+ * set pwm on at a duty cycle expressed in percent from 0 to 100. If crucial,
+ * calculate your own pulsetime and use that function due to rounding errors in
+ * this function.
+ */
+void
+simple_pwm_on(uint8_t dc)
+{
+  if(dc > 100) {
+    return;
+  }
+
+  if(dc == 100) {
+    TA0CCTL2 &= ~CCIE;  /* no need for interrupt */
+    spwm.on_time = period;
+    SIMPLE_PWM_PORT(OUT) |= (1 << spwm.pin);
+
+  } else if(dc == 0) {
+    TA0CCTL2 &= ~CCIE;  /* no need for interrupt */
+    spwm.on_time = 0;
+    SIMPLE_PWM_PORT(OUT) &= ~(1 << spwm.pin);
+
+  } else {
+    /* convert duty cycle to PWM clock ticks */
+    uint8_t finetime = (dc * period) / 100;
+    if(finetime == 0 && dc != 0) {
+      /* rounding errors, go for minimum-like */
+      finetime = 2;
+    }
+
+    /* set up a compare match for the next PWM period */
+    TA0CCR2 = TAR + finetime;
+    TA0CCTL2 = CCIE;
+    spwm.on_time = finetime;
+  }
+}
+/*---------------------------------------------------------------------------*/
+/*
+ * set pwm on at a specified pulsetime measured in SIMPLE_PWM_SECOND ticks/s.
+ * 
+ * The period is (SIMPLE_PWM_SECOND / SIMPLE_PWM_FREQ) - 1, measured in the
+ * same number of ticks/s. Default is 128 Hz and 32768 ticks/s, leaving us w
+ * 255 ticks/period, so the range becomes 0..255.
+ * Use this for precision work, eg a servo motor.
+ */
+void
+simple_pwm_pulsetime(uint16_t finetime)
+{
+  if(finetime >= period) {
+    TA0CCTL2 &= ~CCIE;  /* no need for interrupt */
+    spwm.on_time = period;
+    SIMPLE_PWM_PORT(OUT) |= (1 << spwm.pin);
+
+  } else if(finetime == 0) {
+    TA0CCTL2 &= ~CCIE;  /* no need for interrupt */
+    spwm.on_time = 0;
+    SIMPLE_PWM_PORT(OUT) &= ~(1 << spwm.pin);
+
+  } else {
+    /* set up a compare match for the next PWM period */
+    TA0CCR2 = TAR + finetime;
+    TA0CCTL2 = CCIE;
+    spwm.on_time = finetime;
+  }
+}
+/*---------------------------------------------------------------------------*/
+/* just turn off the PWM. */
+void
+simple_pwm_off(void)
+{
+  TA0CCTL2 &= ~CCIE;  /* no need for interrupt */
+  SIMPLE_PWM_PORT(OUT) &= ~(1 << spwm.pin);
 }
 /*---------------------------------------------------------------------------*/

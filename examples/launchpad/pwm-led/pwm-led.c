@@ -71,6 +71,9 @@ PROCESS_THREAD(pwmled_process, ev, data)
   PROCESS_EXITHANDLER(pwm_all_off(); etimer_stop(&etr););
   PROCESS_BEGIN();
 
+  pwm_confpin(LEDGRN_PIN);
+  pwm_confpin(LEDRED_PIN);
+
   while(1) {
     /* set PWM; there are two possible PWM-devices/-channels (the 0 and 1) and
       this is how they are set */

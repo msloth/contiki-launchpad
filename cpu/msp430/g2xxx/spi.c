@@ -65,6 +65,7 @@
 void
 spi_init(void)
 {
+#if _MCU_ == 2553
   /*
    * From TIs users manual
    * The recommended USCI initialization/re-configuration process is:
@@ -84,5 +85,6 @@ spi_init(void)
   UCB0CTL1 &= ~UCSWRST;
 
   /** 5. Enable interrupts (optional) via UCxRXIE and/or UCxTXIE*/
+#endif    /* _MCU_ == 2553 */
 }
 /*--------------------------------------------------------------------------*/

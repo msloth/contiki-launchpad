@@ -47,44 +47,55 @@
 /* pins to PWM */
 #define LEDRED_PIN       (0)   // P1.0
 #define LEDGRN_PIN       (6)   // P1.6
+
+/* the PWM duty cycle will step back and forth between these limits, with this step */
+#define PWM_MIN           0
+#define PWM_MAX           100
+#define PWM_STEP          1
+
+/* wait this long between setting a new PWM setting */
+#define INTERVAL          CLOCK_SECOND/64
 /*---------------------------------------------------------------------------*/
 PROCESS(button_process, "Button reader");
 PROCESS(pwmled_process, "PWM LED process");
-AUTOSTART_PROCESSES(&pwmled_process, &button_process);
+AUTOSTART_PROCESSES(&button_process, &pwmled_process);
 /*---------------------------------------------------------------------------*/ 
 /* set the PWM duty cycle on the pins (ie the LEDs) out of phase from eachother */
 static struct etimer etr;
+static uint8_t i = 1;     /* counter */
+static uint8_t up = 1;    /* counting up or down? */
 
 PROCESS_THREAD(pwmled_process, ev, data)
 {
   PROCESS_POLLHANDLER();
-  PROCESS_EXITHANDLER();
-  static uint8_t i = 1;     /* counter */
-  static uint8_t up = 1;    /* counting up or down? */
+  PROCESS_EXITHANDLER(pwm_all_off(); etimer_stop(&etr););
   PROCESS_BEGIN();
 
   while(1) {
     /* set PWM; there are two possible PWM-devices/-channels (the 0 and 1) and
       this is how they are set */
-    pwm_on(0, LEDGRN_PIN, 100-i);
+    pwm_on(0, LEDGRN_PIN, i);
     pwm_on(1, LEDRED_PIN, i);
 
     /* find next PWM setting */
     if(up) {
-      i++;
-      if(i == 99) {
+      if(i < PWM_MAX - PWM_STEP) {
+        i += PWM_STEP;
+      } else {
+        i = PWM_MAX;
         up = 0;
       }
     } else {
-      i--;
-      if(i == 3) {
+      if(i > PWM_MIN + PWM_STEP) {
+        i -= PWM_STEP;
+      } else {
+        i = PWM_MIN ;
         up = 1;
       }
     }
-    etimer_set(&etr, CLOCK_SECOND/64);
+    etimer_set(&etr, INTERVAL);
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
   }
-
   PROCESS_END();
 }
 /*--------------------------------------------------------------------------.*/ 
@@ -94,12 +105,11 @@ PROCESS_THREAD(button_process, ev, data)
   PROCESS_POLLHANDLER();
   PROCESS_EXITHANDLER();
   PROCESS_BEGIN();
+
   /* wait for a button press */
   PROCESS_WAIT_EVENT_UNTIL(ev == button_event);
   
-  /* kill the PWM and the PWM process */
-  pwm_off(0);
-  pwm_off(1);
+  /* kill the PWM process */
   process_exit(&pwmled_process);
   PROCESS_END();
 }

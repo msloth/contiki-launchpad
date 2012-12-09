@@ -125,20 +125,21 @@ Here is a short summary of the Launchpad mcu's
 
 /* 
  * LEDs; only change if you are not using the Launchpad board and have LEDs
- * on other pins.
+ * on other pins. You will likely have to change in cpu/msp430/g2xxx/leds-arch.c
+ * as well as core/dev/leds.{c, h} if you want to add more LEDs or change pins.
  */
 #define LEDS_PORT(type)         P1##type
 #define LEDS_PxDIR              P1DIR
 #define LEDS_PxOUT              P1OUT
 #define LEDS_CONF_RED           (1<<0)
 #define LEDS_CONF_GREEN         (1<<6)
-#define LEDS_CONF_YELLOW        (LEDS_CONF_GREEN | LEDS_CONF_RED)
+#define LEDS_CONF_YELLOW        (1<<6)    /* only here to remove compilation errors */
 #define LEDS_CONF_ALL           (LEDS_CONF_GREEN | LEDS_CONF_RED)
 
 
 /* PWM freq; can be higher and lower; setting to lower will increase accuracy of
   the duty cycle (rounding errors) calculated in pwm_on(). */
-#define PWM_CONF_FREQ           128   /* change this one if you want to */
+#define PWM_CONF_FREQ           128
 
 #ifdef PWM_CONF_FREQ
 #define PWM_FREQ                PWM_CONF_FREQ
@@ -147,7 +148,7 @@ Here is a short summary of the Launchpad mcu's
 #endif
 
 /* P1.3 is the switch 2 on the Launchpad PCB, but other pins can be used. */
-//XXX now defined in button.h
+//XXX now defined in platform/launchpad/button.h
 //#define BUTTON_CONF_PORT        P1
 //#define BUTTON_CONF_PIN         (1<<3)
 

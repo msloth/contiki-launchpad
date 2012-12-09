@@ -1,14 +1,50 @@
+/*
+ * Copyright (c) 2012
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the Institute nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ */
+
+/**
+ * \file
+ *         CC2500 header file
+ * \author
+ *         Marcus Lunden <marcus.lunden@gmail.com>
+ */
+
 #ifndef __CC2500_CONST_H__
 #define __CC2500_CONST_H__
 
 /*
- * Definitions for TI CC2500 2.4 GHz transceiver. See the datasheet.
+ * Definitions for the TI CC2500 2.4 GHz transceiver. See the datasheet.
  */
-
 /* configuration registers, can be read and written in burst. */
 #define CC2500_IOCFG2         0x00
 #define CC2500_IOCFG1       	0x01
-#define CC2500_IOCFG0D      	0x02
+#define CC2500_IOCFG0       	0x02
 #define CC2500_FIFOTHR      	0x03
 #define CC2500_SYNC1        	0x04
 #define CC2500_SYNC0        	0x05
@@ -52,13 +88,15 @@
 #define CC2500_AGCTEST      	0x2B
 #define CC2500_TEST2        	0x2C
 #define CC2500_TEST1        	0x2D
-#define CC2500_TEST0        	0x2E
+#define CC2500_TEST0        	0x2E    // reg nr 47
 /* 0x2F is reserved */
 
 /*
- * status registers; Read with 'burst-reading' bit set, like so:
+ * status registers; Read with 'burst-read' bit set, like so:
  *    cc2500_read_burst(CC2500_RSSI, &save, 1);
- *  Only 1 reg can be read at a time.
+ * or rather
+ *    save = cc2500_read_single(CC2500_RSSI);
+ * Only 1 reg can be read at a time.
  */
 #define CC2500_PARTNUM      	0x30
 #define CC2500_VERSION      	0x31
@@ -86,7 +124,6 @@
 #define CC2500_SRX      			0x34
 #define CC2500_STX      			0x35
 #define CC2500_SIDLE    			0x36
-#define CC2500_SAFC     			0x37
 #define CC2500_SWOR     			0x38
 #define CC2500_SPWD     			0x39
 #define CC2500_SFRX     			0x3A
@@ -96,16 +133,17 @@
 
 /*
  * State definitions if reading SPI statusbyte; several definitions have the same
- * value to be compatible with MARCSTATE definition names.
+ * value to be compatible with MARCSTATE definition names. Shifted to correspond
+ * with the status byte bits to avoid doing a shift for every check.
  */
-#define CC2500_STATE_IDLE             0
-#define CC2500_STATE_RX               1
-#define CC2500_STATE_TX               2
-#define CC2500_STATE_FSTXON           3
-#define CC2500_STATE_CAL              4
-#define CC2500_STATE_SETTLING         5
-#define CC2500_STATE_RXFIFO_OVERFLOW  6
-#define CC2500_STATE_TXFIFO_UNDERFLOW 7
+#define CC2500_STATE_IDLE             (0)
+#define CC2500_STATE_RX               (1<<4)
+#define CC2500_STATE_TX               (2<<4)
+#define CC2500_STATE_FSTXON           (3<<4)
+#define CC2500_STATE_CAL              (4<<4)
+#define CC2500_STATE_SETTLING         (5<<4)
+#define CC2500_STATE_RXFIFO_OVERFLOW  (6<<4)
+#define CC2500_STATE_TXFIFO_UNDERFLOW (7<<4)
 #define CC2500_STATUSBYTE_STATUSBITS  0x70
 
 /* SPI addressing modes */
@@ -114,33 +152,47 @@
 #define CC2500_READ           0x80
 #define CC2500_BURSTREAD      0xC0
 
-/* Bit fields for GDO regs*/
-        /* Checked OK! */
+/* Bit field settings-------------------------------------- */
 /* invert assert/de-assert */
 #define IOCFG_GDO_CFG_INVERT             (1<<6)
 /* drive strength; NB ONLY GDO1 */
 #define IOCFG_GDO_CFG_GDO1_DS            (1<<7)
 /* enable temp sensor (all other bits in this reg should be 0) NB GDO0 ONLY */
 #define IOCFG_GDO_CFG_GDO0_TEMP_EN       (1<<7)
+/* CCA bit in PKTSTATUS */
+#define PKTSTATUS_CCA                    (1<<4)
+/* CS bit in PKTSTATUS */
+#define PKTSTATUS_CS                     (1<<6)
+/* various bitsettings; cross-check against cc2500-config.h and the datasheet */
+#define GFSK              (1<<4)    /* use GFSK modulation */
+#define SYNC_MODE_30_32   (3<<0)    /* 30 of 32 bits SYNC word should be correct */
+#define CCA_MODE_3        (3<<4)    /* below threshold unless receiving */
+#define RXOFF_RX          (3<<2)    /* stay in Rx after received packet */
+#define TXOFF_IDLE        (0<<0)    /* goto IDLE after packet sent */
+#define FS_AUTOCAL_NEVER  (0<<4)    /* only calibrate oscillator manually */
+#define PO_TIMEOUT_1      (1<<2)
 
-/* GDO functionality */
-        /* Checked OK! */
+
+
+/* GDO functionality------------------------------------------ */
 /* Assert when THR is reached or EOP; de-assert on empty RxFIFO */
 #define IOCFG_GDO_CFG_RXFIFO_THR_PKT     1   
 /* assert on SYNC recv/sent, de-assert on EOP. NB XXX Will also de-assert on over-/underflow so check that! */
-#define IOCFG_GDO_CFG_PKT_SYNC_RXTX      6  
+#define IOCFG_GDO_CFG_PKT_SYNCW_EOP      6  
 /* CCA; RSSI < threshold ? assert : de-assert */
 #define IOCFG_GDO_CFG_CCA                9
 /* Carrier sense; RSSI > threshold ? assert : de-assert; inverted of CCA */
 #define IOCFG_GDO_CFG_CS                 14
 /* high impedance */
 #define IOCFG_GDO_CFG_HIGHZ              46
-
+/*--------------------------------------------------------------------------*/
+/* the appended bytes; first one is RSSI, the second is LQI and CRC_OK */
+#define FOOTER1_LQI               0x7f
+#define FOOTER1_CRC_OK            0x80
 /*--------------------------------------------------------------------------*/
 /* old and backups */
-/* MARCSTATE states */
-// XXX CHECK!
 #if 0
+/* MARCSTATE states */
 #define CC2500_STATE_SLEEP             0
 #define CC2500_STATE_IDLE              1
 #define CC2500_STATE_XOFF              2
@@ -212,9 +264,6 @@
 
 
 //uint8_t cc2500_txp[] = {0x50, 0x44, 0xC0, 0x84, 0x81, 0x46, 0x93, 0x55, 0x8D, 0xC6, 0x97, 0x6E, 0x7F, 0xA9, 0xBB, 0xFE, 0xFF};
-
-
-
 
 #endif /* __CC2500_CONST_H__ */
 

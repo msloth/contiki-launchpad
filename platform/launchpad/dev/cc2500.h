@@ -44,7 +44,7 @@
 #include "dev/cc2500-const.h"
 
 /*--------------------------------------------------------------------------*/
-#define CC2500_MAX_PACKET_LEN       63   // XXX 64?
+#define CC2500_MAX_PACKET_LEN       64
 /*
  * The transmission power setting refers to the vector of settings for txp; 
  * their corresponding dBm value is this (starting with 0x50==-30)
@@ -53,21 +53,26 @@
  *  packetbuf_attr(TRANSMISSION_POWER, CC2500_TXPOWER_MAX);
  *  packetbuf_attr(TRANSMISSION_POWER, 3);
  */
-uint8_t cc2500_txp[] = {0x50, 0xC0, 0x93, 0x97, 0xA9, 0xFF};
-#define CC2500_TXPOWER(x)           cc2500_txp[x]
+//const uint8_t cc2500_txp[] = {0x50, 0x44, 0xC0, 0x84, 0x81, 0x46, 0x93, 0x55, 0x8D, 0xC6, 0x97, 0x6E, 0x7F, 0xA9, 0xBB, 0xFE, 0xFF};
+//const uint8_t cc2500_txp[] = {0x50, 0xC0, 0x93, 0x97, 0xA9, 0xFF};
+//#define CC2500_TXPOWER(x)           cc2500_txp[x]
 #define CC2500_TXPOWER_MAX          5
 #define CC2500_TXPOWER_MIN          0
 
-/* SPI interface and helper functionality */
+/* SPI interface and helper functionality------- */
 #define CC2500_SPI_PORT(type)       P1##type      
-#define CC2500_SPI_ENABLE_PIN       (1<<4)
-#define CC2500_CSN_PORT(type)       P1##type      
-#define CC2500_SPI_ENABLE()         (CC2500_CSN_PORT(OUT) &= ~CC2500_SPI_ENABLE_PIN)
-#define CC2500_SPI_DISABLE()        (CC2500_CSN_PORT(OUT) |=  CC2500_SPI_ENABLE_PIN)
-
+/* chip select pin */
+#define CC2500_CSN_PORT(type)       P2##type
+#define CC2500_SPI_CSN_PIN          (1<<3)
+/* setting/clearing chip select help */
+#define CC2500_SPI_ENABLE()         (CC2500_CSN_PORT(OUT) &= ~CC2500_SPI_CSN_PIN)
+#define CC2500_SPI_DISABLE()        (CC2500_CSN_PORT(OUT) |=  CC2500_SPI_CSN_PIN)
+/* the interrupt pin */
+#define CC2500_GDO_PORT(type)       P2##type
+#define CC2500_GDO_PIN              (1<<2)
 
 /*
-  this is the minimum required for the radio driver, must be implemented or stubbed
+  this is the minimum required for the radio driver, must be implemented or stubbed:
   cc2500_init,
   cc2500_prepare,
   cc2500_transmit,

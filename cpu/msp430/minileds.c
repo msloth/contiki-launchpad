@@ -26,59 +26,72 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
  * SUCH DAMAGE. 
  *
- * @(#)$Id: minileds.c,v 1.1 2006/09/27 09:32:08 bg- Exp $
  */
 
 /*
- * Minileds is intended to substitute the full leds package when only
- * a small portion of the full functionality is required. It is
- * intended to be syntactically compatible but with a simplified
- * semantics. The semantic difference lies in not counting the number
- * of leds_on and leds_off:s. It saves a substantial amount of RAM
- * (820 bytes on a msp430).
+ * \file
+ *         LEDs implementation for Launchpad.
+ *          The other implementations are either too large (ordinary) or not
+ *          working very well for our only two LEDs. Also, we don't mind ROM
+ *          but RAM is very, very scarce on msp430g2452 and '2553. So we sacrifice
+ *          some ROM and some cycles for a simplistic approach.
+ * \author
+ *         Marcus Lunden <marcus.lunden@gmail.com>
  */
 
 #include "contiki.h"
 #include "dev/leds.h"
-
+/*---------------------------------------------------------------------------*/
 void
 leds_init(void)
 {
-  LEDS_PxDIR |= (LEDS_CONF_RED | LEDS_CONF_GREEN | LEDS_CONF_YELLOW);
-  LEDS_PxOUT |= (LEDS_CONF_RED | LEDS_CONF_GREEN | LEDS_CONF_YELLOW);
+  LEDS_PORT(IE) &= ~LEDS_CONF_ALL;
+  LEDS_PORT(DIR) |= LEDS_CONF_ALL;
+  LEDS_PORT(OUT) &= ~LEDS_CONF_ALL;
+  LEDS_PORT(SEL) &= ~LEDS_CONF_ALL;
+  LEDS_PORT(SEL2) &= ~LEDS_CONF_ALL;
 }
-
-static const unsigned char l2p[LEDS_ALL + 1] = {
-  0,
-  LEDS_CONF_GREEN,
-  LEDS_CONF_YELLOW,
-  LEDS_CONF_YELLOW | LEDS_CONF_GREEN,
-  LEDS_CONF_RED,
-  LEDS_CONF_RED | LEDS_CONF_GREEN,
-  LEDS_CONF_RED | LEDS_CONF_YELLOW,
-  LEDS_CONF_RED | LEDS_CONF_YELLOW | LEDS_CONF_GREEN
-};
-  
-
+/*---------------------------------------------------------------------------*/
 void
 leds_on(unsigned char leds)
 {
-  LEDS_PxOUT &= ~l2p[leds & LEDS_ALL];
+  if(leds & LEDS_GREEN) {
+    LEDS_PORT(OUT) |= LEDS_GREEN;
+  }
+  if(leds & LEDS_RED) {
+    LEDS_PORT(OUT) |= LEDS_RED;
+  }
 }
-
+/*---------------------------------------------------------------------------*/
 void
 leds_off(unsigned char leds)
 {
-  LEDS_PxOUT |= l2p[leds & LEDS_ALL];
+  if(leds & LEDS_GREEN) {
+    LEDS_PORT(OUT) &= ~LEDS_GREEN;
+  }
+  if(leds & LEDS_RED) {
+    LEDS_PORT(OUT) &= ~LEDS_RED;
+  }
 }
-
+/*---------------------------------------------------------------------------*/
 void
 leds_toggle(unsigned char leds)
 {
-  /*
-   * Synonym: void leds_invert(unsigned char leds);
-   */
-  asm(".global leds_invert\nleds_invert:\n");
+  if(leds & LEDS_GREEN) {
+    if(LEDS_PORT(OUT) & LEDS_GREEN) {
+      LEDS_PORT(OUT) &= ~LEDS_GREEN;
+    } else {
+      LEDS_PORT(OUT) |= LEDS_GREEN;
+    }
+  }
+  
+  if(leds & LEDS_RED) {
+    if(LEDS_PORT(OUT) & LEDS_RED) {
+      LEDS_PORT(OUT) &= ~LEDS_RED;
+    } else {
+      LEDS_PORT(OUT) |= LEDS_RED;
+    }
+  }
 
-  LEDS_PxOUT ^= l2p[leds & LEDS_ALL];
 }
+/*---------------------------------------------------------------------------*/

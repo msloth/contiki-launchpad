@@ -45,6 +45,7 @@
 /* pins I want to use for PWM (only one is used) at a time with this */
 #define LEDRED_PIN       (0)   // P1.0
 #define LEDGRN_PIN       (6)   // P1.6
+#define LEDBIG_PIN       (7)   // P1.7
 
 /* the PWM duty cycle will step back and forth between these limits, with this step */
 #define PWM_MIN           0
@@ -68,7 +69,7 @@ PROCESS_THREAD(pwmled_process, ev, data)
   PROCESS_EXITHANDLER(simple_pwm_off(););
   PROCESS_BEGIN();
 
-  simple_pwm_confpin(LEDGRN_PIN);
+  simple_pwm_confpin(LEDBIG_PIN);
 
   while(1) {
     simple_pwm_on(i);

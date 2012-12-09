@@ -1,7 +1,42 @@
+/*
+ * Copyright (c) 2012
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the Institute nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ */
+
+/**
+ * \file
+ *         CC2500 driver header file
+ * \author
+ *         Marcus Lunden <marcus.lunden@gmail.com>
+ */
 
 #ifndef __CC2500_H__
 #define __CC2500_H__
-
 
 #include "contiki.h"
 #include "dev/spi.h"
@@ -46,102 +81,31 @@ uint8_t cc2500_txp[] = {0x50, 0xC0, 0x93, 0x97, 0xA9, 0xFF};
 */
 
 /*
-  cc2420 functions that are not implemented for cc2500
-  int cc2500_get_txpower(void);
-  void cc2500_set_cca_threshold(int value);
-  int cc2500_set_channel(int channel);
-  int cc2500_get_channel(void);
-  int cc2500_rssi(void);
-  void cc2500_set_pan_addr(unsigned pan,
-                                  unsigned addr,
-                                  const uint8_t *ieee_addr);
+  cc2420 functions that are not implemented for cc2500:
+    int cc2500_get_txpower(void);
+    void cc2500_set_cca_threshold(int value);
+    int cc2500_set_channel(int channel);
+    int cc2500_get_channel(void);
+    int cc2500_rssi(void);
+    void cc2500_set_pan_addr(unsigned pan,
+                                    unsigned addr,
+                                    const uint8_t *ieee_addr);
 */
 extern const struct radio_driver cc2500_driver;
 /*--------------------------------------------------------------------------*/
 int     cc2500_init(void);
-void    cc2500_set_txpower(uint8_t power);
+void    cc2500_reset(void);
 int     cc2500_interrupt(void);
 int     cc2500_on(void);
 int     cc2500_off(void);
+int     cc2500_send(const void *payload, unsigned short payload_len);
 
+void    cc2500_set_channel(uint8_t c);
 uint8_t cc2500_strobe(uint8_t strobe);
 uint8_t cc2500_read_single(uint8_t adr);
 uint8_t cc2500_read_burst(uint8_t adr, uint8_t *dest, uint8_t len);
 uint8_t cc2500_write_single(uint8_t adr, uint8_t data);
 uint8_t cc2500_write_burst(uint8_t adr, uint8_t *src, uint8_t len);
-/*--------------------------------------------------------------------------*/
-#if 0
-#define CC2500_STROBE(s)                                   \
-  do {                                                  \
-    CC2500_SPI_ENABLE();                                \
-    SPI_WRITE(s);                                       \
-    CC2500_SPI_DISABLE();                               \
-  } while (0)
-
-/* Write to a register in the CC2500                         */
-/* Note: the SPI_WRITE(0) seems to be needed for getting the */
-/* write reg working on the Z1 / MSP430X platform            */
-#define CC2500_WRITE_REG(adr,data)                              \
-  do {                                                       \
-    CC2500_SPI_ENABLE();                                     \
-    SPI_WRITE_FAST(adr);                                     \
-    SPI_WRITE_FAST((uint8_t)((data) >> 8));                  \
-    SPI_WRITE_FAST((uint8_t)(data & 0xff));                  \
-    SPI_WAITFORTx_ENDED();                                   \
-    SPI_WRITE(0);                                            \
-    CC2500_SPI_DISABLE();                                    \
-  } while(0)
-
-/* Read a register in the CC2500 */
-#define CC2500_READ_REG(adr,data)                          \
-  do {                                                  \
-    CC2500_SPI_ENABLE();                                \
-    SPI_WRITE(adr | 0x40);                              \
-    data = (uint8_t)SPI_RXBUF;                          \
-    SPI_TXBUF = 0;                                      \
-    SPI_WAITFOREORx();                                  \
-    data = SPI_RXBUF << 8;                              \
-    SPI_TXBUF = 0;                                      \
-    SPI_WAITFOREORx();                                  \
-    data |= SPI_RXBUF;                                  \
-    CC2500_SPI_DISABLE();                               \
-  } while(0)
-
-#define CC2500_READ_FIFO_BYTE(data)                        \
-  do {                                                  \
-    CC2500_SPI_ENABLE();                                \
-    SPI_WRITE(CC2500_RXFIFO | 0x40);                    \
-    (void)SPI_RXBUF;                                    \
-    SPI_READ(data);                                     \
-    clock_delay(1);                                     \
-    CC2500_SPI_DISABLE();                               \
-  } while(0)
-
-#define CC2500_READ_FIFO_BUF(buffer,count)                                 \
-  do {                                                                  \
-    uint8_t i;                                                          \
-    CC2500_SPI_ENABLE();                                                \
-    SPI_WRITE(CC2500_RXFIFO | 0x40);                                    \
-    (void)SPI_RXBUF;                                                    \
-    for(i = 0; i < (count); i++) {                                      \
-      SPI_READ(((uint8_t *)(buffer))[i]);                               \
-    }                                                                   \
-    clock_delay(1);                                                     \
-    CC2500_SPI_DISABLE();                                               \
-  } while(0)
-
-#define CC2500_WRITE_FIFO_BUF(buffer,count)                                \
-  do {                                                                  \
-    uint8_t i;                                                          \
-    CC2500_SPI_ENABLE();                                                \
-    SPI_WRITE_FAST(CC2500_TXFIFO);                                           \
-    for(i = 0; i < (count); i++) {                                      \
-      SPI_WRITE_FAST(((uint8_t *)(buffer))[i]);                              \
-    }                                                                   \
-    SPI_WAITFORTx_ENDED();                                              \
-    CC2500_SPI_DISABLE();                                               \
-  } while(0)
-#endif
 
 #endif /* __CC2500_H__ */
 

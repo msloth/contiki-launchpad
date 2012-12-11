@@ -37,20 +37,19 @@
  *        "AlphaNumeric_Driver.cpp - Arduino library to control a string of
  *         AlphaNumeric Display Drivers.
  *         License: Beerware."
- *         See <https://www.sparkfun.com/products/10103>
+ *         See https://www.sparkfun.com/products/10103
  */
 
-#ifndef __SPARKFUN_ALPHANUMERIC_H__
-#define __SPARKFUN_ALPHANUMERIC_H__
+#ifndef __ALPHANUM_H__
+#define __ALPHANUM_H__
 
-uint16_t alphanum_char_to_shift(char character);
 void alphanum_init(void);
 void alphanum_on(void);
 void alphanum_off(void);
-void alphanum_scroll(char *string, int time);
 void alphanum_clear(void);
-void alphanum_print(char printchar);
-void alphanum_shift16(uint16_t data);
+void alphanum_print_char(char ch);
+void alphanum_print_string(char *str);
+//void alphanum_scroll(char *string, int time); // XXX coming later
 
 /* define ports and pins for the latched serial LED driver on the display */
 #define ALPHANUM_PORT(type)       P1##type      
@@ -178,5 +177,5 @@ void alphanum_shift16(uint16_t data);
 #define QUESTIONMARK  (1 << M_SEG) + (1 << G2_SEG) + (1 << B_SEG) + (1 << A2_SEG)
 #define POUNDSIGN     0xFFFF
 
-#endif /* __SPARKFUN_ALPHANUMERIC_H__ */
+#endif /* __ALPHANUM_H__ */
 

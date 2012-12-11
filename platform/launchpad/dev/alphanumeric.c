@@ -37,13 +37,41 @@
  *        "AlphaNumeric_Driver.cpp - Arduino library to control a string of
  *         AlphaNumeric Display Drivers.
  *         License: Beerware."
- *         See <https://www.sparkfun.com/products/10103>
+ *         See https://www.sparkfun.com/products/10103
  *        
  */
 
 #include "contiki.h"
-#include "sparkfun-alphanumeric.h"
+#include "alphanumeric.h"
 /*---------------------------------------------------------------------------*/
+static void       shift_out(uint16_t data)
+static uint16_t   char_to_shift(char character);
+/*---------------------------------------------------------------------------*/
+/* init ports and pins, clear displays */
+
+/*
+    Applications where the latches are bypassed (LE tied high)
+    require that the OE(Output Enable) input be high during serial
+    data entry. When OE is high, the output sink drivers are disabled
+    (off). The data stored in the latches is not affected by the state
+    of OE. With OE active (low), the outputs are controlled by the
+    state of their respective latches.
+    
+    High data input rate: 30 MHz
+    
+    3.0 to 5.5 V logic supply range
+    
+    Rext = 4.7k now
+    The maximum channel output current can be calculated as:
+        IO(max) = (18483.1/ REXT) + 0.67 , for VDD = 3.0 to 3.6 V ,
+        == 4.6 mA @ 4.7k
+    or
+        IO(max) = (18841.2/ REXT) + 0.68 , for VDD = 4.5 to 5.5 V ,
+        == 4.7 mA @ 4.7k
+    where REXT is the value of the user-selected external resistor,
+    which should not be less than 374 Ω.
+    Adding another resistor of 4.7k makes an IOmax at 3.0--3.6 == 8.54 mA per segment
+*/
 void
 alphanum_init(void)
 {
@@ -56,55 +84,96 @@ alphanum_init(void)
   alphanum_clear();
 }
 /*---------------------------------------------------------------------------*/
-/* turn on display */
+/* turn on all displays */
 void
 alphanum_on(void)
 {
+  /* Output enable is active low */
   ALPHANUM_PORT(OUT) &= ~ALPHANUM_OE_PIN;
 }
 /*---------------------------------------------------------------------------*/
-/* turn off displays */
+/* turn off all displays */
 void 
 alphanum_off(void)
 {
+  /* Output enable is active low */
   ALPHANUM_PORT(OUT) |= ALPHANUM_OE_PIN;
 }
 /*---------------------------------------------------------------------------*/
-void 
-alphanum_scroll(char * string, int time)
-{
-  int i = 0;
-  while(string[i] != '\0') {
-    shift16(createShiftData(string[i]));
-    delay(time);
-    i++;
-  }
-}
+/* scroll a text over the displays */
+// XXX to be implemented as a process to ensure we play nice and not hog CPU while delay
+
+/*void */
+/*alphanum_scroll(char *string, int time)*/
+/*{*/
+/*  int i = 0;*/
+/*  while(string[i] != '\0') {*/
+/*    shift_out(createShiftData(string[i]));*/
+/*    delay(time);*/
+/*    i++;*/
+/*  }*/
+/*}*/
 /*---------------------------------------------------------------------------*/
+/* clear all displays */
 void
 alphanum_clear(void)
 {
   for(int i = 0; i < ALPHANUM_DISPLAYS; i++) {
-    shift16(0);
+    shift_out(0);
   }
 }
 /*---------------------------------------------------------------------------*/
+/* prints out one character on the displays */
 void
-alphanum_print(char printchar)
+alphanum_print_char(char ch)
 {
-  uint16_t shiftData = alphanum_char_to_shift(toPrint);
-  alphanum_shift16(shiftData);
+  shift_out(char_to_shift(ch));
 }
 /*---------------------------------------------------------------------------*/
+/* prints out a string on the displays, no scrolling. */
 void
-alphanum_shift16(uint16_t data)
+alphanum_print_string(char *str)
 {
-  shiftOut(_SDIpin, _CLKpin, MSBFIRST, (data>>8));
-  shiftOut(_SDIpin, _CLKpin, MSBFIRST, (data&0x00FF));
+  uint8_t i = 0;
+  while(str[i] != '\0' && i < ALPHANUM_DISPLAYS) {
+    shift_out(char_to_shift(str[i]));
+    i++;
+  }
 }
 /*---------------------------------------------------------------------------*/
-uint16_t
-alphanum_char_to_shift(char character)
+/* shift out one character (eg a..z, A..Z, 1..0) to the display */
+static void
+shift_out(uint16_t data)
+{
+  uint8_t i, oesave = 0;
+  uint16_t s = 0x8000;    /* MSB first */
+  ALPHANUM_PORT(OUT) &= ~ALPHANUM_CLK_PIN;
+
+  /* OE must be high during transfers if LE tied high; this temporarily disables
+    output. */
+  oesave = ALPHANUM_PORT(OUT) & ALPHANUM_OE_PIN;
+  ALPHANUM_PORT(OUT) |= ALPHANUM_OE_PIN;
+
+  for(i = 0; i < 16; i += 1) {
+    if(data & s) {
+      ALPHANUM_PORT(OUT) |= ALPHANUM_SD_PIN;
+    } else {
+      ALPHANUM_PORT(OUT) &= ~ALPHANUM_SD_PIN;
+    }
+    ALPHANUM_PORT(OUT) |= ALPHANUM_CLK_PIN;
+    s = s >> 1;
+    ALPHANUM_PORT(OUT) &= ~ALPHANUM_CLK_PIN;
+  }
+
+  /* re-set the OE pin to what it was before */
+  if(!oesave) {
+    ALPHANUM_PORT(OUT) &= ~ALPHANUM_OE_PIN;
+  }
+}
+/*---------------------------------------------------------------------------*/
+/* convert an 8-bit character to the 16-bit code needed by the display driver IC */
+static uint16_t
+char_to_shift(char character)
 {
   switch(character) {
     case '0':

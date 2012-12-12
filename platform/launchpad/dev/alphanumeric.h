@@ -66,8 +66,12 @@ void alphanum_shift(uint16_t d);
 /* number of displays */
 #define ALPHANUM_DISPLAYS         2
 
+/* flipped by default */
+#define FLIPDISPLAY               1
+
 /* Bit position relating display pin to driver output pin */
 #ifndef FLIPDISPLAY
+
 #define D2_SEG    7 // 2 5
 #define D1_SEG    10 // 22 18
 #define E_SEG     11 // 21 17

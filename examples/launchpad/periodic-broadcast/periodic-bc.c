@@ -68,6 +68,7 @@ static const uint8_t msg[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
 static uint8_t msglen = MSGMIN;
 /*---------------------------------------------------------------------------*/
 PROCESS(hello_process, "Hello process");
+PROCESS(blink_process, "Blink process");
 AUTOSTART_PROCESSES(&hello_process);
 /*---------------------------------------------------------------------------*/
 /* Broadcast receive callback; this is invoked on each broadcast received on the
@@ -101,6 +102,9 @@ PROCESS_THREAD(hello_process, ev, data)
 
   /* open a connection on a specified channel, much ports in TCP/UDP */
   broadcast_open(&bc, BROADCAST_CH, &bccb);
+  if(rimeaddr_node_addr.u8[0] == 2) {
+    process_start(&blink_process, NULL);
+  }
 
   while(1) {
     etimer_set(&transmission_et, TRANSMISSION_INTERVAL);
@@ -111,11 +115,30 @@ PROCESS_THREAD(hello_process, ev, data)
       msglen = MSGMIN;
     }
 /*    leds_toggle(LEDS_RED);*/
-    packetbuf_copyfrom(msg, 9);   /* XXX for now, just tx one size packets */
+/* XXX for now, just tx one size packets */
+/*    packetbuf_copyfrom(msg, 9);   */
 /*    packetbuf_copyfrom(msg, msglen);*/
-    broadcast_send(&bc);
+/*    broadcast_send(&bc);*/
+    if(rimeaddr_node_addr.u8[0] == 2) {
+      cc2500_send(msg, 10);
+    }
 /*    cc2500_send(msg, msglen);*/
   }
   PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
+static struct etimer et;
+PROCESS_THREAD(blink_process, ev, data)
+{
+  PROCESS_POLLHANDLER();
+  PROCESS_EXITHANDLER();
+  PROCESS_BEGIN();
+  while(1) {
+/*    leds_toggle(LEDS_ALL);*/
+    etimer_set(&et, CLOCK_SECOND/8);
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+  }
+  PROCESS_END();
+}
+/*---------------------------------------------------------------------------*/
+

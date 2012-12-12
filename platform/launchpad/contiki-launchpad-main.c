@@ -148,7 +148,7 @@ main(void)
   watchdog_start();
   autostart_start(autostart_processes);
   leds_off(LEDS_ALL);
-  printf(CONTIKI_VERSION_STRING " started. ");
+  printf(CONTIKI_VERSION_STRING " started.\n");
 
   //XXX sth messes with LEDs; find and fix
   leds_init();  // XXX remove when fixed.

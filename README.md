@@ -29,9 +29,9 @@ the latter will set the wrong clock speed. This Contiki port takes away a lot of
 that pain, giving you an easy way to build stuff while being very open for you
 to get down and dirty with the nitty-gritty details should you like to.
 
-## Usage
+## Getting started
 
-To use this port, I recommend using Instant Contiki, which is an Ubuntu
+I recommend using Instant Contiki, which is an Ubuntu
 virtual machine with mspgcc and other tools installed from start.
 * download and install eg Virtualbox, VMWare Player or similar
   software for virtual machines. They are free for personal use.
@@ -65,24 +65,27 @@ features that I haven't ported yet.
 ### Not working on this port, not ported yet or very limited support
 *  energest - energy estimation (save RAM)
 *  uIPv6 - maybe later, depends on how small packetbuf+Rime gets (save RAM).
-*  SPI, I2C are highly application dependent so they have to be adjusted should
-   you build something with SPI or I2C. Check out the CC2500 radio drivers.
 *  the sensors module was way too complex and hard to add new sensors so it is
-   now removed (see below).
+   now replaced by a generic ADC module
 *  the rimestats module - it needs 72 B RAM = too much. see ''contiki/core/net/rime/rimestats.h''.
-*  packetbuf/Rime. I have removed quite many packetbuf attributes as they take a
+*  packetbuf/Rime. I will remove quite many packetbuf attributes as they take a
    lot of RAM and are allocated even if they are used or not. This means that
    some Rime communication primitives do not work out of the box as they depend
    on eg the attribute for 'reliable' (ACK and retransmissions) so if you need
    those they will have to be re-implemented on top of this leaner Rime.
+   (planned but not done yet...)
 
-### Re-written to simplify/fit and new stuff
+### New stuff, and some re-written to simplify/fit
 *  adc - instead of the sensors API, there is now a generic ADC API with functions
    for synchronous and asynch conversions etc. Pick your flavor.
 *  button - simple yet powerful button API
 *  PWM API for doing simple pulse width modulation, for eg dimming LEDs, with a
-   straight-forward API and flexible regarding pins, period and duty cycle
+   straight-forward API and flexible regarding pins, period and duty cycle. There
+   are two APIs due to limited timers: the 'simple-pwm' uses the same hw-timer as
+   the clock so even the 2452 has one, but the 'pwm' needs a separate hw-timer
+   but gives two pwm-channels
 *  Servo motor API
+*  node-id is burnt into Infomem with the script in tools/launchpad/burnid
 *  lots and lots of shrinking of buffers etc.
 
 ## Coming features
@@ -90,7 +93,8 @@ features that I haven't ported yet.
 Of course, this is subject to change and this file might not be up-to-date.
 
 *  radio drivers for CC2500 (very, very soon! dec-12)
-*  node-id, burning and reading (very, very soon! dec-12)
+*  a driver for HD44780-based LCD displays
+*  a driver for alphanumeric displays (a la Sparkfun)
 *  really simple (eg likely not that reliable or high performance) network stuff
    like leaf nodes to sink data routing, data dissemination through polite gossip
    and similar things.
@@ -101,8 +105,16 @@ Of course, this is subject to change and this file might not be up-to-date.
 *  Contiki serial shell; now serial input works (wait for serial_input_events)
    but you have to parse the input yourself. I'll see how much space this takes,
    might have to skip it.
-*  SPI, I2C; generic APIs for this is tricky as many chips add their own twist on
-   how to do this efficiently so I might just do sth half-hearted for this
+*  simple uni-directed UDP-messages
+*  would be cool with some simple service discovery stuff, or growl notifications!
+   (growl could work nice, it's mostly static strings anyway that easily fit in ROM)
+
+## Most likely won't come
+
+*  uIP; takes too much space
+*  nothing but a bare minimum of routing/neighbor tables; takes way too much space
+*  very generic SPI/I2C APIs as they are too application specific to be worthwhile
+
 
 ## What did I do to make it fit?
 

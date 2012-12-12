@@ -43,87 +43,106 @@
 #include "dev/button.h"
 #include "simple-pwm.h"
 
-/* pins I want to use for PWM (only one is used) at a time with this */
+/*---------------------------------------------------------------------------*/ 
+/* in this application, a signal is a fade in/fade out of eg an LED or vibration
+  motor. They are defined according to the struct below. */
+
+/* define how a fade-signal looks like. */
+struct signal_s {
+  uint8_t pin;            /* what pin to PWM on */
+  uint8_t pwm_min;        /* min fade value, in %, >0 */
+  uint8_t pwm_max;        /* max fade value, in %, <=100 */
+  uint8_t pwm_step;       /* fade step */
+  uint8_t signal_cnt;     /* this many times fade in-fade out */
+  clock_time_t interval;  /* wait this long between setting a new PWM setting */
+};
+
+/* some defines to be used for defining signals */
 #define SIGNAL_LED_PIN       (7)   // P1.7
-
-/* the PWM duty cycle will step back and forth between these limits, with this step */
-#define PWM_MIN           2
-#define PWM_MAX           99
+#define PWM_MIN           0
+#define PWM_MAX           100
 #define PWM_STEP          2
-
 #define SIGNAL_CNT        4
-
-/* wait this long between setting a new PWM setting */
 #define INTERVAL          CLOCK_SECOND/128
+
+/* declare a number of signals that can be sent */
+static const struct signal_s slow2_signal = {SIGNAL_LED_PIN, PWM_MIN, PWM_MAX, 1, 2, CLOCK_SECOND/64};
+static const struct signal_s fast4_signal = {SIGNAL_LED_PIN, PWM_MIN, PWM_MAX, 3, 4, CLOCK_SECOND/128};
 /*---------------------------------------------------------------------------*/
 PROCESS(signal_process, "Singal process");
 PROCESS(timer_process, "Break Timer process");
 AUTOSTART_PROCESSES(&timer_process);
-/*---------------------------------------------------------------------------*/ 
+/*---------------------------------------------------------------------------*/
 /* PWM process; finds and sets the PWM. */
-static struct etimer etr;
-static uint8_t i = 1;     /* counter */
-static uint8_t up = 1;    /* counting up or down? */
 PROCESS_THREAD(signal_process, ev, data)
 {
   PROCESS_POLLHANDLER();
-  PROCESS_EXITHANDLER();
-  PROCESS_BEGIN();
+  PROCESS_EXITHANDLER(simple_pwm_off(););
+  static struct etimer etr;
+  static uint8_t up = 1;    /* counting up or down? */
+  static uint8_t i = 1;     /* counter */
   static uint8_t signal_count;
-/*  printf("[%u] break begins\n", (uint16_t)clock_seconds());*/
-  simple_pwm_confpin(SIGNAL_LED_PIN);
+  PROCESS_BEGIN();
+  struct signal_s *s;
+  if(data != NULL) {
+    s = (struct signal_s *)data;
+  } else {
+    s = &fast4_signal;
+  }
+
+  simple_pwm_confpin(s->pin);
 
   /* each 'signal' is one fade up&down of the LED */
-  for(signal_count = 0; signal_count < SIGNAL_CNT; signal_count += 1) {
+  for(signal_count = 0; signal_count < s->signal_cnt; signal_count += 1) {
     up = 1;
-    i = PWM_MIN;
+    i = s->pwm_min;
 
     while(up != 100) {    /* magic value to break out */
       /* find next PWM setting */
       if(up) {
-        if(i < PWM_MAX - PWM_STEP) {
-          i += PWM_STEP;
+        if(i < s->pwm_max - s->pwm_step) {
+          i += s->pwm_step;
         } else {
           /* start fading down */
-          i = PWM_MAX;
+          i = s->pwm_max;
           up = 0;
         }
       } else {
-        if(i > PWM_MIN + PWM_STEP) {
-          i -= PWM_STEP;
+        if(i > s->pwm_min + s->pwm_step) {
+          i -= s->pwm_step;
         } else {
           /* done fading down, now break out of this fade-loop */
           up = 100;
         }
       }
       simple_pwm_on(i);
-/*      printf("pwm %u\n", i);    */
+
       /* wait a little while */
-      etimer_set(&etr, INTERVAL);
+      etimer_set(&etr, s->interval);
       PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
     }
   }
-/*  printf("[%u] break over\n", (uint16_t)clock_seconds());*/
   simple_pwm_off();
   PROCESS_END();
 }
 /*--------------------------------------------------------------------------.*/
-static struct etimer breaktimer;
-#define BREAK_INTERVAL_MINUTES    10
+#define BREAK_INTERVAL_MINUTES    45
 #define BREAK_LENGTH_MINUTES      5
-#define SECPERMIN                 1    /* seconds per minute (use in debugging) */
+/* ie repeats after BREAK_LENGTH_MINUTES + BREAK_INTERVAL_MINUTES minutes */
+#define SECPERMIN                 60    /* seconds per minute (use in debugging) */
 PROCESS_THREAD(timer_process, ev, data)
 {
   PROCESS_POLLHANDLER();
-  PROCESS_EXITHANDLER();
+  PROCESS_EXITHANDLER(leds_off(LEDS_ALL););
+  static struct etimer breaktimer;
   PROCESS_BEGIN();
-/*  leds_off(LEDS_ALL);*/
+
+  leds_off(LEDS_ALL);
   while(1) {
     static uint8_t i, j;
     /* wait one break interval */
     leds_on(LEDS_RED);
 
-/*    printf("[%u] work!\n", (uint16_t)clock_seconds());*/
     for(i = 0; i < BREAK_INTERVAL_MINUTES; i += 1) {
       /* wait one minute */
       for(j = 0; j < SECPERMIN; j += 1) {
@@ -135,8 +154,7 @@ PROCESS_THREAD(timer_process, ev, data)
     leds_on(LEDS_GREEN);
 
     /* signal it's time to take a break */
-/*    printf("[%u] break!\n", (uint16_t)clock_seconds());*/
-    process_start(&signal_process, NULL);
+    process_start(&signal_process, (void *)&slow2_signal);
 
     /* wait one break interval */
     for(i = 0; i < BREAK_LENGTH_MINUTES; i += 1) {
@@ -146,8 +164,10 @@ PROCESS_THREAD(timer_process, ev, data)
         PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&breaktimer));
       }
     }
+
+    /* signal it's time to get back to work */
+    process_start(&signal_process, (void *)&fast4_signal);
     leds_off(LEDS_GREEN);
-/*    printf("[%u] break over!\n", (uint16_t)clock_seconds());*/
   }
   PROCESS_END();
 }

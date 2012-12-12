@@ -41,10 +41,11 @@
  *        
  */
 
+#include <stdio.h>
 #include "contiki.h"
 #include "alphanumeric.h"
 /*---------------------------------------------------------------------------*/
-static void       shift_out(uint16_t data)
+static void       shift_out(uint16_t data);
 static uint16_t   char_to_shift(char character);
 /*---------------------------------------------------------------------------*/
 /* init ports and pins, clear displays */
@@ -80,8 +81,8 @@ alphanum_init(void)
   ALPHANUM_PORT(SEL) &= ~ALPHANUM_PINS_ALL;
   ALPHANUM_PORT(SEL2) &= ~ALPHANUM_PINS_ALL;
   ALPHANUM_PORT(OUT) &= ~ALPHANUM_PINS_ALL;
-  ALPHANUM_PORT(OUT) |= ALPHANUM_LE_PIN;
   alphanum_clear();
+  alphanum_on();
 }
 /*---------------------------------------------------------------------------*/
 /* turn on all displays */
@@ -100,6 +101,23 @@ alphanum_off(void)
   ALPHANUM_PORT(OUT) |= ALPHANUM_OE_PIN;
 }
 /*---------------------------------------------------------------------------*/
+void
+alphanum_shift(uint16_t d)
+{
+  shift_out(d);
+}
+/*--------------------------------------------------------------------------*/
+
+
+
+
+
+
+
+
+
+
+
 /* scroll a text over the displays */
 // XXX to be implemented as a process to ensure we play nice and not hog CPU while delay
 
@@ -118,7 +136,8 @@ alphanum_off(void)
 void
 alphanum_clear(void)
 {
-  for(int i = 0; i < ALPHANUM_DISPLAYS; i++) {
+  uint8_t i;
+  for(i = 0; i < ALPHANUM_DISPLAYS; i++) {
     shift_out(0);
   }
 }
@@ -131,6 +150,7 @@ alphanum_print_char(char ch)
 }
 /*---------------------------------------------------------------------------*/
 /* prints out a string on the displays, no scrolling. */
+// XXX is now backwards! TODO
 void
 alphanum_print_string(char *str)
 {
@@ -145,14 +165,19 @@ alphanum_print_string(char *str)
 static void
 shift_out(uint16_t data)
 {
-  uint8_t i, oesave = 0;
+  uint8_t i;
+/*  uint8_t oesave = 0;*/
   uint16_t s = 0x8000;    /* MSB first */
-  ALPHANUM_PORT(OUT) &= ~ALPHANUM_CLK_PIN;
 
+  ALPHANUM_PORT(OUT) &= ~ALPHANUM_CLK_PIN;
+#if ALPHANUM_LE_PIN != 0
+  ALPHANUM_PORT(OUT) &=~ ALPHANUM_LE_PIN;
+#endif
   /* OE must be high during transfers if LE tied high; this temporarily disables
     output. */
-  oesave = ALPHANUM_PORT(OUT) & ALPHANUM_OE_PIN;
-  ALPHANUM_PORT(OUT) |= ALPHANUM_OE_PIN;
+    //XXX no, wasn't necessary.
+/*  oesave = ALPHANUM_PORT(OUT) & ALPHANUM_OE_PIN;*/
+/*  ALPHANUM_PORT(OUT) |= ALPHANUM_OE_PIN;*/
 
   for(i = 0; i < 16; i += 1) {
     if(data & s) {
@@ -164,11 +189,14 @@ shift_out(uint16_t data)
     s = s >> 1;
     ALPHANUM_PORT(OUT) &= ~ALPHANUM_CLK_PIN;
   }
+#if ALPHANUM_LE_PIN != 0
+  ALPHANUM_PORT(OUT) |= ALPHANUM_LE_PIN;
+#endif
 
   /* re-set the OE pin to what it was before */
-  if(!oesave) {
-    ALPHANUM_PORT(OUT) &= ~ALPHANUM_OE_PIN;
-  }
+/*  if(!oesave) {*/
+/*    ALPHANUM_PORT(OUT) &= ~ALPHANUM_OE_PIN;*/
+/*  }*/
 }
 /*---------------------------------------------------------------------------*/
 /* convert an 8-bit character to the 16-bit code needed by the display driver IC */

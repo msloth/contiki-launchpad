@@ -49,21 +49,24 @@ void alphanum_off(void);
 void alphanum_clear(void);
 void alphanum_print_char(char ch);
 void alphanum_print_string(char *str);
+void alphanum_shift(uint16_t d);
 //void alphanum_scroll(char *string, int time); // XXX coming later
 
 /* define ports and pins for the latched serial LED driver on the display */
-#define ALPHANUM_PORT(type)       P1##type      
+#define ALPHANUM_PORT(type)       P2##type
 #define ALPHANUM_SD_PIN           (1<<3)
 #define ALPHANUM_CLK_PIN          (1<<4)
-#define ALPHANUM_CE_PIN           (1<<5)
-#define ALPHANUM_OE_PIN           (1<<6)
-#define ALPHANUM_PINS_ALL         (ALPHANUM_SD_PIN | ALPHANUM_CLK_PIN | ALPHANUM_CE_PIN | ALPHANUM_OE_PIN)
+#define ALPHANUM_OE_PIN           (1<<2)
+/* the LE pin can be permanently tied high to save a GPIO, but then the shifting
+  out might be visible. Set to zero if you permanently tied it to Vcc. */
+#define ALPHANUM_LE_PIN           (1<<5)
+//#define ALPHANUM_LE_PIN           (0)
+#define ALPHANUM_PINS_ALL         (ALPHANUM_SD_PIN | ALPHANUM_CLK_PIN | ALPHANUM_LE_PIN | ALPHANUM_OE_PIN)
 
 /* number of displays */
 #define ALPHANUM_DISPLAYS         2
 
-
-// Bit position relating display pin to driver output pin
+/* Bit position relating display pin to driver output pin */
 #ifndef FLIPDISPLAY
 #define D2_SEG    7 // 2 5
 #define D1_SEG    10 // 22 18
@@ -102,8 +105,6 @@ void alphanum_print_string(char *str);
 #define N_SEG     1 // 11 11
 
 #endif    /* FLIPDISPLAY */
-
-
 
 #define A_CHAR    (1 << G1_SEG) + (1 << G2_SEG) + (1 << E_SEG) + (1 << F_SEG) + (1 << A1_SEG) + (1 << A2_SEG) + (1 << B_SEG) + (1 << C_SEG)
 #define B_CHAR    (1 << A1_SEG) + (1 << A2_SEG) + (1 << B_SEG) + (1 << C_SEG) + (1 << D2_SEG) + (1 << D1_SEG) + (1 << M_SEG) + (1 << J_SEG) + (1 << G1_SEG) + (1 << G2_SEG)

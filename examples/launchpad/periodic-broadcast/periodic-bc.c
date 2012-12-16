@@ -44,6 +44,29 @@
  *         IPv4 address that are much longer). This makes eg routing tables and
  *         neighbor tables smaller if you want to use/implement such.
  *         
+ *         Radio communication in Rime is implemented with logical channels. The
+ *         channel numbers are embedded in each frame header so that a receiver
+ *         knows how to interpret the packet. Because of this, a connection must
+ *         opened with a unique channel number. For each connection, you also
+ *         to define callbacks, which will be called when eg a packet has been
+ *         received, sent or a maximum number of re-transmissions have been
+ *         exceeded. See each connection type in core/net/rime/
+ *         and look at how the callback struct is defined. Eg broadcast.h:
+ *             struct broadcast_callbacks {
+ *               void (* recv)(struct broadcast_conn *ptr, const rimeaddr_t *sender);
+ *               void (* sent)(struct broadcast_conn *ptr, int status, int num_tx);
+ *             };
+ *         thus you see that you need to define two callbacks, or set to NULL
+ *         (see code below).
+ *         
+ *         When a packet is received, the contents reside in the packet buffer,
+ *         packetbuf. The packetbuf_dataptr() returns a (void *) to the data.
+ *         The length in bytes is given by packetbuf_datalen().
+ *         Connections set 'attributes', such as time stamps, and can be read eg
+ *            uint16_t hops = packetbuf_attr(PACKETBUF_ATTR_HOPS);
+ *         see core/net/packetbuf.h for what attributes are possible and note
+ *         that not all are set by all connections (see eg unicast.h).
+ *         
  * \author
  *         Marcus Lunden <marcus.lunden@gmail.com>
  */
@@ -56,11 +79,16 @@
 #include "dev/cc2500.h"
 
 /* time between transmissions */
-#define TRANSMISSION_INTERVAL     (CLOCK_SECOND/2)
+#define TRANSMISSION_INTERVAL     (CLOCK_SECOND/4)
 
-/* Channel; any number from 129..65535 (0..128 are reserved) */
+/* Channels; any number from 129..65535 (0..128 are reserved) */
 #define BROADCAST_CH              2674
+#define UNICAST_CONTROL_CH        4011
+/* the connections */
+static struct broadcast_conn bc;
+static struct unicast_conn uc;
 
+/* some defines for the packets to send... */
 #define MSGMIN  1
 #define MSGMAX  30
 static const uint8_t msg[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
@@ -68,7 +96,6 @@ static const uint8_t msg[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
 static uint8_t msglen = MSGMIN;
 /*---------------------------------------------------------------------------*/
 PROCESS(hello_process, "Hello process");
-PROCESS(blink_process, "Blink process");
 AUTOSTART_PROCESSES(&hello_process);
 /*---------------------------------------------------------------------------*/
 /* Broadcast receive callback; this is invoked on each broadcast received on the
@@ -77,19 +104,32 @@ Rime-channel associated to this broadcast connection, here BROADCAST_CH */
 static void
 bcr(struct broadcast_conn *c, const rimeaddr_t *f)
 {
-  uint8_t *buf;
+/*  uint8_t *buf, i, *d;*/
   /* this is unsafe as it opens up for a smash the stack attack, but that's
     quite unlikely to happen in this context. Should sanitize input and have
     an upper bound on size, now it will just print happily until first 0. */
+/*  printf("[%u] Received fr %u.%u\n", clock_seconds(), f->u8[0], f->u8[1]);*/
 /*  printf("[%u] Received fr %u.%u:%s\n", clock_seconds(), f->u8[0], f->u8[1], buf);*/
+/*  d = packetbuf_dataptr();*/
+/*  for(i = 0; i < packetbuf_datalen(); i += 1) {*/
+/*    printf("%02x ", *d);*/
+/*    d++;*/
+/*  }*/
+/*  packetbuf_copyfrom("Great! Thx!", 12);*/
+/*  unicast_send(&uc, f);*/
   leds_toggle(LEDS_RED);
 }
 /*---------------------------------------------------------------------------*/
-/* the broadcast connection */
-static struct broadcast_conn bc;
-
-/* the callback struct; first *receive*-callback, then *sent*-callback */
+static void
+ucr(struct unicast_conn *c, const rimeaddr_t *f)
+{
+  leds_toggle(LEDS_RED);
+}
+/*---------------------------------------------------------------------------*/
+/* the callback structs; first *receive*-callback, then *sent*-callback for
+    these connections */
 static struct broadcast_callbacks bccb = {bcr, NULL};
+static struct unicast_callbacks uccb = {ucr, NULL};
 /*---------------------------------------------------------------------------*/
 /* This process holds a broadcast connection and transmits a periodic message */
 
@@ -97,48 +137,36 @@ static struct etimer transmission_et;
 PROCESS_THREAD(hello_process, ev, data)
 {
   PROCESS_POLLHANDLER();
-  PROCESS_EXITHANDLER(broadcast_close(&bc););
+  PROCESS_EXITHANDLER(broadcast_close(&bc); unicast_close(&uc););
   PROCESS_BEGIN();
 
-  /* open a connection on a specified channel, much ports in TCP/UDP */
+  /* open a connection on a specified channel, much like ports in TCP/UDP */
   broadcast_open(&bc, BROADCAST_CH, &bccb);
-  if(rimeaddr_node_addr.u8[0] == 2) {
-    process_start(&blink_process, NULL);
-  }
+  unicast_open(&uc, UNICAST_CONTROL_CH, &uccb);
+
+  cc2500_set_channel(10);
 
   while(1) {
     etimer_set(&transmission_et, TRANSMISSION_INTERVAL);
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&transmission_et));
-    if(msglen < MSGMAX) {
-      msglen++;
-    } else {
-      msglen = MSGMIN;
-    }
-/*    leds_toggle(LEDS_RED);*/
-/* XXX for now, just tx one size packets */
-/*    packetbuf_copyfrom(msg, 9);   */
-/*    packetbuf_copyfrom(msg, msglen);*/
-/*    broadcast_send(&bc);*/
-    if(rimeaddr_node_addr.u8[0] == 2) {
-      cc2500_send(msg, 10);
-    }
-/*    cc2500_send(msg, msglen);*/
-  }
-  PROCESS_END();
-}
-/*---------------------------------------------------------------------------*/
-static struct etimer et;
-PROCESS_THREAD(blink_process, ev, data)
-{
-  PROCESS_POLLHANDLER();
-  PROCESS_EXITHANDLER();
-  PROCESS_BEGIN();
-  while(1) {
-/*    leds_toggle(LEDS_ALL);*/
-    etimer_set(&et, CLOCK_SECOND/8);
-    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-  }
-  PROCESS_END();
-}
-/*---------------------------------------------------------------------------*/
 
+    if(rimeaddr_node_addr.u8[0] != 1) {
+      rimeaddr_t dest;
+
+      packetbuf_copyfrom(msg, 5);
+
+      dest.u8[0] = 1;
+      dest.u8[1] = 0;
+/*      unicast_send(&uc, &dest);*/
+      broadcast_send(&bc);
+/*      leds_toggle(LEDS_RED);*/
+    }
+/*    if(msglen < MSGMAX) {*/
+/*      msglen++;*/
+/*    } else {*/
+/*      msglen = MSGMIN;*/
+/*    }*/
+  }
+  PROCESS_END();
+}
+/*---------------------------------------------------------------------------*/

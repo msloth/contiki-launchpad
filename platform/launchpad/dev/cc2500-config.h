@@ -40,77 +40,79 @@
 
 /* transmission power setting, 0..16 (17 elements) ranging from lowest to highest */
 const uint8_t cc2500_txp[] = {0x50, 0x44, 0xC0, 0x84, 0x81, 0x46, 0x93, 0x55, 0x8D, 0xC6, 0x97, 0x6E, 0x7F, 0xA9, 0xBB, 0xFE, 0xFF};
-#define CC2500_DEFAULT_TXPOWER    0x97
+#define CC2500_DEFAULT_TXPOWER    0xA9
 
+/* the length of the below default settings = 2*the number of regs being set */
+#define CC2500_DEF_CONF_LEN      (2 * 33)
 
-/* the radio is configured with:
-      GFSK modulation
-      X MHz freq
-      variable packet len
-      GDO0 interrupt at sync word received to EOP
-      variable packet length
-      CRC on, CRC autoflush off
-      append two status bytes at end of packet, with RSSI, LQI and CRC ok
-      30 of 32 status byte bits are ok
-      4 byte preamble
-      after tx go to idle
-      after rx stay in rx
-      only manual freq osc calibration
-*/
 const uint8_t cc2500_default_config[] = {
-//  CC2500_IOCFG2
-//  CC2500_IOCFG1
-//  CC2500_IOCFG0,    IOCFG_GDO_CFG_PKT_SYNCW_EOP,    // assert on sync word sent, de-assert on end-of-packet
-//  CC2500_IOCFG1,    IOCFG_GDO_CFG_PKT_SYNCW_EOP,    // assert on sync word sent, de-assert on end-of-packet
-  CC2500_IOCFG2,    IOCFG_GDO_CFG_PKT_SYNCW_EOP,    // assert on sync word sent, de-assert on end-of-packet
-  CC2500_FIFOTHR,   0x01,     // 57tx--8rx
-  CC2500_SYNC1,     0xbe,
-  CC2500_SYNC0,     0xef,
-  CC2500_PKTLEN,    0xff,
-//  CC2500_PKTCTRL1,  crc autoflush off, append status on
-//  CC2500_PKTCTRL0,  crc on, var packet len on
-//  CC2500_ADDR,      not used
-//  CC2500_CHANNR,    set separately
-  CC2500_FSCTRL1,   0x0A,     //smartrf
-//  CC2500_FSCTRL0,   not used
-  CC2500_FREQ2,     0x5D,     //smartrf
-  CC2500_FREQ1,     0x93,     //smartrf
-  CC2500_FREQ0,     0xB1,     //smartrf
-  CC2500_MDMCFG4,   0x2D,     //smartrf
-  CC2500_MDMCFG3,   0x3B,     //smartrf
-  CC2500_MDMCFG2,   GFSK | SYNC_MODE_30_32,
-//  CC2500_MDMCFG1    FEC off, 4B preamble
-//  CC2500_MDMCFG0
-//  CC2500_DEVIATN,   0x00,     //smartrf seems to give strange value here...
-//  CC2500_MCSM2
-  CC2500_MCSM1,     CCA_MODE_3 | TXOFF_IDLE | RXOFF_RX,
-  CC2500_MCSM0,     FS_AUTOCAL_NEVER | PO_TIMEOUT_1,
-  CC2500_FOCCFG,    0x1D,     //smartrf
-  CC2500_BSCFG,     0x1C,     //smartrf
-  CC2500_AGCCTRL2,  0xC7,     //smartrf
-  CC2500_AGCCTRL1,  0x00,     //smartrf
-  CC2500_AGCCTRL0,  0xB0,     //smartrf
-//  CC2500_WOREVT1
-//  CC2500_WOREVT0
-//  CC2500_WORCTRL
-  CC2500_FREND1,    0xB6,     //smartrf
-//  CC2500_FREND0
-  CC2500_FSCAL3,    0xEA,     //smartrf
-//  CC2500_FSCAL2
-  CC2500_FSCAL1,    0x00,     //smartrf
-  CC2500_FSCAL0,    0x11,     //smartrf
-//  CC2500_RCCTRL1
-//  CC2500_RCCTRL0
-//  CC2500_FSTEST     not used
-//  CC2500_PTEST      not used
-//  CC2500_AGCTEST    not used
-//  CC2500_TEST2      not used
-//  CC2500_TEST1      not used
-//  CC2500_TEST0      not used
-};
+  /* tweaked SmartRF-settings: */
+  // RX filterbandwidth = 540.000000 kHz
+  // Deviation = 0.000000
+  // Return state:  Return to RX state upon leaving either TX or RX
+  // Datarate = 250 kbps
+  // Modulation = (7) MSK
+  // Manchester enable = (0) Manchester disabled
+  // RF Frequency = 2433.000000 MHz
+  // Channel spacing = 199.950000 kHz
+  // Channel number = 0
+  // Optimization = Sensitivity
+  // Sync mode = (3) 30/32 sync word bits detected
+  // Format of RX/TX data = (0) Normal mode, use FIFOs for RX and TX
+  // CRC operation = (1) CRC calculation in TX and CRC check in RX enabled
+  // Forward Error Correction = (0) FEC disabled
+  // Length configuration = (1) Variable length packets, packet length configured by the first received byte after sync word.
+  // Packetlength = 255
+  // Preamble count = (2)  4 bytes
+  // Append status = 1
+  // Address check = (0) No address check
+  // FIFO autoflush = 0
+  // Device address = 0
+  // GDO0 signal selection = ( 6) Asserts when sync word has been sent / received, and de-asserts at the end of the packet
+  // GDO2 signal selection = ( 6) Asserts when sync word has been sent / received, and de-asserts at the end of the packet
 
-/* the length of the above default settings = 2*the number of regs being set */
-#define CC2500_DEF_CONF_LEN      (2 * 23)
+  CC2500_IOCFG2,   IOCFG_GDO_CFG_PKT_SYNCW_EOP,    // assert on sync word sent, de-assert on end-of-packet
+  CC2500_IOCFG0,   IOCFG_GDO_CFG_PKT_SYNCW_EOP,    // assert on sync word sent, de-assert on end-of-packet
+  CC2500_PKTLEN,   0xFF,
+  CC2500_PKTCTRL1, 0x04,  // no address check or autoflush
+  CC2500_PKTCTRL0, 0x05,  // no whitening, calc and check CRC
+
+//  CC2500_ADDR,     0x00,
+//  CC2500_CHANNR,   0x00,
+  CC2500_FSCTRL1,  0x07,
+  CC2500_FSCTRL0,  0x00,
+  CC2500_FREQ2,    0x5D,
+
+  CC2500_FREQ1,    0x93,
+  CC2500_FREQ0,    0xB1,
+  CC2500_MDMCFG4,  0x2D,
+  CC2500_MDMCFG3,  0x3B,
+  CC2500_MDMCFG2,  0x73,  // MSK, 30 of 32 bits
+
+  CC2500_MDMCFG1,  0x22,  // 4 B pre-amble
+  CC2500_MDMCFG0,  0xF8,
+  CC2500_DEVIATN,  0x00,
+  CC2500_MCSM1,    0x3F,  // Rx,Rx, 
+  CC2500_MCSM0,    0x08,  // no autocalibration
+
+  CC2500_FOCCFG,   0x1D,
+  CC2500_BSCFG,    0x1C,
+  CC2500_AGCCTRL2, 0xC7,
+  CC2500_AGCCTRL1, 0x00,
+  CC2500_AGCCTRL0, 0xB2,
+
+  CC2500_FREND1,   0xB6,
+  CC2500_FREND0,   0x10,
+  CC2500_FSCAL3,   0xEA,
+  CC2500_FSCAL2,   0x0A,
+  CC2500_FSCAL1,   0x00,
+
+  CC2500_FSCAL0,   0x11,
+  CC2500_FSTEST,   0x59,
+  CC2500_TEST2,    0x88,
+  CC2500_TEST1,    0x31,
+  CC2500_TEST0,    0x0B,
+};
 
 #if 0
   CC2500_IOCFG2
@@ -161,6 +163,21 @@ const uint8_t cc2500_default_config[] = {
   CC2500_TEST1
   CC2500_TEST0
 #endif
+
+/* the radio is configured with: XXX No, changed...
+      GFSK modulation
+      X MHz freq
+      variable packet len
+      GDO0 interrupt at sync word received to EOP
+      variable packet length
+      CRC on, CRC autoflush off
+      append two status bytes at end of packet, with RSSI, LQI and CRC ok
+      30 of 32 status byte bits are ok
+      4 byte preamble
+      after tx go to idle
+      after rx stay in rx
+      only manual freq osc calibration
+*/
 
 
 #endif /* __CC2500_CONFIG_H__ */

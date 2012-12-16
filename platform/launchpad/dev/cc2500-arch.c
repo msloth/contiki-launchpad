@@ -48,15 +48,16 @@
  */
 /*--------------------------------------------------------------------------*/
 /* The interrupt service routine for when the radio signals received a packet */
-#if 0
-ISR(PORT1, cc2500_port1_interrupt)
+ISR(PORT2, cc2500_port2_interrupt)
 {
   /* check for a valid packet, and if there is one, we wake up the mcu */
-  if(cc2500_interrupt()) {
-    LPM4_EXIT;
+  if(P2IFG & CC2500_GDO_PIN) {
+    P2IFG &= ~CC2500_GDO_PIN;
+    if(cc2500_interrupt()) {
+      LPM4_EXIT;
+    }
   }
 }
-#endif
 /*--------------------------------------------------------------------------*/
 /* init irq and spi enable pins; spi pins are inited in spi_init() */
 void

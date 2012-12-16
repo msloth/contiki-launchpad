@@ -85,20 +85,20 @@
 #define CC2500_STATUS()   ((cc2500_strobe(CC2500_SNOP) & CC2500_STATUSBYTE_STATUSBITS))
 
 /* used in cc2500 read */
-#define CC2500_READ_FIFO_BYTE(data)                        \
-  do {                                                  \
-    CC2500_SPI_ENABLE();                                \
-    SPI_WRITE(CC2500_RXFIFO | 0x40);                    \
-    SPI_READ(data);                                     \
-    CC2500_SPI_DISABLE();                               \
+#define CC2500_READ_FIFO_BYTE(data)                                     \
+  do {                                                                  \
+    CC2500_SPI_ENABLE();                                                \
+    SPI_WRITE(CC2500_RXFIFO | 0x40);                                    \
+    SPI_READ(data);                                                     \
+    CC2500_SPI_DISABLE();                                               \
   } while(0)
 
 /* used in cc2500 read */
-#define CC2500_READ_FIFO_BUF(buffer,count)                                 \
+#define CC2500_READ_FIFO_BUF(buffer, count)                             \
   do {                                                                  \
     uint8_t i;                                                          \
     CC2500_SPI_ENABLE();                                                \
-    SPI_WRITE(CC2500_RXFIFO | 0x40);                                    \
+    SPI_WRITE(CC2500_RXFIFO | CC2500_BURSTREAD);                        \
     for(i = 0; i < (count); i++) {                                      \
       SPI_READ(((uint8_t *)(buffer))[i]);                               \
     }                                                                   \
@@ -107,17 +107,25 @@
 
 
 /* used in cc2500 prepare */
-#define CC2500_WRITE_FIFO_BUF(buffer,count)                                \
+#define CC2500_WRITE_FIFO_BUF(buffer,count)                             \
   do {                                                                  \
     uint8_t i;                                                          \
     CC2500_SPI_ENABLE();                                                \
-    SPI_WRITE_FAST(CC2500_TXFIFO);                                           \
+    SPI_WRITE_FAST(CC2500_TXFIFO);                                      \
     for(i = 0; i < (count); i++) {                                      \
-      SPI_WRITE_FAST(((uint8_t *)(buffer))[i]);                              \
+      SPI_WRITE_FAST(((uint8_t *)(buffer))[i]);                         \
     }                                                                   \
     SPI_WAIT_WHILE_BUSY();                                              \
     CC2500_SPI_DISABLE();                                               \
   } while(0)
+
+/* flush the Rx-FIFO */
+#define FLUSH_FIFOS()     do {                                          \
+                            cc2500_strobe(CC2500_SIDLE);                \
+                            cc2500_strobe(CC2500_SFTX);                 \
+                            cc2500_strobe(CC2500_SFRX);                 \
+                            cc2500_strobe(CC2500_SRX);                  \
+                          } while(0);
 
 /*---------------------------------------------------------------------------*/
 /* function prototypes for the radio driver */
@@ -218,7 +226,7 @@ static void
 on(void)
 {
   cc2500_strobe(CC2500_SRX);
-  BUSYWAIT_UNTIL(CC2500_STATUS() & CC2500_STATE_RX, RTIMER_SECOND / 100);
+  BUSYWAIT_UNTIL(CC2500_STATUS() == CC2500_STATE_RX, RTIMER_SECOND / 100);
   is_on = 1;
 }
 /*---------------------------------------------------------------------------*/
@@ -227,7 +235,7 @@ static void
 off(void)
 {
   /* Wait for transmission to end before turning radio off. */
-  BUSYWAIT_UNTIL((CC2500_STATUS() & CC2500_STATE_TX) == 0, RTIMER_SECOND / 100);
+  BUSYWAIT_UNTIL((CC2500_STATUS() != CC2500_STATE_TX), RTIMER_SECOND / 100);
   /* might not have finished transmitting here if something is wrong, so we
    * command it into IDLE anyway. */
   cc2500_strobe(CC2500_SIDLE);
@@ -248,21 +256,22 @@ cc2500_reset(void)
   for(i = 0; i < CC2500_DEF_CONF_LEN; i += 2) {
     cc2500_write_single(cc2500_default_config[i], cc2500_default_config[i+1]);
   }
-  
+
   /* calibrate the freq oscillator */
   cc2500_strobe(CC2500_SIDLE);
   cc2500_set_channel(RF_CHANNEL);
   cc2500_strobe(CC2500_SIDLE);
+
+  /* set channel, set txp */
+  CC2500_SET_TXPOWER(CC2500_DEFAULT_TXPOWER);
   cc2500_strobe(CC2500_SCAL);
-  BUSYWAIT_UNTIL((CC2500_STATUS() & CC2500_STATE_CAL) == 0, RTIMER_SECOND / 100);
+  BUSYWAIT_UNTIL(CC2500_STATUS() != CC2500_STATE_CAL, RTIMER_SECOND / 100);
 
   /* start in rx mode */
   cc2500_strobe(CC2500_SRX);
   is_on = 1;
   should_off = 0;
 
-  /* set channel, set txp */
-  CC2500_SET_TXPOWER(cc2500_txp[5]);
 }
 /*---------------------------------------------------------------------------*/
 int
@@ -293,13 +302,13 @@ cc2500_transmit(unsigned short payload_len)
   /* do a CCA */
 /*  if(CC2500_STATUS() != CC2500_STATE_RX) {*/
 /*    cc2500_strobe(CC2500_SRX);*/
-/*    BUSYWAIT_UNTIL(CC2500_STATUS() & CC2500_STATE_RX, RTIMER_SECOND / 100);*/
+/*    BUSYWAIT_UNTIL(CC2500_STATUS() == CC2500_STATE_RX, RTIMER_SECOND / 100);*/
 /*  }*/
 
   /* transmit: strobe Tx, then wait until transmitting, then wait till done */
   cc2500_strobe(CC2500_STX);
-  BUSYWAIT_UNTIL(CC2500_STATUS() & CC2500_STATE_TX, RTIMER_SECOND / 100);
-  BUSYWAIT_UNTIL((CC2500_STATUS() & CC2500_STATE_TX) == 0, RTIMER_SECOND / 100);
+  BUSYWAIT_UNTIL(CC2500_STATUS() == CC2500_STATE_TX, RTIMER_SECOND / 100);
+  BUSYWAIT_UNTIL((CC2500_STATUS() != CC2500_STATE_TX), RTIMER_SECOND / 100);
   return 1;
 }
 /*---------------------------------------------------------------------------*/
@@ -335,7 +344,7 @@ cc2500_off(void)
   }
 
   /* if we are transmitting or currently recieving, don't turn off */
-  if(CC2500_STATUS() & CC2500_STATE_TX || (CC2500_GDO_PORT(IN) & CC2500_GDO_PIN)) {
+  if(CC2500_STATUS() == CC2500_STATE_TX || (CC2500_GDO_PORT(IN) & CC2500_GDO_PIN)) {
     should_off = 1;
     return 0;
   }
@@ -349,7 +358,7 @@ cc2500_on(void)
 {
   /* if we are transmitting or currently receiving, don't call on() */
   if(is_on) {
-/*  if((CC2500_STATUS() & CC2500_STATE_IDLE) != 0) {*/
+/*  if(CC2500_STATUS() != CC2500_STATE_IDLE) {*/
     return 1;
   }
 
@@ -362,10 +371,10 @@ void
 cc2500_set_channel(uint8_t c)
 {
   /* Wait for any ev transmission to end. */
-  BUSYWAIT_UNTIL((CC2500_STATUS() & CC2500_STATE_TX) == 0, RTIMER_SECOND / 100);
+  BUSYWAIT_UNTIL(CC2500_STATUS() != CC2500_STATE_TX, RTIMER_SECOND / 100);
 
   /* need to be in Idle or off, stable. */
-  if((CC2500_STATUS() & CC2500_STATE_IDLE) == 0) {
+  if(CC2500_STATUS() != CC2500_STATE_IDLE) {
     cc2500_strobe(CC2500_SIDLE);
   }
 
@@ -374,7 +383,7 @@ cc2500_set_channel(uint8_t c)
 
   /* calibrate oscillator for this new freq */
   cc2500_strobe(CC2500_SCAL);
-  BUSYWAIT_UNTIL(CC2500_STATUS() & CC2500_STATE_IDLE, RTIMER_SECOND / 100);
+  BUSYWAIT_UNTIL(CC2500_STATUS() == CC2500_STATE_IDLE, RTIMER_SECOND / 100);
 
   /* turn on radio if it was on */
   if(is_on) {
@@ -397,49 +406,62 @@ cc2500_interrupt(void)
   return 1;
 }
 /*---------------------------------------------------------------------------*/
-static struct timer radio_check_timer;
+/*static struct timer radio_check_timer;*/
 PROCESS_THREAD(cc2500_process, ev, data)
 {
   PROCESS_POLLHANDLER();
   PROCESS_EXITHANDLER();
   PROCESS_BEGIN();
   
-  timer_set(&radio_check_timer, CLOCK_SECOND);
+/*  timer_set(&radio_check_timer, CLOCK_SECOND);*/
   while(1) {
-    PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL || timer_expired(&radio_check_timer));
-    if(timer_expired(&radio_check_timer)) {
+    PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
+/*    PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL || timer_expired(&radio_check_timer));*/
+/*    if(timer_expired(&radio_check_timer)) {*/
       /*
        * periodically check the radio for error states and if so reset the radio.
        * This takes ca 8 bytes RAM and 100 bytes ROM so if necessary, remove.
        */
-      uint8_t state = CC2500_STATUS();
-      if(state == CC2500_STATE_RXFIFO_OVERFLOW || state == CC2500_STATE_TXFIFO_UNDERFLOW) {
-        cc2500_reset();
-      }
-      timer_reset(&radio_check_timer);
-    } else {
+/*      uint8_t state = CC2500_STATUS();*/
+/*      if(state == CC2500_STATE_RXFIFO_OVERFLOW || state == CC2500_STATE_TXFIFO_UNDERFLOW) {*/
+/*        cc2500_reset();*/
+/*      }*/
+/*      timer_reset(&radio_check_timer);*/
+/*    } else {*/
 
-      /* We end up here after a radio interrupt */
-      static int len = 0;
+      /* We end up here after a radio GDO port ISR -> interrupt handler -> poll process */
+      static uint8_t len = 0;
       PRINTF("CC2500 polled\n");
+      pending_rxfifo--;
 
-      /* prepare packetbuffer: clear it and set any attributes eg timestamp */
-      packetbuf_clear();
-      //packetbuf_set_attr(PACKETBUF_ATTR_TIMESTAMP, last_packet_timestamp);
+      cc2500_read_burst(CC2500_RXBYTES, &len, 1);
 
-      /* read length of packet (first FIFO byte) then pass to higher layers */
-      len = cc2500_read(packetbuf_dataptr(), PACKETBUF_SIZE);
-      if(len > 0) {
-        packetbuf_set_datalen(len);
-        NETSTACK_RDC.input();
-      } else {
-        /* no received data or bad data that was dropped. Do nothing. */
+      /* overflow in RxFIFO, drop all */
+      if(len & 0x80) {
+        FLUSH_FIFOS();
+        PRINTF("Overflow;F\n");
+
+      /* nothing in buffer */
+      } else if(len > 0) {
+        /* prepare packetbuffer: clear it and set any attributes eg timestamp */
+        packetbuf_clear();
+        //packetbuf_set_attr(PACKETBUF_ATTR_TIMESTAMP, last_packet_timestamp);
+
+        /* read length of packet (first FIFO byte) then pass to higher layers */
+        len = cc2500_read(packetbuf_dataptr(), PACKETBUF_SIZE);
+        if(len > 0) {
+          packetbuf_set_datalen(len);
+          NETSTACK_RDC.input();
+          /* re-poll the radio process so it can check for any packet received while
+          we were handling this one (it will check the rxfifo for data). */
+/*          cc2500_interrupt();*/
+        } else {
+          /* no received data or bad data that was dropped. Do nothing. */
+        }
       }
 
-      /* re-poll the radio process so it can check for any packet received while
-      we were handling this one (it will check the rxfifo for data). */
-      cc2500_interrupt();
-    }
+    //XXX
+/*    }*/
   }
   PROCESS_END();
 }
@@ -456,25 +478,35 @@ cc2500_read(void *buf, unsigned short bufsize)
     /* we don't have anything in the FIFO (ie no interrupt has fired) */
     return 0;
   }
-  
-  pending_rxfifo--;
 
-  /* first byte in FIFO is length of the packet + appended footer */
+/*  cc2500_read_burst(CC2500_RXBYTES, &len, 1);*/
+#if 0
+  if(len & 0x80) {
+    /* overflow in RxFIFO, drop all */
+    FLUSH_FIFOS();
+    PRINTF("Overflow;F\n");
+    return 0;
+  } else if(len == 0) {
+    /* nothing in buffer */
+    return 0;
+  }
+#endif /* if 0; commented out code */
+
+  /* first byte in FIFO is length of the packet with no appended footer */
   cc2500_read_burst(CC2500_RXFIFO, &len, 1);
-/*  len += FOOTER_LEN;*/
   PRINTF("%u B\n", len);
 
   /* Check size; too small (ie no real "data") -> drop it */
 /*  if(len <= FOOTER_LEN) {*/
   if(len == 0) {
-    cc2500_strobe(CC2500_SFRX);
+    FLUSH_FIFOS();
     PRINTF("No data;F\n");
     return 0;
   }
 
   /* corrupt size -> drop it */
   if(len > CC2500_MAX_PACKET_LEN) {
-    cc2500_strobe(CC2500_SFRX);
+    FLUSH_FIFOS();
     PRINTF("Bad len;F\n");
     return 0;
   }
@@ -482,7 +514,7 @@ cc2500_read(void *buf, unsigned short bufsize)
   /* Check size; too big for buffer -> drop it */
   if(len > bufsize) {
 /*  if(len - FOOTER_LEN > bufsize) {*/
-    cc2500_strobe(CC2500_SFRX);
+    FLUSH_FIFOS();
     PRINTF("Too big(%u);F\n", bufsize);
     return 0;
   }
@@ -491,7 +523,7 @@ cc2500_read(void *buf, unsigned short bufsize)
   CC2500_READ_FIFO_BUF(buf, len);
 /*  CC2500_READ_FIFO_BUF(buf, len - FOOTER_LEN);*/
 
-  /* read automatically */
+  /* read automatically appended data (RSSI, LQI, CRC ok) */
   if(FOOTER_LEN > 0) {
     CC2500_READ_FIFO_BUF(footer, FOOTER_LEN);
   }
@@ -502,19 +534,18 @@ cc2500_read(void *buf, unsigned short bufsize)
     packetbuf_set_attr(PACKETBUF_ATTR_LINK_QUALITY, footer[1] & FOOTER1_LQI);
   } else {
     /* CRC fail -> drop packet */
-    cc2500_strobe(CC2500_SFRX);
+    FLUSH_FIFOS();
     PRINTF("CRC fail;F\n");
     return 0;
   }
 
   /* check for FIFO overflow or if anything else is left in FIFO */
-  if(CC2500_STATUS() & CC2500_STATE_RXFIFO_OVERFLOW) {
-    cc2500_strobe(CC2500_SIDLE);
-    cc2500_strobe(CC2500_SFTX);
+  if(CC2500_STATUS() == CC2500_STATE_RXFIFO_OVERFLOW) {
+    FLUSH_FIFOS();
   } else {
     uint8_t l = cc2500_read_single(CC2500_RXBYTES);
     if(l > 0) {
-      /* XXX another packet in buffer, handle it */
+       //XXX another packet in buffer, handle it 
       pending_rxfifo++;
       process_poll(&cc2500_process);
     }

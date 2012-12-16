@@ -61,15 +61,18 @@
 
 /* SPI interface and helper functionality------- */
 #define CC2500_SPI_PORT(type)       P1##type      
-/* chip select pin */
-#define CC2500_CSN_PORT(type)       P2##type
-#define CC2500_SPI_CSN_PIN          (1<<3)
 /* setting/clearing chip select help */
 #define CC2500_SPI_ENABLE()         (CC2500_CSN_PORT(OUT) &= ~CC2500_SPI_CSN_PIN)
 #define CC2500_SPI_DISABLE()        (CC2500_CSN_PORT(OUT) |=  CC2500_SPI_CSN_PIN)
+
+/* chip select pin */
+#define CC2500_CSN_PORT(type)       P2##type
+#define CC2500_SPI_CSN_PIN          (1<<3)
+
 /* the interrupt pin */
 #define CC2500_GDO_PORT(type)       P2##type
-#define CC2500_GDO_PIN              (1<<2)
+#define CC2500_GDO_PIN              (1<<5)
+
 
 /*
   this is the minimum required for the radio driver, must be implemented or stubbed:

@@ -169,6 +169,7 @@
 #define CCA_MODE_3        (3<<4)    /* below threshold unless receiving */
 #define RXOFF_RX          (3<<2)    /* stay in Rx after received packet */
 #define TXOFF_IDLE        (0<<0)    /* goto IDLE after packet sent */
+#define TXOFF_RX          (3<<0)    /* goto Rx after packet sent */
 #define FS_AUTOCAL_NEVER  (0<<4)    /* only calibrate oscillator manually */
 #define PO_TIMEOUT_1      (1<<2)
 

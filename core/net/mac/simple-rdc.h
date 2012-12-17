@@ -37,8 +37,8 @@
  *         Marcus Lunden <marcus.lunden@gmail.com>
  */
 
-#ifndef CONTIKIMAC_H
-#define CONTIKIMAC_H
+#ifndef __SIMPLE_RDC_H__
+#define __SIMPLE_RDC_H__
 
 #include "sys/rtimer.h"
 #include "net/mac/rdc.h"
@@ -46,4 +46,5 @@
 
 extern const struct rdc_driver simplerdc_driver;
 
-#endif /* CONTIKIMAC_H */
+#endif /* __SIMPLE_RDC_H__ */
+

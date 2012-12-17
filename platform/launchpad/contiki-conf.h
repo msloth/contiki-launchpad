@@ -65,7 +65,8 @@
 
 
 
-/* These can be lowered to reduce RAM size, to a certain point */
+/* These can be lowered to reduce RAM size, to a certain point. Remember that
+  a printf may not exceed this buffer size or unpredictable things will happen! */
 // dev/serial-line.h
 #define SERIAL_LINE_CONF_BUFSIZE            32
 
@@ -82,7 +83,9 @@
 #endif /* NETSTACK_CONF_MAC */
 
 #ifndef NETSTACK_CONF_RDC
-#define NETSTACK_CONF_RDC     nullrdc_driver
+#define NETSTACK_CONF_RDC     sleeper_driver
+//#define NETSTACK_CONF_RDC     simplerdc_driver
+//#define NETSTACK_CONF_RDC     nullrdc_driver
 #endif /* NETSTACK_CONF_RDC */
 
 #ifndef NETSTACK_CONF_RADIO

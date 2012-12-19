@@ -37,12 +37,47 @@
  *         Marcus Lunden <marcus.lunden@gmail.com>
  */
 
-
 /*
-  simple unicast transmitter RAM/ROM usage at start; no serial/printfs
-    text	   data	    bss	    dec	    hex	filename
-    9994	     74	    416	  10484	   28f4	dumb.launchpad
-*/
+ * Copyright (c) 2010, Swedish Institute of Computer Science.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the Institute nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ * This file is part of the Contiki operating system.
+ *
+ */
+
+/**
+ * \file
+ *         Implementation of the ContikiMAC power-saving radio duty cycling protocol
+ * \author
+ *         Adam Dunkels <adam@sics.se>
+ *         Niclas Finne <nfi@sics.se>
+ *         Joakim Eriksson <joakime@sics.se>
+ */
+
 
 #include <stdio.h>
 #include <string.h>
@@ -57,10 +92,10 @@
 #include "sys/pt.h"
 #include "sys/rtimer.h"
 
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #include <stdio.h>
-#define PRINTF(...) PRINTF(__VA_ARGS__)
+#define PRINTF(...) printf(__VA_ARGS__)
 #else
 #define PRINTF(...)
 #endif
@@ -72,6 +107,7 @@
 
 /* deduced configuration, not to be changed */
 #define SIMPLERDC_OFFTIME         (CLOCK_SECOND / SIMPLERDC_CHECKRATE - SIMPLERDC_ONTIME)
+#define BETWEEN_TX_TIME           (RTIMER_SECOND/1000)
 
 /*
 minimum transmissions = ontime / (txtime + waittime)
@@ -80,6 +116,12 @@ minimum transmissions = ontime / (txtime + waittime)
 */
 /*---------------------------------------------------------------------------*/
 
+#define BUSYWAIT_UNTIL(cond, max_time)                                  \
+  do {                                                                  \
+    rtimer_clock_t t0;                                                  \
+    t0 = RTIMER_NOW();                                                  \
+    while(!(cond) && RTIMER_CLOCK_LT(RTIMER_NOW(), t0 + (max_time)));   \
+  } while(0)
 
 
 
@@ -146,13 +188,13 @@ static struct seqno received_seqnos[MAX_SEQNOS];
    next packet of a burst when FRAME_PENDING is set. */
 #define INTER_PACKET_DEADLINE               CLOCK_SECOND / 32
 
-/* ContikiMAC performs periodic channel checks. Each channel check
+/* simplerdc performs periodic channel checks. Each channel check
    consists of two or more CCA checks. CCA_COUNT_MAX is the number of
    CCAs to be done for each periodic channel check. The default is
    two.*/
 #define CCA_COUNT_MAX                      2
 
-/* Before starting a transmission, Contikimac checks the availability
+/* Before starting a transmission, simplerdc checks the availability
    of the channel with CCA_COUNT_MAX_TX consecutive CCAs */
 #define CCA_COUNT_MAX_TX                   6
 
@@ -212,7 +254,7 @@ static struct seqno received_seqnos[MAX_SEQNOS];
 #define MAX_PHASE_STROBE_TIME              RTIMER_ARCH_SECOND / 60
 
 
-/* SHORTEST_PACKET_SIZE is the shortest packet that ContikiMAC
+/* SHORTEST_PACKET_SIZE is the shortest packet that simplerdc
    allows. Packets have to be a certain size to be able to be detected
    by two consecutive CCA checks, and here is where we define this
    shortest size.
@@ -470,6 +512,210 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
 static int
 send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_list *buf_list)
 {
+  uint8_t is_broadcast = 0;
+  uint8_t is_reliable = 0;
+  uint8_t txcnt, dsn;
+  int ret;
+
+  #define TX_COUNT  10    // XXX to be deduced from timings instead
+#define ACK_DETECT_WAIT_TIME    (RTIMER_SECOND/1000)
+
+  PRINTF("SimpleRDC send\n");
+
+  /* sanity checks ---------------------------------------------------------- */
+  /* Exit if RDC and radio were explicitly turned off */
+  /* XXX allow all off but send anyway?  */
+  if (!simplerdc_is_on && !simplerdc_keep_radio_on) {
+    PRINTF("simplerdc: radio is turned off\n");
+    return MAC_TX_ERR_FATAL;
+  }
+  /* bad length */
+  if(packetbuf_totlen() == 0) {
+    PRINTF("simplerdc: send_packet data len 0\n");
+    return MAC_TX_ERR_FATAL;
+  }
+
+  /* prepare for transmission ----------------------------------------------- */
+  packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &rimeaddr_node_addr);
+
+  if(NETSTACK_FRAMER.create() < 0) {
+    /* Failed to allocate space for headers */
+    PRINTF("simplerdc: send failed, too large header\n");
+/*    mac_call_sent_callback(sent, ptr, ret, 1);*/
+    return MAC_TX_ERR_FATAL;
+  }
+
+  /* let radio copy to tx buffer and do what it needs to do */
+  NETSTACK_RADIO.prepare(packetbuf_hdrptr(), packetbuf_totlen());
+
+  /* check to see if broadcast, in which case we won't look for ACKs */
+  if(rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), &rimeaddr_null)) {
+    is_broadcast = 1;
+    PRINTF("simplerdc: broadcast\n");
+  } else {
+    is_broadcast = 0;
+    PRINTF("simplerdc: unicast to %u.%u\n", packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[0], packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[1]);
+  }
+
+  if(NETSTACK_RADIO.receiving_packet() || (!is_broadcast && NETSTACK_RADIO.pending_packet())) {
+  /*
+   * Currently receiving a packet or the radio has packet that needs to be
+   * read before sending not-broadcast, as an ACK would overwrite the buffer
+   */
+    return MAC_TX_COLLISION;
+  }
+
+  /* transmit --------------------------------------------------------------- */
+  /* make sure the medium is clear */
+  if(NETSTACK_RADIO.channel_clear() == 0) {
+    return MAC_TX_COLLISION;
+  }
+  
+  /* transmit the packet repeatedly, and check for ACK if not broadcast */
+  for(txcnt = 0; txcnt < TX_COUNT; txcnt += 1) {
+    watchdog_periodic();
+
+    /* transmit */
+    ret = NETSTACK_RADIO.transmit(packetbuf_totlen());
+    if(ret == RADIO_TX_COLLISION) {
+      return MAC_TX_COLLISION;
+    } else if(ret == RADIO_TX_ERR) {
+      return MAC_TX_ERR;
+    }
+
+    /* either turn off to save power, or wait for ACK */
+    if(is_broadcast) {
+      off();
+    } else {
+      on();
+    }
+    
+    /* wait between transmissions */
+    BUSYWAIT_UNTIL(0, BETWEEN_TX_TIME);
+
+    /* if we are hoping for an ACK, check for that here */
+    if(!is_broadcast) {
+      if(NETSTACK_RADIO.receiving_packet() || NETSTACK_RADIO.pending_packet() ||
+            NETSTACK_RADIO.channel_clear() == 0) {
+        int len;
+        uint8_t ackbuf[ACK_LEN];
+        /* wait until any transmissions should be over */
+        BUSYWAIT_UNTIL(0, ACK_DETECT_WAIT_TIME);
+        
+        /* see if it is an ACK to us */
+        if(NETSTACK_RADIO.pending_packet()) {
+          len = NETSTACK_RADIO.read(ackbuf, ACK_LEN);
+          if(len == ACK_LEN && ackbuf[2] == dsn) {
+            /* ACK received */
+            return MAC_TX_OK;
+          } else {
+            /* Not an ACK or ACK not correct: collision */
+            return MAC_TX_COLLISION;
+          }
+        }
+
+      }
+    } /* /checking for ACK between transmissions */
+  }   /* /repeated transmissions */
+  off();
+
+
+
+  return MAC_TX_OK;
+
+
+#if ENTIRE_NULLRDC_SEND
+  int ret;
+  packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &rimeaddr_node_addr);
+  
+  if(NETSTACK_FRAMER.create() >= 0) {
+    ret = NETSTACK_RADIO.send(packetbuf_hdrptr(), packetbuf_totlen());
+    switch(ret) {
+    case RADIO_TX_OK:
+      ret = MAC_TX_OK;
+      break;
+    case RADIO_TX_COLLISION:
+      ret = MAC_TX_COLLISION;
+      break;
+    case RADIO_TX_NOACK:
+      ret = MAC_TX_NOACK;
+      break;
+    default:
+      ret = MAC_TX_ERR;
+      break;
+    }
+
+  } else {
+    /* Failed to allocate space for headers */
+    PRINTF("simplerdc: send failed, too large header\n");
+    ret = MAC_TX_ERR_FATAL;
+  }
+  mac_call_sent_callback(sent, ptr, ret, 1);
+#endif /* if 0; commented out code */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* called with, from 'send one packet', int ret = send_packet(sent, ptr, NULL);*/
+
+
+
+
+#if 0
+#if WITH_SIMPLERDC_HEADER
+  hdrlen = packetbuf_totlen();
+  if(packetbuf_hdralloc(sizeof(struct hdr)) == 0) {
+    /* Failed to allocate space for simplerdc header */
+    PRINTF("simplerdc: send failed, too large header\n");
+    return MAC_TX_ERR_FATAL;
+  }
+  chdr = packetbuf_hdrptr();
+  chdr->id = simplerdc_ID;
+  chdr->len = hdrlen;
+  
+  /* Create the MAC header for the data packet. */
+  hdrlen = NETSTACK_FRAMER.create();
+  if(hdrlen < 0) {
+    /* Failed to send */
+    PRINTF("simplerdc: send failed, too large header\n");
+    packetbuf_hdr_remove(sizeof(struct hdr));
+    return MAC_TX_ERR_FATAL;
+  }
+  hdrlen += sizeof(struct hdr);
+#else
+  /* Create the MAC header for the data packet. */
+  hdrlen = NETSTACK_FRAMER.create();
+  if(hdrlen < 0) {
+    /* Failed to send */
+    PRINTF("simplerdc: send failed, too large header\n");
+    return MAC_TX_ERR_FATAL;
+  }
+#endif
+#endif
+
+}
+/*---------------------------------------------------------------------------*/
+static int
+OOOOLD__send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_list *buf_list)
+{
   rtimer_clock_t t0;
   rtimer_clock_t encounter_time = 0;
   int strobes;
@@ -483,6 +729,9 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
   int ret;
   uint8_t simplerdc_was_on;
   uint8_t seqno;
+#if WITH_simplerdc_HEADER
+  struct hdr *chdr;
+#endif /* WITH_simplerdc_HEADER */
 
  /* Exit if RDC and radio were explicitly turned off */
    if (!simplerdc_is_on && !simplerdc_keep_radio_on) {
@@ -500,16 +749,54 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
     is_broadcast = 1;
     PRINTF("simplerdc: send broadcast\n");
 
+    if(broadcast_rate_drop()) {
+      return MAC_TX_COLLISION;
+    }
   } else {
+#if UIP_CONF_IPV6
+    PRINTF("simplerdc: send unicast to %02x%02x:%02x%02x:%02x%02x:%02x%02x\n",
+               packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[0],
+               packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[1],
+               packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[2],
+               packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[3],
+               packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[4],
+               packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[5],
+               packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[6],
+               packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[7]);
+#else /* UIP_CONF_IPV6 */
     PRINTF("simplerdc: send unicast to %u.%u\n",
                packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[0],
                packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[1]);
+#endif /* UIP_CONF_IPV6 */
   }
-  is_reliable = packetbuf_attr(PACKETBUF_ATTR_RELIABLE) ||
-    packetbuf_attr(PACKETBUF_ATTR_ERELIABLE);
-
+  
+  
+  is_reliable = packetbuf_attr(PACKETBUF_ATTR_RELIABLE) || packetbuf_attr(PACKETBUF_ATTR_ERELIABLE);
   packetbuf_set_attr(PACKETBUF_ATTR_MAC_ACK, 1);
 
+
+
+#if WITH_simplerdc_HEADER
+  hdrlen = packetbuf_totlen();
+  if(packetbuf_hdralloc(sizeof(struct hdr)) == 0) {
+    /* Failed to allocate space for simplerdc header */
+    PRINTF("simplerdc: send failed, too large header\n");
+    return MAC_TX_ERR_FATAL;
+  }
+  chdr = packetbuf_hdrptr();
+  chdr->id = simplerdc_ID;
+  chdr->len = hdrlen;
+  
+  /* Create the MAC header for the data packet. */
+  hdrlen = NETSTACK_FRAMER.create();
+  if(hdrlen < 0) {
+    /* Failed to send */
+    PRINTF("simplerdc: send failed, too large header\n");
+    packetbuf_hdr_remove(sizeof(struct hdr));
+    return MAC_TX_ERR_FATAL;
+  }
+  hdrlen += sizeof(struct hdr);
+#else
   /* Create the MAC header for the data packet. */
   hdrlen = NETSTACK_FRAMER.create();
   if(hdrlen < 0) {
@@ -517,6 +804,12 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
     PRINTF("simplerdc: send failed, too large header\n");
     return MAC_TX_ERR_FATAL;
   }
+#endif
+
+
+
+
+
 
   /* Make sure that the packet is longer or equal to the shortest
      packet length. */
@@ -532,16 +825,21 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
   }
 
 
-  packetbuf_compact();
 
+
+  packetbuf_compact();
   NETSTACK_RADIO.prepare(packetbuf_hdrptr(), transmit_len);
+
+
+
 
   /* Remove the MAC-layer header since it will be recreated next time around. */
   packetbuf_hdr_remove(hdrlen);
 
-  if(!is_broadcast && !is_receiver_awake) {
-  }
-  
+
+
+
+
 
 
   /* By setting we_are_sending to one, we ensure that the rtimer
@@ -555,8 +853,7 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
      instread. */
   if(NETSTACK_RADIO.receiving_packet() || NETSTACK_RADIO.pending_packet()) {
     we_are_sending = 0;
-    PRINTF("simplerdc: collision receiving %d, pending %d\n",
-           NETSTACK_RADIO.receiving_packet(), NETSTACK_RADIO.pending_packet());
+    PRINTF("simplerdc: collision receiving %d, pending %d\n", NETSTACK_RADIO.receiving_packet(), NETSTACK_RADIO.pending_packet());
     return MAC_TX_COLLISION;
   }
   
@@ -564,12 +861,9 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
      the radio was doing a channel check. */
   off();
 
-
-  strobes = 0;
-
   /* Send a train of strobes until the receiver answers with an ACK. */
+  strobes = 0;
   collisions = 0;
-
   got_strobe_ack = 0;
 
   /* Set simplerdc_is_on to one to allow the on() and off() functions
@@ -578,9 +872,10 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
   simplerdc_was_on = simplerdc_is_on;
   simplerdc_is_on = 1;
 
+#if !RDC_CONF_HARDWARE_CSMA
   /* Check if there are any transmissions by others. */
   if(is_receiver_awake == 0) {
-	int i;
+	  int i;
     for(i = 0; i < CCA_COUNT_MAX_TX; ++i) {
       t0 = RTIMER_NOW();
       on();
@@ -605,6 +900,7 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
     simplerdc_is_on = simplerdc_was_on;
     return MAC_TX_COLLISION;
   }
+#endif /* RDC_CONF_HARDWARE_CSMA */
 
 #if !RDC_CONF_HARDWARE_ACK
   if(!is_broadcast) {
@@ -701,7 +997,6 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
     ret = MAC_TX_OK;
   }
 
-
   return ret;
 }
 /*---------------------------------------------------------------------------*/
@@ -709,6 +1004,7 @@ static void
 qsend_packet(mac_callback_t sent, void *ptr)
 {
   int ret = send_packet(sent, ptr, NULL);
+  PRINTF("SimpleRDC qsend\n");
   if(ret != MAC_TX_DEFERRED) {
     mac_call_sent_callback(sent, ptr, ret, 1);
   }
@@ -717,9 +1013,11 @@ qsend_packet(mac_callback_t sent, void *ptr)
 static void
 qsend_list(mac_callback_t sent, void *ptr, struct rdc_buf_list *buf_list)
 {
+#if 1
   struct rdc_buf_list *curr = buf_list;
   struct rdc_buf_list *next;
   int ret;
+  PRINTF("SimpleRDC qsend_list\n");
   if(curr == NULL) {
     return;
   }
@@ -760,6 +1058,7 @@ qsend_list(mac_callback_t sent, void *ptr, struct rdc_buf_list *buf_list)
     }
   } while(next != NULL);
   is_receiver_awake = 0;
+#endif /* if 0; commented out code */
 }
 /*---------------------------------------------------------------------------*/
 /* Timer callback triggered when receiving a burst, after having waited for a next
@@ -811,7 +1110,7 @@ input_packet(void)
              rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_SENDER),
                           &received_seqnos[i].sender)) {
             /* Drop the packet. */
-            /*        PRINTF("Drop duplicate ContikiMAC layer packet\n");*/
+            /*        PRINTF("Drop duplicate simplerdc layer packet\n");*/
             return;
           }
         }
@@ -888,6 +1187,7 @@ PROCESS_THREAD(simplerdc_process, ev, data)
 static void
 init(void)
 {
+  PRINTF("SimpleRDC starting\n");
   radio_is_on = 0;
   process_start(&simplerdc_process, NULL);
 /*  PT_INIT(&pt);*/
@@ -935,6 +1235,37 @@ const struct rdc_driver simplerdc_driver = {
   turn_on,
   turn_off,
   duty_cycle,
+
+#if FOR_REFERENCE_ONLY
+/**
+ * The structure of a RDC (radio duty cycling) driver in Contiki.
+ */
+struct rdc_driver {
+  char *name;
+
+  /** Initialize the RDC driver */
+  void (* init)(void);
+
+  /** Send a packet from the Rime buffer  */
+  void (* send)(mac_callback_t sent_callback, void *ptr);
+
+  /** Send a packet list */
+  void (* send_list)(mac_callback_t sent_callback, void *ptr, struct rdc_buf_list *list);
+
+  /** Callback for getting notified of incoming packet. */
+  void (* input)(void);
+
+  /** Turn the MAC layer on. */
+  int (* on)(void);
+
+  /** Turn the MAC layer off. */
+  int (* off)(int keep_radio_on);
+
+  /** Returns the channel check interval, expressed in clock_time_t ticks. */
+  unsigned short (* channel_check_interval)(void);
+};
+#endif /* if 0; commented out code */
+
 };
 /*---------------------------------------------------------------------------*/
 uint16_t

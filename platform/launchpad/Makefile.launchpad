@@ -9,11 +9,11 @@ MCU=msp430g2553
 
 
 
-CONTIKI_TARGET_SOURCEFILES += spi.c i2c.c                   \
-                              uart0-putchar.c uart0.c       \
-                              button.c adc.c pwm.c          \
-                              alphanumeric.c servo.c        \
-                              cc2500.c cc2500-arch.c
+CONTIKI_TARGET_SOURCEFILES += spi.c i2c.c                                   \
+                              uart0-putchar.c uart0.c                       \
+                              button.c adc.c pwm.c                          \
+                              cc2500.c cc2500-arch.c                        \
+                              alphanumeric.c servo.c hpdl1414.c
 #	sht11.c sht11-sensor.c  slip_uart1.c
 
 ifndef SMALL

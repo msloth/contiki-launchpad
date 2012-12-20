@@ -34,6 +34,27 @@
  *         from Avago. Parallell interface, decoding ASCII and shows on the
  *         beautiful 2.85 mm display:
  *         http://www.decadecounter.com/vta/articleview.php?item=465
+ *         
+ *         Top view:
+ *            1.6   2.3   2.2   2.1   2.0    GND        LP/MSP430G2553 pin
+ *            12    11    10    9     8      7          pin# acc to datasheet
+ *            |     |     |     |     |      |
+ *         +--|-----|-----|-----|-----|------|----+
+ *         |  D6    D3    D2    D1    D0    GND   |     pin function
+ *         |                                      |
+ *         |                                      |
+ *         |    (1)     (2)       (3)     (4)     |     char# acc to this driver
+ *         |                                      |
+ *         |                                      |
+ *         |  D5    D4    WR    A1    A0    Vcc   |     pin function
+ *         +--|-----|-----|-----|-----|------|----+
+ *            |     |     |     |     |      |
+ *            1     2     3     4     5      6          pin# acc to datasheet
+ *            2.5   2.4   1.7   1.5   1.4    +5V        LP/MSP430G2553 pin
+ *         
+ *         HP-versions are chafered in pin1-corner
+ *         Siemens-versions (?) have a small letter on the side of pin1, and a
+ *            big via in the opposite corner, by GND. 
  * \author
  *        Marcus Lunden <marcus.lunden@gmail.com>
  */

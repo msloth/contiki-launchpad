@@ -32,7 +32,8 @@
  * \file
  *         Driver for HPDL-1414 "Four character Smart Alphanumeric Displays" 
  *         from Avago. Parallell interface, decoding ASCII and shows on the
- *         beautiful 2.85 mm display.
+ *         beautiful 2.85 mm display:
+ *         http://www.decadecounter.com/vta/articleview.php?item=465
  * \author
  *        Marcus Lunden <marcus.lunden@gmail.com>
  */
@@ -61,7 +62,7 @@
 
 /* define pin for WR (active low) */
 #define HPDL_WR_PORT(type)              P1##type
-#define HPDL_WR_PIN                     (1 << 6)
+#define HPDL_WR_PIN                     (1 << 7)
 #warning "HPDL uses the same pin as LED2 so if HPDL is used, make sure to not use leds_x() and remove the jumper on the board."
 
 /*
@@ -77,9 +78,9 @@
  * 
  */
 #define HPDL_DIGIT_PORT(type)           P2##type
-#define HPDL_DIGIT_PINS                 (0x7f)
+#define HPDL_DIGIT_PINS                 (0x3f)
 #define HPDL_DIGIT_EP_PORT(type)        P1##type
-#define HPDL_DIGIT_EP_PIN               (1 << 7)
+#define HPDL_DIGIT_EP_PIN               (1 << 6)
 
 /* use scrolling; set to zero to save some space if not used */
 #define HPDL_USE_SCROLL                 0

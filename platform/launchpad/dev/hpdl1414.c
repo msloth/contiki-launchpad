@@ -32,7 +32,8 @@
  * \file
  *         Driver for HPDL-1414 "Four character Smart Alphanumeric Displays" 
  *         from Avago. Parallell interface, decoding ASCII and shows on the
- *         beautiful 2.85 mm display.
+ *         beautiful 2.85 mm display:
+ *         http://www.decadecounter.com/vta/articleview.php?item=465
  * \author
  *        Marcus Lunden <marcus.lunden@gmail.com>
  */
@@ -60,39 +61,49 @@ ascii_to_hpdl(uint8_t k)
 void
 hpdl_write_char(uint8_t pos, uint8_t ch)
 {
+  /*
+   * there is some minimum timings that need to be taken into account; I've
+   * tested this on 8 MHz running fine. If it gets messed up, insert some
+   * delays, eg asm("NOP;");
+   */
   uint8_t tkn;
 
   /* sanity check */
-  if(pos > 4 || pos == 0) {
+  if(pos < 1 || pos > 4) {
     return;
   }
   
   tkn = ascii_to_hpdl(ch);
 
-  /* set address; acc to datasheet should be before clearing WR */
+  /*
+   * set address; acc to datasheet should be before clearing WR.
+   * The address follows this convention: char #1 is the leftmost, closest to
+   * pin 1, then #2, #3 and #4 is on the outer right, like so: [1 2 3 4]
+   * The corresponding from the datasheet is instead: [3 2 1 0]
+   */
   switch(pos) {
   case 1:
-    HPDL_ADDRESS_PORT(OUT) &= ~(HPDL_A0_PIN | HPDL_A1_PIN);
+    HPDL_ADDRESS_PORT(OUT) |= (HPDL_A0_PIN | HPDL_A1_PIN);
     break;
   case 2:
+    HPDL_ADDRESS_PORT(OUT) |= (HPDL_A1_PIN);
+    HPDL_ADDRESS_PORT(OUT) &= ~(HPDL_A0_PIN);
+    break;
+  case 3:
     HPDL_ADDRESS_PORT(OUT) &= ~(HPDL_A1_PIN);
     HPDL_ADDRESS_PORT(OUT) |= (HPDL_A0_PIN);
     break;
-  case 3:
-    HPDL_ADDRESS_PORT(OUT) &= ~(HPDL_A0_PIN);
-    HPDL_ADDRESS_PORT(OUT) |= (HPDL_A1_PIN);
-    break;
   case 4:
-    HPDL_ADDRESS_PORT(OUT) |= (HPDL_A0_PIN | HPDL_A1_PIN);
+    HPDL_ADDRESS_PORT(OUT) &= ~(HPDL_A0_PIN | HPDL_A1_PIN);
     break;
   }
-  
+
   /* set writing conditions */
   HPDL_WR_PORT(OUT) &= ~(HPDL_WR_PIN);
 
   /* set digits */
   HPDL_DIGIT_PORT(OUT) = tkn;
-  if(tkn & (1<<7)) {
+  if(tkn & (1<<6)) {
     HPDL_DIGIT_EP_PORT(OUT) |= HPDL_DIGIT_EP_PIN;
   } else {
     HPDL_DIGIT_EP_PORT(OUT) &= ~HPDL_DIGIT_EP_PIN;
@@ -102,7 +113,8 @@ hpdl_write_char(uint8_t pos, uint8_t ch)
   HPDL_WR_PORT(OUT) |= (HPDL_WR_PIN);
 }
 /*--------------------------------------------------------------------------*/
-/* write a string to the display; handles non-characters in string too */
+/* write a string to the display; handles non-characters, shorter and longer
+  than four character strings. */
 void
 hpdl_write_string(char *s)
 {
@@ -212,5 +224,7 @@ hpdl_init(void)
   HPDL_DIGIT_EP_PORT(DIR) |= HPDL_DIGIT_EP_PIN;
   HPDL_DIGIT_EP_PORT(OUT) &= ~HPDL_DIGIT_EP_PIN;
 
+  /* start empty */
+  hpdl_clear();
 }
 /*--------------------------------------------------------------------------*/

@@ -15,7 +15,7 @@ endif
 PROJECT = testbutton
 
 # if you have more than one source file to include, list them here
-PROJECT_SOURCEFILES += button.c
+#PROJECT_SOURCEFILES += button.c
 
 # if files are in several folders, list them here
 #PROJECT_FOLDERS     += ./example ./example/deep/deeper

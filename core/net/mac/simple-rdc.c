@@ -91,6 +91,8 @@
 #include "dev/leds.h"
 #include "sys/pt.h"
 #include "sys/rtimer.h"
+#include "sys/clock.h"
+
 
 #define DEBUG 1
 #if DEBUG
@@ -100,15 +102,51 @@
 #define PRINTF(...)
 #endif
 
+#if 0
+| = on/tx
+- = on/Rx
+_ = off
+
+
+Normal duty cycling, to traffic
+
+    ____________+--+____________+--+____________+--+____________
+                        tOFF     tON
+
+
+
+Transmitting
+
+    ____________+--+______|_|_|_|_|_|_|_|_|_|___+--+____________
+                                           ^tBTx
+                          |-------tTX-------|
+
+
+tON     SIMPLERDC_ONTIME
+tOFF    deduced from SIMPLERDC_ONTIME and SIMPLERDC_CHECKRATE
+tTX     deduced from SIMPLERDC_CHECKRATE and SIMPLERDC_ONTIME, for sending 
+          little longer than just the sleep-period
+tBTx    AFTER_TX_HOLDOFF, the time it takes for a packet to be received and ACKed.
+#endif /* if 0; commented out code */
+
+
+
 /*---------------------------------------------------------------------------*/
 /* SimpleRDC simple configuration */
 #define SIMPLERDC_CHECKRATE       8                         // in Hz, power of two
-#define SIMPLERDC_ONTIME          (CLOCK_SECOND / 64)
+#define SIMPLERDC_ONTIME          (CLOCK_SECOND / 128)
 
-/* deduced configuration, not to be changed */
+/* deduced configurations and definitions, not to be changed */
 #define SIMPLERDC_OFFTIME         (CLOCK_SECOND / SIMPLERDC_CHECKRATE - SIMPLERDC_ONTIME)
 #define BETWEEN_TX_TIME           (RTIMER_SECOND/1000)
 
+// for how long to transmit (broadcast, *casts stop at ACK)
+#define TX_PERIOD                 ((CLOCK_SECOND / SIMPLERDC_CHECKRATE) + (2 * SIMPLERDC_ONTIME))
+
+// if in tx and waiting for an ACK, and we detect traffic, we wait this long to see if it is indeed an ACK
+#define ACK_DETECT_WAIT_TIME      ((2 * RTIMER_SECOND)/1000)
+
+#define TX_COUNT  10    // XXX to be deduced from timings instead
 /*
 minimum transmissions = ontime / (txtime + waittime)
   where txtime = txbase + txtime(bytes)
@@ -509,16 +547,16 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
 }
 #endif /* if 0; commented out code */
 /*---------------------------------------------------------------------------*/
+/* called with, from 'send one packet', int ret = send_packet(sent, ptr, NULL);*/
 static int
 send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_list *buf_list)
 {
   uint8_t is_broadcast = 0;
   uint8_t is_reliable = 0;
-  uint8_t txcnt, dsn;
+  uint8_t tx_serial;
+  clock_time_t end_of_tx;
   int ret;
 
-  #define TX_COUNT  10    // XXX to be deduced from timings instead
-#define ACK_DETECT_WAIT_TIME    (RTIMER_SECOND/1000)
 
   PRINTF("SimpleRDC send\n");
 
@@ -570,9 +608,10 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
   if(NETSTACK_RADIO.channel_clear() == 0) {
     return MAC_TX_COLLISION;
   }
-  
+
   /* transmit the packet repeatedly, and check for ACK if not broadcast */
-  for(txcnt = 0; txcnt < TX_COUNT; txcnt += 1) {
+  end_of_tx = clock_time() + TX_PERIOD;
+  while(clock_time() <= end_of_tx) {
     watchdog_periodic();
 
     /* transmit */
@@ -599,13 +638,16 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
             NETSTACK_RADIO.channel_clear() == 0) {
         int len;
         uint8_t ackbuf[ACK_LEN];
-        /* wait until any transmissions should be over */
-        BUSYWAIT_UNTIL(0, ACK_DETECT_WAIT_TIME);
+        
+        if(NETSTACK_RADIO.receiving_packet()) {
+          /* wait until any transmissions should be over */
+          BUSYWAIT_UNTIL(0, ACK_DETECT_WAIT_TIME);
+        }
         
         /* see if it is an ACK to us */
         if(NETSTACK_RADIO.pending_packet()) {
           len = NETSTACK_RADIO.read(ackbuf, ACK_LEN);
-          if(len == ACK_LEN && ackbuf[2] == dsn) {
+          if(len == ACK_LEN && ackbuf[2] == tx_serial) {
             /* ACK received */
             return MAC_TX_OK;
           } else {
@@ -617,387 +659,10 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
       }
     } /* /checking for ACK between transmissions */
   }   /* /repeated transmissions */
+  
   off();
-
-
 
   return MAC_TX_OK;
-
-
-#if ENTIRE_NULLRDC_SEND
-  int ret;
-  packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &rimeaddr_node_addr);
-  
-  if(NETSTACK_FRAMER.create() >= 0) {
-    ret = NETSTACK_RADIO.send(packetbuf_hdrptr(), packetbuf_totlen());
-    switch(ret) {
-    case RADIO_TX_OK:
-      ret = MAC_TX_OK;
-      break;
-    case RADIO_TX_COLLISION:
-      ret = MAC_TX_COLLISION;
-      break;
-    case RADIO_TX_NOACK:
-      ret = MAC_TX_NOACK;
-      break;
-    default:
-      ret = MAC_TX_ERR;
-      break;
-    }
-
-  } else {
-    /* Failed to allocate space for headers */
-    PRINTF("simplerdc: send failed, too large header\n");
-    ret = MAC_TX_ERR_FATAL;
-  }
-  mac_call_sent_callback(sent, ptr, ret, 1);
-#endif /* if 0; commented out code */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* called with, from 'send one packet', int ret = send_packet(sent, ptr, NULL);*/
-
-
-
-
-#if 0
-#if WITH_SIMPLERDC_HEADER
-  hdrlen = packetbuf_totlen();
-  if(packetbuf_hdralloc(sizeof(struct hdr)) == 0) {
-    /* Failed to allocate space for simplerdc header */
-    PRINTF("simplerdc: send failed, too large header\n");
-    return MAC_TX_ERR_FATAL;
-  }
-  chdr = packetbuf_hdrptr();
-  chdr->id = simplerdc_ID;
-  chdr->len = hdrlen;
-  
-  /* Create the MAC header for the data packet. */
-  hdrlen = NETSTACK_FRAMER.create();
-  if(hdrlen < 0) {
-    /* Failed to send */
-    PRINTF("simplerdc: send failed, too large header\n");
-    packetbuf_hdr_remove(sizeof(struct hdr));
-    return MAC_TX_ERR_FATAL;
-  }
-  hdrlen += sizeof(struct hdr);
-#else
-  /* Create the MAC header for the data packet. */
-  hdrlen = NETSTACK_FRAMER.create();
-  if(hdrlen < 0) {
-    /* Failed to send */
-    PRINTF("simplerdc: send failed, too large header\n");
-    return MAC_TX_ERR_FATAL;
-  }
-#endif
-#endif
-
-}
-/*---------------------------------------------------------------------------*/
-static int
-OOOOLD__send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_list *buf_list)
-{
-  rtimer_clock_t t0;
-  rtimer_clock_t encounter_time = 0;
-  int strobes;
-  uint8_t got_strobe_ack = 0;
-  int hdrlen, len;
-  uint8_t is_broadcast = 0;
-  uint8_t is_reliable = 0;
-  uint8_t is_known_receiver = 0;
-  uint8_t collisions;
-  int transmit_len;
-  int ret;
-  uint8_t simplerdc_was_on;
-  uint8_t seqno;
-#if WITH_simplerdc_HEADER
-  struct hdr *chdr;
-#endif /* WITH_simplerdc_HEADER */
-
- /* Exit if RDC and radio were explicitly turned off */
-   if (!simplerdc_is_on && !simplerdc_keep_radio_on) {
-    PRINTF("simplerdc: radio is turned off\n");
-    return MAC_TX_ERR_FATAL;
-  }
- 
-  if(packetbuf_totlen() == 0) {
-    PRINTF("simplerdc: send_packet data len 0\n");
-    return MAC_TX_ERR_FATAL;
-  }
-
-  packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &rimeaddr_node_addr);
-  if(rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), &rimeaddr_null)) {
-    is_broadcast = 1;
-    PRINTF("simplerdc: send broadcast\n");
-
-    if(broadcast_rate_drop()) {
-      return MAC_TX_COLLISION;
-    }
-  } else {
-#if UIP_CONF_IPV6
-    PRINTF("simplerdc: send unicast to %02x%02x:%02x%02x:%02x%02x:%02x%02x\n",
-               packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[0],
-               packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[1],
-               packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[2],
-               packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[3],
-               packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[4],
-               packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[5],
-               packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[6],
-               packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[7]);
-#else /* UIP_CONF_IPV6 */
-    PRINTF("simplerdc: send unicast to %u.%u\n",
-               packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[0],
-               packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[1]);
-#endif /* UIP_CONF_IPV6 */
-  }
-  
-  
-  is_reliable = packetbuf_attr(PACKETBUF_ATTR_RELIABLE) || packetbuf_attr(PACKETBUF_ATTR_ERELIABLE);
-  packetbuf_set_attr(PACKETBUF_ATTR_MAC_ACK, 1);
-
-
-
-#if WITH_simplerdc_HEADER
-  hdrlen = packetbuf_totlen();
-  if(packetbuf_hdralloc(sizeof(struct hdr)) == 0) {
-    /* Failed to allocate space for simplerdc header */
-    PRINTF("simplerdc: send failed, too large header\n");
-    return MAC_TX_ERR_FATAL;
-  }
-  chdr = packetbuf_hdrptr();
-  chdr->id = simplerdc_ID;
-  chdr->len = hdrlen;
-  
-  /* Create the MAC header for the data packet. */
-  hdrlen = NETSTACK_FRAMER.create();
-  if(hdrlen < 0) {
-    /* Failed to send */
-    PRINTF("simplerdc: send failed, too large header\n");
-    packetbuf_hdr_remove(sizeof(struct hdr));
-    return MAC_TX_ERR_FATAL;
-  }
-  hdrlen += sizeof(struct hdr);
-#else
-  /* Create the MAC header for the data packet. */
-  hdrlen = NETSTACK_FRAMER.create();
-  if(hdrlen < 0) {
-    /* Failed to send */
-    PRINTF("simplerdc: send failed, too large header\n");
-    return MAC_TX_ERR_FATAL;
-  }
-#endif
-
-
-
-
-
-
-  /* Make sure that the packet is longer or equal to the shortest
-     packet length. */
-  transmit_len = packetbuf_totlen();
-  if(transmit_len < SHORTEST_PACKET_SIZE) {
-    /* Pad with zeroes */
-    uint8_t *ptr;
-    ptr = packetbuf_dataptr();
-    memset(ptr + packetbuf_datalen(), 0, SHORTEST_PACKET_SIZE - packetbuf_totlen());
-
-    PRINTF("simplerdc: shorter than shortest (%d)\n", packetbuf_totlen());
-    transmit_len = SHORTEST_PACKET_SIZE;
-  }
-
-
-
-
-  packetbuf_compact();
-  NETSTACK_RADIO.prepare(packetbuf_hdrptr(), transmit_len);
-
-
-
-
-  /* Remove the MAC-layer header since it will be recreated next time around. */
-  packetbuf_hdr_remove(hdrlen);
-
-
-
-
-
-
-
-  /* By setting we_are_sending to one, we ensure that the rtimer
-     powercycle interrupt do not interfere with us sending the packet. */
-  we_are_sending = 1;
-
-  /* If we have a pending packet in the radio, we should not send now,
-     because we will trash the received packet. Instead, we signal
-     that we have a collision, which lets the packet be received. This
-     packet will be retransmitted later by the MAC protocol
-     instread. */
-  if(NETSTACK_RADIO.receiving_packet() || NETSTACK_RADIO.pending_packet()) {
-    we_are_sending = 0;
-    PRINTF("simplerdc: collision receiving %d, pending %d\n", NETSTACK_RADIO.receiving_packet(), NETSTACK_RADIO.pending_packet());
-    return MAC_TX_COLLISION;
-  }
-  
-  /* Switch off the radio to ensure that we didn't start sending while
-     the radio was doing a channel check. */
-  off();
-
-  /* Send a train of strobes until the receiver answers with an ACK. */
-  strobes = 0;
-  collisions = 0;
-  got_strobe_ack = 0;
-
-  /* Set simplerdc_is_on to one to allow the on() and off() functions
-     to control the radio. We restore the old value of
-     simplerdc_is_on when we are done. */
-  simplerdc_was_on = simplerdc_is_on;
-  simplerdc_is_on = 1;
-
-#if !RDC_CONF_HARDWARE_CSMA
-  /* Check if there are any transmissions by others. */
-  if(is_receiver_awake == 0) {
-	  int i;
-    for(i = 0; i < CCA_COUNT_MAX_TX; ++i) {
-      t0 = RTIMER_NOW();
-      on();
-#if CCA_CHECK_TIME > 0
-      while(RTIMER_CLOCK_LT(RTIMER_NOW(), t0 + CCA_CHECK_TIME)) { }
-#endif
-      if(NETSTACK_RADIO.channel_clear() == 0) {
-        collisions++;
-        off();
-        break;
-      }
-      off();
-      t0 = RTIMER_NOW();
-      while(RTIMER_CLOCK_LT(RTIMER_NOW(), t0 + CCA_SLEEP_TIME)) { }
-    }
-  }
-
-  if(collisions > 0) {
-    we_are_sending = 0;
-    off();
-    PRINTF("simplerdc: collisions before sending\n");
-    simplerdc_is_on = simplerdc_was_on;
-    return MAC_TX_COLLISION;
-  }
-#endif /* RDC_CONF_HARDWARE_CSMA */
-
-#if !RDC_CONF_HARDWARE_ACK
-  if(!is_broadcast) {
-  /* Turn radio on to receive expected unicast ack.
-      Not necessary with hardware ack detection, and may trigger an unnecessary cca or rx cycle */	 
-     on();
-  }
-#endif
-
-  watchdog_periodic();
-  t0 = RTIMER_NOW();
-  seqno = packetbuf_attr(PACKETBUF_ATTR_MAC_SEQNO);
-  for(strobes = 0, collisions = 0;
-      got_strobe_ack == 0 && collisions == 0 &&
-      RTIMER_CLOCK_LT(RTIMER_NOW(), t0 + STROBE_TIME); strobes++) {
-
-    watchdog_periodic();
-
-    if((is_receiver_awake || is_known_receiver) && !RTIMER_CLOCK_LT(RTIMER_NOW(), t0 + MAX_PHASE_STROBE_TIME)) {
-      PRINTF("miss to %d\n", packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[0]);
-      break;
-    }
-
-    len = 0;
-
-    
-    {
-      rtimer_clock_t wt;
-      rtimer_clock_t txtime;
-      int ret;
-
-      txtime = RTIMER_NOW();
-      ret = NETSTACK_RADIO.transmit(transmit_len);
-
-#if RDC_CONF_HARDWARE_ACK
-     /* For radios that block in the transmit routine and detect the ACK in hardware */
-      if(ret == RADIO_TX_OK) {
-        if(!is_broadcast) {
-          got_strobe_ack = 1;
-          encounter_time = txtime;
-          break;
-        }
-      } else if (ret == RADIO_TX_NOACK) {
-      } else if (ret == RADIO_TX_COLLISION) {
-          PRINTF("simplerdc: collisions while sending\n");
-          collisions++;
-      }
-	  wt = RTIMER_NOW();
-      while(RTIMER_CLOCK_LT(RTIMER_NOW(), wt + INTER_PACKET_INTERVAL)) { }
-#else
-     /* Wait for the ACK packet */
-      wt = RTIMER_NOW();
-      while(RTIMER_CLOCK_LT(RTIMER_NOW(), wt + INTER_PACKET_INTERVAL)) { }
-
-      if(!is_broadcast && (NETSTACK_RADIO.receiving_packet() ||
-                           NETSTACK_RADIO.pending_packet() ||
-                           NETSTACK_RADIO.channel_clear() == 0)) {
-        uint8_t ackbuf[ACK_LEN];
-        wt = RTIMER_NOW();
-        while(RTIMER_CLOCK_LT(RTIMER_NOW(), wt + AFTER_ACK_DETECTECT_WAIT_TIME)) { }
-
-        len = NETSTACK_RADIO.read(ackbuf, ACK_LEN);
-        if(len == ACK_LEN && seqno == ackbuf[ACK_LEN-1]) {
-          got_strobe_ack = 1;
-          encounter_time = txtime;
-          break;
-        } else {
-          PRINTF("simplerdc: collisions while sending\n");
-          collisions++;
-        }
-      }
-#endif /* RDC_CONF_HARDWARE_ACK */
-    }
-  }
-
-  off();
-
-  PRINTF("simplerdc: send (strobes=%u, len=%u, %s, %s), done\n", strobes,
-         packetbuf_totlen(),
-         got_strobe_ack ? "ack" : "no ack",
-         collisions ? "collision" : "no collision");
-
-  simplerdc_is_on = simplerdc_was_on;
-  we_are_sending = 0;
-
-  /* Determine the return value that we will return from the
-     function. We must pass this value to the phase module before we
-     return from the function.  */
-  if(collisions > 0) {
-    ret = MAC_TX_COLLISION;
-  } else if(!is_broadcast && !got_strobe_ack) {
-    ret = MAC_TX_NOACK;
-  } else {
-    ret = MAC_TX_OK;
-  }
-
-  return ret;
 }
 /*---------------------------------------------------------------------------*/
 static void
@@ -1029,6 +694,7 @@ qsend_list(mac_callback_t sent, void *ptr, struct rdc_buf_list *buf_list)
     mac_call_sent_callback(sent, ptr, MAC_TX_COLLISION, 1);
     return;
   }
+
   /* The receiver needs to be awoken before we send */
   is_receiver_awake = 0;
   do { /* A loop sending a burst of packets from buf_list */

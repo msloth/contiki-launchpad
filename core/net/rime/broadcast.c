@@ -71,7 +71,9 @@ recv_from_abc(struct abc_conn *bc)
   PRINTF("%d.%d: broadcast: from %d.%d\n",
 	 rimeaddr_node_addr.u8[0],rimeaddr_node_addr.u8[1],
 	 sender.u8[0], sender.u8[1]);
-  c->u->recv(c, &sender);
+  if(c->u->recv != NULL) {
+    c->u->recv(c, &sender);
+  }
 }
 /*---------------------------------------------------------------------------*/
 static void
@@ -84,7 +86,7 @@ sent_by_abc(struct abc_conn *bc, int status, int num_tx)
 	 packetbuf_addr(PACKETBUF_ADDR_SENDER)->u8[0],
          packetbuf_addr(PACKETBUF_ADDR_SENDER)->u8[1],
          status, num_tx);
-  if(c->u->sent) {
+  if(c->u->sent != NULL) {
     c->u->sent(c, status, num_tx);
   }
 }

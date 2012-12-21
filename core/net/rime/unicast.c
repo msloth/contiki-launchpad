@@ -73,7 +73,9 @@ recv_from_broadcast(struct broadcast_conn *broadcast, const rimeaddr_t *from)
 	 packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[0],
 	 packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[1]);
   if(rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), &rimeaddr_node_addr)) {
-    c->u->recv(c, from);
+    if(c->u->recv != NULL) {
+      c->u->recv(c, from);
+    }
   }
 }
 /*---------------------------------------------------------------------------*/
@@ -87,7 +89,7 @@ sent_by_broadcast(struct broadcast_conn *broadcast, int status, int num_tx)
 	 packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[0],
 	 packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[1]);
 
-  if(c->u->sent) {
+  if(c->u->sent != NULL) {
     c->u->sent(c, status, num_tx);
   }
 }

@@ -94,7 +94,9 @@ abc_input(struct channel *channel)
 	 rimeaddr_node_addr.u8[0],rimeaddr_node_addr.u8[1],
 	 channel->channelno);
 
-  c->u->recv(c);
+  if(c->u->recv != NULL) {
+    c->u->recv(c);
+  }
 }
 /*---------------------------------------------------------------------------*/
 void
@@ -105,7 +107,7 @@ abc_sent(struct channel *channel, int status, int num_tx)
 	 rimeaddr_node_addr.u8[0],rimeaddr_node_addr.u8[1],
 	 channel->channelno);
 
-  if(c->u->sent) {
+  if(c->u->sent != NULL) {
     c->u->sent(c, status, num_tx);
   }
 }

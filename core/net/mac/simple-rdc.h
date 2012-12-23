@@ -46,17 +46,5 @@
 
 extern const struct rdc_driver simplerdc_driver;
 
-#if 0
-  simple unicast transmitter RAM/ROM usage at start; no serial/printfs
-    text	   data	    bss	    dec	    hex	filename
-    9994	     74	    416	  10484	   28f4	dumb.launchpad
-
-  with nulled out send and qsend_list
-   text	   data	    bss	    dec	    hex	filename
-   9266	     84	    354	   9704	   25e8	dumb.launchpad
-
-#endif /* if 0; commented out code */
-
-
 #endif /* __SIMPLE_RDC_H__ */
 

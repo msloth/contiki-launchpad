@@ -92,7 +92,7 @@ const uint8_t cc2500_default_config[] = {
   CC2500_MDMCFG1,  0x22,  // 4 B pre-amble
   CC2500_MDMCFG0,  0xF8,
   CC2500_DEVIATN,  0x00,
-  CC2500_MCSM1,    0x3F,  // Rx,Rx, 
+  CC2500_MCSM1,    0x3F,  // Tx->Rx,Rx->Rx
   CC2500_MCSM0,    0x08,  // no autocalibration
 
   CC2500_FOCCFG,   0x1D,

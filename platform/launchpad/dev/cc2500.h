@@ -86,6 +86,15 @@
   pending_packet,
   cc2500_on,
   cc2500_off,
+
+
+
+  RADIO_TX_OK,
+  RADIO_TX_ERR,
+  RADIO_TX_COLLISION,
+  RADIO_TX_NOACK,
+
+
 */
 
 /*

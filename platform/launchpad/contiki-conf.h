@@ -83,18 +83,17 @@
 #endif /* NETSTACK_CONF_MAC */
 
 #ifndef NETSTACK_CONF_RDC
-#define NETSTACK_CONF_RDC     sleeper_driver
-//#define NETSTACK_CONF_RDC     simplerdc_driver
+#define NETSTACK_CONF_RDC     simplerdc_driver
 //#define NETSTACK_CONF_RDC     nullrdc_driver
 #endif /* NETSTACK_CONF_RDC */
-
-#ifndef NETSTACK_CONF_RADIO
-#define NETSTACK_CONF_RADIO   cc2500_driver
-#endif /* NETSTACK_CONF_RADIO */
 
 #ifndef NETSTACK_CONF_FRAMER
 #define NETSTACK_CONF_FRAMER  framer_nullmac
 #endif /* NETSTACK_CONF_FRAMER */
+
+#ifndef NETSTACK_CONF_RADIO
+#define NETSTACK_CONF_RADIO   cc2500_driver
+#endif /* NETSTACK_CONF_RADIO */
 
 /* set packetbuf buffer sizes */
 #define PACKETBUF_CONF_SIZE         64    /* 128 */

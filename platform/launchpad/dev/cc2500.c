@@ -50,6 +50,12 @@
 /* conf defines */
 /*#define WITH_SEND_CCA 1*/
 
+/* let the radio do destination address filtering in hardware, will conserve
+  power when used with SimpleRDC as unicasts will be ACKed immediately, letting
+  the sender go to sleep and we can use shorter wake-up periods on all nodes. */
+#define USE_HW_ADDRESS_FILTER     1
+
+
 /*---------------------------------------------------------------------------*/
 /* debug settings */
 #define DEBUG 0
@@ -75,14 +81,17 @@
     while(!(cond) && RTIMER_CLOCK_LT(RTIMER_NOW(), t0 + (max_time)));   \
   } while(0)
 
+
 /*
  * only OOK needs more than one field in PATABLE, the others are fine w one so
  * this works for all but OOK.
  */
 #define CC2500_SET_TXPOWER(x)       cc2500_write_single(CC2500_PATABLE, x)
 
+
 /* check radio status */
 #define CC2500_STATUS()   ((cc2500_strobe(CC2500_SNOP) & CC2500_STATUSBYTE_STATUSBITS))
+
 
 /* used in cc2500 read */
 #define CC2500_READ_FIFO_BYTE(data)                                     \
@@ -92,6 +101,7 @@
     SPI_READ(data);                                                     \
     CC2500_SPI_DISABLE();                                               \
   } while(0)
+
 
 /* used in cc2500 read */
 #define CC2500_READ_FIFO_BUF(buffer, count)                             \
@@ -119,7 +129,8 @@
     CC2500_SPI_DISABLE();                                               \
   } while(0)
 
-/* flush the Rx-FIFO */
+
+/* flush the Rx-/Tx-FIFOs */
 #define FLUSH_FIFOS()     do {                                          \
                             cc2500_strobe(CC2500_SIDLE);                \
                             cc2500_strobe(CC2500_SFTX);                 \
@@ -234,8 +245,10 @@ on(void)
 static void
 off(void)
 {
-  /* Wait for transmission to end before turning radio off. */
+  /* Wait for transmission to end and not receiving §before turning radio off. */
   BUSYWAIT_UNTIL((CC2500_STATUS() != CC2500_STATE_TX), RTIMER_SECOND / 100);
+  BUSYWAIT_UNTIL((CC2500_GDO_PORT(IN) & CC2500_GDO_PIN) == 0, RTIMER_SECOND / 100);
+
   /* might not have finished transmitting here if something is wrong, so we
    * command it into IDLE anyway. */
   cc2500_strobe(CC2500_SIDLE);
@@ -262,16 +275,21 @@ cc2500_reset(void)
   cc2500_set_channel(RF_CHANNEL);
   cc2500_strobe(CC2500_SIDLE);
 
-  /* set channel, set txp */
+  /* set channel, txp, addr etc */
   CC2500_SET_TXPOWER(CC2500_DEFAULT_TXPOWER);
   cc2500_strobe(CC2500_SCAL);
   BUSYWAIT_UNTIL(CC2500_STATUS() != CC2500_STATE_CAL, RTIMER_SECOND / 100);
+
+#if USE_HW_ADDRESS_FILTER
+  /* write node address and address filter on (ADDR, broadcast 0x00) */
+  cc2500_write_single(CC2500_ADDR, rimeaddr_node_addr.u8[0]);
+  cc2500_write_single(CC2500_PKTCTRL1, 0x06);
+#endif /* USE_HW_ADDRESS_FILTER */
 
   /* start in rx mode */
   cc2500_strobe(CC2500_SRX);
   is_on = 1;
   should_off = 0;
-
 }
 /*---------------------------------------------------------------------------*/
 int
@@ -291,7 +309,6 @@ cc2500_init(void)
 static int
 cc2500_transmit(unsigned short payload_len)
 {
-  uint8_t total_len = 0;
   /* set txp according to the packetbuf attribute */
   if(packetbuf_attr(PACKETBUF_ATTR_RADIO_TXPOWER) > 0) {
     CC2500_SET_TXPOWER(packetbuf_attr(PACKETBUF_ATTR_RADIO_TXPOWER));
@@ -315,16 +332,17 @@ cc2500_transmit(unsigned short payload_len)
 static int
 cc2500_prepare(const void *payload, unsigned short payload_len)
 {
-  uint8_t total_len;
   /* Write packet to TX FIFO after flushing it. First byte is total length
     (hdr+data), not including the lenght byte. */
   cc2500_strobe(CC2500_SIDLE);
   cc2500_strobe(CC2500_SFTX);
-  total_len = payload_len;
-/*  total_len = payload_len + FOOTER_LEN;*/
 
-  cc2500_write_burst(CC2500_TXFIFO, &total_len, 1);
-  cc2500_write_burst(CC2500_TXFIFO, payload, payload_len);
+  cc2500_write_burst(CC2500_TXFIFO, &payload_len, 1);
+#if USE_HW_ADDRESS_FILTER
+  /* write destination address high byte */
+  //cc2500_write_burst(CC2500_TXFIFO, &payload_len, 1);
+#endif /* USE_HW_ADDRESS_FILTER */
+  cc2500_write_burst(CC2500_TXFIFO, (uint8_t*) payload, payload_len);
   return 0;
 }
 /*---------------------------------------------------------------------------*/
@@ -370,8 +388,9 @@ cc2500_on(void)
 void
 cc2500_set_channel(uint8_t c)
 {
-  /* Wait for any ev transmission to end. */
+  /* Wait for any ev transmission to end and any receiving to end. */
   BUSYWAIT_UNTIL(CC2500_STATUS() != CC2500_STATE_TX, RTIMER_SECOND / 100);
+  BUSYWAIT_UNTIL((CC2500_GDO_PORT(IN) & CC2500_GDO_PIN) == 0, RTIMER_SECOND / 100);
 
   /* need to be in Idle or off, stable. */
   if(CC2500_STATUS() != CC2500_STATE_IDLE) {
@@ -441,7 +460,6 @@ PROCESS_THREAD(cc2500_process, ev, data)
         FLUSH_FIFOS();
         PRINTF("Overflow;F\n");
 
-      /* nothing in buffer */
       } else if(len > 0) {
         /* prepare packetbuffer: clear it and set any attributes eg timestamp */
         packetbuf_clear();
@@ -470,7 +488,7 @@ static int
 cc2500_read(void *buf, unsigned short bufsize)
 {
   uint8_t footer[2];
-  uint8_t len;
+  uint8_t len, dest;
 
   PRINTF("CC2500:r\n");
 
@@ -479,8 +497,9 @@ cc2500_read(void *buf, unsigned short bufsize)
     return 0;
   }
 
-/*  cc2500_read_burst(CC2500_RXBYTES, &len, 1);*/
 #if 0
+  /* do an early check for FIFO overflow */
+  cc2500_read_burst(CC2500_RXBYTES, &len, 1);
   if(len & 0x80) {
     /* overflow in RxFIFO, drop all */
     FLUSH_FIFOS();
@@ -496,8 +515,14 @@ cc2500_read(void *buf, unsigned short bufsize)
   cc2500_read_burst(CC2500_RXFIFO, &len, 1);
   PRINTF("%u B\n", len);
 
+#if USE_HW_ADDRESS_FILTER
+  /* get destination address high byte to determine if to be ACKed (later) */
+  cc2500_read_burst(CC2500_RXFIFO, &dest, 1);
+  PRINTF("%u\n", dest);
+#endif /* USE_HW_ADDRESS_FILTER */
+
+
   /* Check size; too small (ie no real "data") -> drop it */
-/*  if(len <= FOOTER_LEN) {*/
   if(len == 0) {
     FLUSH_FIFOS();
     PRINTF("No data;F\n");
@@ -521,7 +546,6 @@ cc2500_read(void *buf, unsigned short bufsize)
 
   /* read the packet data from RxFIFO, put in packetbuf */
   CC2500_READ_FIFO_BUF(buf, len);
-/*  CC2500_READ_FIFO_BUF(buf, len - FOOTER_LEN);*/
 
   /* read automatically appended data (RSSI, LQI, CRC ok) */
   if(FOOTER_LEN > 0) {
@@ -551,6 +575,28 @@ cc2500_read(void *buf, unsigned short bufsize)
     }
   }
 
+
+#if USE_HW_ADDRESS_FILTER
+  /* check if unicast, if so we ACK it (not broadcast or to us are already
+    filtered out by radio HW) */
+  /* XXX move earlier to save sender energy? if not interferes with reading rxfifo */
+  if(dest != 0) {
+    uint8_t ab[ACK_LEN];  // ACK-buffer
+    uint8_t len;
+    
+    len = NETSTACK_RADIO.read(ab, ACK_LEN);
+    if(len == ACK_LEN && 
+          ab[0] = packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[0] &&
+          ab[1] = packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[1] &&
+          ab[2] = tx_serial) {
+      /* ACK received */
+      PRINTF("Got ACK!\n");
+  }
+#endif /* USE_HW_ADDRESS_FILTER */
+
+
+
+
 #if 0
   if(CC2500_FIFOP_IS_1) {
     if(!CC2500_FIFO_IS_1) {
@@ -563,7 +609,6 @@ cc2500_read(void *buf, unsigned short bufsize)
 #endif
 
   return len;
-/*  return len - FOOTER_LEN;*/
 }
 /*---------------------------------------------------------------------------*/
 #if 0

@@ -93,11 +93,7 @@
 #include "sys/rtimer.h"
 #include "sys/clock.h"
 
-
-#define HEADER 1
-
-
-
+/*---------------------------------------------------------------------------*/
 #define DEBUG 0
 #if DEBUG
 #include <stdio.h>
@@ -105,8 +101,81 @@
 #else
 #define PRINTF(...)
 #endif
-
+/*---------------------------------------------------------------------------*/
 #if 0
+
+Short explanation of SimpleRDC:
+  All nodes with SimpleRDC have their radio off and do periodic wake-ups, turning
+  on the radio, listening for traffic for a short period of time. To transmit to
+  a destination node, we repeatedly transmit the same packet in full until one
+  of two things happen:
+    1) a full period is covered
+    2) for unicasts, we receive an ACK from the destination, meaning it is
+       received and sender can go back to sleep early
+  The transmissions are timed to the wake-up interval and stay-awake-time so
+  that at least two transmissions are performed during a node wake-up. If it
+  wakes up and hears traffic, yet do not receive a complete packet within a set
+  period, it goes down to sleep again.
+  
+  ACKs are sent either by the radio hardware automatically, in the radio driver
+  or from SimpleRDC. The speed (and hence efficiency) of which this happens is,
+  from faster to slower, following the same order.
+
+  SimpleRDC is designed to be lean and simple and stems originally from nullrdc
+  and ContikiMAC. To reduce size and complexity, lots of functionality was
+  removed, such as support for uIP, neighbor tables to track wake-up phases and
+  more.
+  
+  The radio is assumed to start in Rx mode, and return to Rx after recieving
+  or sending data, hence the radio is explicitly turned off when needed to.
+  Also, as we assume small packet buffers and simple radio hardware, there is
+  no support for streaming data (ie infinite packet length), burst transmissions
+  (staying awake to send many packets immediately after eachother).
+
+  SimpleRDC can be easily configured with few settings, as below. Basically,
+  what is needed is
+    * how often to wake up
+    * how long to stay awake at wake up
+    * do we send an ACK or the radio driver/hw?
+    * how long to wait for an ACK after sending
+  The timings are dependant on things like radio bitrate, packet sizes, transfer
+  time mcu <-> radio etc. The default settings are optimized for a 250kbps, SPI-
+  based radio such as the CC2420 or the CC2500 sending less than 64 byte packets.
+
+
+
+
+  Example power consumption:
+    a simple setup of one node simply idle listening and one node sending a
+    unicast every third second, the radio duty cycle is as follows.
+    Conf
+      #define NETSTACK_CONF_MAC     nullmac_driver
+      #define NETSTACK_CONF_RDC     simplerdc_driver
+      #define NETSTACK_CONF_FRAMER  framer_nullmac
+    Without unicast ACKs (so the sender can finish early)
+        sender      10.7 % (of which ca 1.4 % is in transmission)
+        listener     5.9 %
+    With unicast ACKs in SimpleRDC
+      COOJA failed to produce statistics strangely enough, but on average the overhead
+      for sending should be on average half the sending period, and listener little
+      more, thus approximately this:
+        sender       7.5 %
+        listener     6.5 %
+    With unicast ACKs in radio hardware
+      this should be even less
+
+  Example code size, the application above
+    with contikiMAC, phase optimization etc
+       text	   data	    bss	    dec	    hex	filename
+      18456	    176	   4912	  23544	   5bf8	dumb.sky
+    with simpleRDC
+       text	   data	    bss	    dec	    hex	filename
+      15892	    160	   4074	  20126	   4e9e	dumb.sky
+
+
+
+
+
     | = on/tx
     - = on/Rx
     _ = off
@@ -133,51 +202,121 @@
     tBTx    AFTER_TX_HOLDOFF, the time it takes for a packet to be received and
                 ACKed.
 
+--------------------------
+This is the time it takes to transmit X bytes (total, as seen by radio) at 250 kbaud
+
+    len (B)      t (ms)
+    ======       ======
+      3           0.20      == length of an ACK
+      10          0.42      time to copy to TXFIFO: 30 us
+      20          0.74      time to copy to TXFIFO: 52 us
+      30          1.06      time to copy to TXFIFO: 73 us
+      40          1.38      time to copy to TXFIFO: 95 us
+      50          1.70      time to copy to TXFIFO: 116 us
+      60          2.02      time to copy to TXFIFO: 138 us
+
+Ie, time to receive a packet, copy ACK->fifo, send ACK, would be < 0.30 ms, but
+  do we need to wait for a process to be polled as well? Should be rather fast,
+  not the 7.8 ms of a 128 Hz sys clock.
+
+#endif /* if 0; commented out code */
+/*---------------------------------------------------------------------------*/
+
+/* ------------------------- SimpleRDC configuration ----------------------- */
+
+/* at what rate to wake up and check for traffic, in Hz, use power of 2 (1,2,4...) */
+#define SIMPLERDC_CHECKRATE               8
+
+/*
+ * Enable unicast ACKs from SimpleRDC as opposed to the radio layer, or not at all.
+ * 
+ * if the radio doesn't ACK (either in hardware or at radio layer), then we can
+ * ACK here so that a sender can stop sending early. If ACKs are transmitted at
+ * neither place, the sender will keep on sending repeatedly for an entire
+ * TX_PERIOD time, hence early unicast ACKs are primarily a way to save energy,
+ * not (in the current implementation at least) for adding reliability as
+ * the sender do not have any mechanism to retransmit at this layer.
+ * This ACK will take longer time than at radio layer, so it's less efficient.
+ * 
+ * Thus, set to 1 if radio layer/hardware does not ACK by itself.
+ * Set to 0 if radio handles ACKs, or if you are unsure. It will work, but be
+ * less efficient.
+ * 
+ * Note that for CC2500, you enable radio layer ACKs by setting 
+ *    USE_HW_ADDRESS_FILTER             1
+ * 
+ * On CC2420, radio HW ACKs are supported if packet is framed as an 802.15.4
+ * hence in contiki-conf.h:
+ *    #define NETSTACK_CONF_FRAMER      framer_802154
+ *    #define CC2420_CONF_AUTOACK       1
+ * 
+ */
+#define SIMPLERDC_ACK_UNICAST             0
+#if 0
+old: /* Radio returns TX_OK/TX_NOACK after autoack wait */
+    #ifndef RDC_CONF_HARDWARE_ACK
+    #define RDC_CONF_HARDWARE_ACK        0
+    #endif
+#endif /* if 0; commented out code */
+
+
+/* timings for wake-up time and transmission ACK-waiting */
+#if SIMPLERDC_ACK_UNICAST
+  /* SimpleRDC ACKs are slower than radio ACKs, hence relaxed settings */
+  #define SIMPLERDC_ONTIME                (CLOCK_SECOND / 64)
+  #define BETWEEN_TX_TIME                 ((10ul * RTIMER_SECOND) / 1000) 
+#else /* SIMPLERDC_ACK_UNICAST */
+  #define SIMPLERDC_ONTIME                (CLOCK_SECOND / 128)
+  #define BETWEEN_TX_TIME                 ((2ul * RTIMER_SECOND) / 1000)
+#endif /* SIMPLERDC_ACK_UNICAST */
+
+/*
+ * if in tx and waiting for an ACK, and we detect traffic, we wait this long to 
+ * see if it is indeed an ACK
+ */
+#define ACK_TX_DETECTED_WAIT_TIME         ((2ul * RTIMER_SECOND)/1000)
+
+
+
+
+
+
+
+
+/* sleeping time between wake-ups */
+#define SIMPLERDC_OFFTIME                 (CLOCK_SECOND / SIMPLERDC_CHECKRATE - SIMPLERDC_ONTIME)
+
+/* for how long to transmit (broadcast, *casts stop at ACK) */
+#define TX_PERIOD                         ((CLOCK_SECOND / SIMPLERDC_CHECKRATE) + (2 * SIMPLERDC_ONTIME))
+
+
+
+
+/* Do the radio driver do CSMA and autobackoff */
+#if 0
+#ifdef RDC_CONF_HARDWARE_CSMA
+#if RDC_CONF_HARDWARE_CSMA
+#warning "SimpleRDC assumes no hardware CSMA present, does explicit check. Just FYI."
+#endif
+#endif
 #endif /* if 0; commented out code */
 
 /*---------------------------------------------------------------------------*/
-/* SimpleRDC simple configuration */
-#define SIMPLERDC_CHECKRATE       8                         // in Hz, power of two
-#define SIMPLERDC_ONTIME          (CLOCK_SECOND / 64)       // 15 ms
-
-/* deduced configurations and definitions, not to be changed */
-#define SIMPLERDC_OFFTIME         (CLOCK_SECOND / SIMPLERDC_CHECKRATE - SIMPLERDC_ONTIME)
-#define BETWEEN_TX_TIME           ((7ul * RTIMER_SECOND) / 1000)   // 10 ms as we wait for ACK from the polled process
-/*10*(RTIMER_SECOND/1000)*/
-// for how long to transmit (broadcast, *casts stop at ACK)
-#define TX_PERIOD                 ((CLOCK_SECOND / SIMPLERDC_CHECKRATE) + (2 * SIMPLERDC_ONTIME))
-
-// if in tx and waiting for an ACK, and we detect traffic, we wait this long to see if it is indeed an ACK
-#define ACK_DETECT_WAIT_TIME      ((2 * RTIMER_SECOND)/1000)
-
-
-
-
-
-
-
-
-/* LISTEN_TIME_AFTER_PACKET_DETECTED is the time that we keep checking
-   for activity after a potential packet has been detected by a CCA
-   check. */
-#define LISTEN_TIME_AFTER_PACKET_DETECTED  RTIMER_ARCH_SECOND / 80
-
-
-/*---------------------------------------------------------------------------*/
-#if HEADER
-/* SimpleRDC header */
+/* SimpleRDC header, for ACKs */
 struct hdr {
   rimeaddr_t receiver;
   uint8_t seqnr;
 };
-#endif /* if 0; commented out code */
+#define ACK_LEN       3
 
-// keep a record of the last few received packets, 6 B per sender; for duplicate packet detection
+/* keep a record of the last few received packets, 3 B per sender;
+  for duplicate packet detection. */
 struct seqno {
   rimeaddr_t sender;
   uint8_t seqno;
 };
 
+/* number of sequence numbers to keep track of */
 #ifdef NETSTACK_CONF_MAC_SEQNO_HISTORY
 #define MAX_SEQNOS NETSTACK_CONF_MAC_SEQNO_HISTORY
 #else /* NETSTACK_CONF_MAC_SEQNO_HISTORY */
@@ -185,7 +324,6 @@ struct seqno {
 #endif /* NETSTACK_CONF_MAC_SEQNO_HISTORY */
 static struct seqno received_seqnos[MAX_SEQNOS];
 
-#define ACK_LEN 3
 /*---------------------------------------------------------------------------*/
 static volatile uint8_t simplerdc_is_on = 0;
 static volatile uint8_t simplerdc_keep_radio_on = 0;
@@ -203,39 +341,7 @@ static volatile uint8_t radio_is_on = 0;
 #define MIN(a, b) ((a) < (b)? (a) : (b))
 #endif /* MIN */
 /*---------------------------------------------------------------------------*/
-// XXX to remove later when sorted out where they are used and for what effect
-
-/* Radio does CSMA and autobackoff */
-#ifdef RDC_CONF_HARDWARE_CSMA
-#if RDC_CONF_HARDWARE_CSMA
-#warning "SimpleRDC assumes no hardware CSMA present, does explicit check. Just FYI."
-#endif
-#endif
-
-/* Radio returns TX_OK/TX_NOACK after autoack wait */
-#ifndef RDC_CONF_HARDWARE_ACK
-#define RDC_CONF_HARDWARE_ACK        0
-#endif
-
-
-/* BURST_RECV_TIME is the maximum time a receiver waits for the
-   next packet of a burst when FRAME_PENDING is set. */
-#define INTER_PACKET_DEADLINE               CLOCK_SECOND / 32
-
-/* CCA_SLEEP_TIME is the time between two successive CCA checks. */
-/* Add 1 when rtimer ticks are coarse */
-#if RTIMER_ARCH_SECOND > 8000
-#define CCA_SLEEP_TIME                     RTIMER_ARCH_SECOND / 2000
-#else
-#define CCA_SLEEP_TIME                     (RTIMER_ARCH_SECOND / 2000) + 1
-#endif
-
-/* Are we currently receiving a burst? */
-/*static uint8_t we_are_receiving_burst = 0;*/
-/* Has the receiver been awoken by a burst we're sending? */
-/*static uint8_t is_receiver_awake = 0;*/
-
-/*---------------------------------------------------------------------------*/
+/* turn on SimpleRDC */
 static void
 on(void)
 {
@@ -245,6 +351,7 @@ on(void)
   }
 }
 /*---------------------------------------------------------------------------*/
+/* turn off SimpleRDC */
 static void
 off(void)
 {
@@ -255,18 +362,43 @@ off(void)
   }
 }
 /*---------------------------------------------------------------------------*/
+/* Send a packet with SimpleRDC */
 /* called with, from 'send one packet', int ret = send_packet(sent, ptr, NULL);*/
 static int
 send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_list *buf_list)
 {
+#if 0
+
+Possible return values
+
+  /**< The MAC layer transmission was OK. */
+  MAC_TX_OK,
+
+  /**< The MAC layer transmission could not be performed due to a collision. */
+  MAC_TX_COLLISION,
+
+  /**< The MAC layer did not get an acknowledgement for the packet. */
+  MAC_TX_NOACK,
+
+  /**< The MAC layer deferred the transmission for a later time. */
+  MAC_TX_DEFERRED,
+
+  /**< The MAC layer transmission could not be performed because of an
+     error. The upper layer may try again later. */
+  MAC_TX_ERR,
+
+  /**< The MAC layer transmission could not be performed because of a
+     fatal error. The upper layer does not need to try again, as the
+     error will be fatal then as well. */
+  MAC_TX_ERR_FATAL,
+
+#endif /* if 0; commented out code */
   uint8_t is_broadcast = 0;
   uint8_t is_reliable = 0;
   int hdrlen;
   clock_time_t end_of_tx;
   int ret;
-#if HEADER
   struct hdr *chdr;
-#endif /* if 0; commented out code */
 
   // a serial number that is used for duplicate packet detection (->drop)
   static uint8_t tx_serial = 1;
@@ -290,14 +422,15 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
   packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &rimeaddr_node_addr);
 
   // is this that packet needs to be ACKed? then yes, for unicasts but that is done automatically so don't use this
+  // might be for reliable comms though, but then the primitive itself sets this
 /*  packetbuf_set_attr(PACKETBUF_ATTR_MAC_ACK, 1);*/
 
 //--------------------------------------------------------------- header
   /* simplerdc header, like contikimac header, used to identify packets so they
       can be ACK'ed. Useful for eg unicasts to end a tx-train early and conserve
       some energy */
-#if HEADER
-/* with contikimac header */
+
+  /* with simpleRDC header */
   hdrlen = packetbuf_totlen();
   if(packetbuf_hdralloc(sizeof(struct hdr)) == 0) {
     /* Failed to allocate space for contikimac header */
@@ -319,8 +452,8 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
     return MAC_TX_ERR_FATAL;
   }
   hdrlen += sizeof(struct hdr);
-//--------------------------------------------------------------- /header
-#else
+
+#if 0
 /*old, before header-stuff*/
   if(NETSTACK_FRAMER.create() < 0) {
     /* Failed to allocate space for headers */
@@ -328,6 +461,7 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
     return MAC_TX_ERR_FATAL;
   }
 #endif /* if 0; commented out code */
+
 
   /* let radio copy to TXFIFO and do what it needs to do */
   NETSTACK_RADIO.prepare(packetbuf_hdrptr(), packetbuf_totlen());
@@ -377,8 +511,6 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
     }
     
     /* wait between transmissions */
-/*    tstart = RTIMER_NOW();*/
-/*    while(RTIMER_CLOCK_LT(RTIMER_NOW(), tstart + BETWEEN_TX_TIME)) { }*/
     BUSYWAIT_UNTIL(0, BETWEEN_TX_TIME);
 
     /* if we are hoping for an ACK, check for that here */
@@ -387,7 +519,8 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
             NETSTACK_RADIO.channel_clear() == 0) {
         if(NETSTACK_RADIO.receiving_packet()) {
           /* wait until any transmissions should be over */
-          BUSYWAIT_UNTIL(0, ACK_DETECT_WAIT_TIME);
+/*          BUSYWAIT_UNTIL(0, ACK_TX_DETECTED_WAIT_TIME);*/
+          BUSYWAIT_UNTIL(!NETSTACK_RADIO.receiving_packet(), ACK_TX_DETECTED_WAIT_TIME);
         }
         
         /* see if it is an ACK to us */
@@ -414,6 +547,10 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
   
   off();
 
+  if(is_broadcast) {
+    // XXX should this be TX_OK as well? Does it check for this? Semantics....
+    return MAC_TX_NOACK;
+  }
   return MAC_TX_OK;
 }
 /*---------------------------------------------------------------------------*/
@@ -462,24 +599,21 @@ qsend_list(mac_callback_t sent, void *ptr, struct rdc_buf_list *buf_list)
   } while(next != NULL);
 }
 /*---------------------------------------------------------------------------*/
+/* read from the radio a received packet */
 static void
 input_packet(void)
 {
-
   off();
   PRINTF("Input packet\n");
 
   if(packetbuf_totlen() > 0 && NETSTACK_FRAMER.parse() >= 0) {
 
-#if HEADER
     struct hdr *chdr;
     chdr = packetbuf_dataptr();
     PRINTF("simplerdc: got header %u %u %u\n", chdr->receiver.u8[0], chdr->receiver.u8[1], chdr->seqnr);
 
     packetbuf_hdrreduce(sizeof(struct hdr));
     packetbuf_set_datalen(packetbuf_totlen());    // XXX ???
-#endif /* if 0; commented out code */
-
 
     if(packetbuf_datalen() > 0 && packetbuf_totlen() > 0 &&
        (rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),
@@ -488,9 +622,9 @@ input_packet(void)
                      &rimeaddr_null))) {
       /* This is a packet to us or a broadcast */
 
-      /* Check for duplicate packet by comparing the sequence number
-         of the incoming packet with the last few ones we saw. */
       {
+        /* Check for duplicate packet by comparing the sequence number
+           of the incoming packet with the last few ones we saw. */
         uint8_t i;
 
         for(i = 0; i < MAX_SEQNOS; ++i) {
@@ -500,7 +634,7 @@ input_packet(void)
              chdr->seqnr == received_seqnos[i].seqno) {
 
             /* Drop the packet. */
-            PRINTF("Drop duplicate simplerdc layer packet %u\n", packetbuf_attr(PACKETBUF_ATTR_PACKET_ID));
+            PRINTF("Drop duplicate simplerdc layer packet %u\n", chdr->seqnr);
             return;
           }
         }
@@ -512,14 +646,16 @@ input_packet(void)
         received_seqnos[0].seqno = chdr->seqnr;
         rimeaddr_copy(&received_seqnos[0].sender, packetbuf_addr(PACKETBUF_ADDR_SENDER));
 
+#if SIMPLERDC_ACK_UNICAST
         /* respond to unicasts with ACK so the sender can finish early */
         if(rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), &rimeaddr_node_addr)) {
           uint8_t ab[ACK_LEN];  // ACK-buffer
           ab[0] = rimeaddr_node_addr.u8[0];
           ab[1] = rimeaddr_node_addr.u8[1];
-          ab[2] = packetbuf_attr(PACKETBUF_ATTR_PACKET_ID);
+          ab[2] = chdr->seqnr;
           NETSTACK_RADIO.send(ab, ACK_LEN);
         }
+#endif /* SIMPLERDC_ACK_UNICAST */
       }
 
       PRINTF("simplerdc: data (%u)\n", packetbuf_datalen());
@@ -536,7 +672,8 @@ input_packet(void)
   }
 }
 /*---------------------------------------------------------------------------*/
-// XXX
+/* do all necessary checks after the radio has been on, to see if we can turn
+  it off again */
 int8_t
 after_on_check(void)
 {
@@ -623,56 +760,47 @@ turn_off(int keep_radio_on)
 }
 /*---------------------------------------------------------------------------*/
 static unsigned short
-duty_cycle(void)
+channel_check_interval(void)
 {
   return CLOCK_SECOND / SIMPLERDC_CHECKRATE;
 }
 /*---------------------------------------------------------------------------*/
 const struct rdc_driver simplerdc_driver = {
   "SimpleRDC",
+  /** Initialize the RDC driver */
   init,
+  /** Send a packet from the Rime buffer  */
   qsend_packet,
+  /** Send a packet list */
   qsend_list,
+  /** Callback for getting notified of incoming packet. */
   input_packet,
+  /** Turn the MAC layer on. */
   turn_on,
+  /** Turn the MAC layer off. */
   turn_off,
-  duty_cycle,
+  /** Returns the channel check interval, expressed in clock_time_t ticks. */
+  channel_check_interval,
 
-#if FOR_REFERENCE_ONLY
-/**
- * The structure of a RDC (radio duty cycling) driver in Contiki.
- */
+#if FOR_REFERENCE_ONLY_DONT_SET_TRUE
+this is just here for reference, this will never be true
+/* The structure of a RDC (radio duty cycling) driver in Contiki. */
 struct rdc_driver {
   char *name;
-
-  /** Initialize the RDC driver */
   void (* init)(void);
-
-  /** Send a packet from the Rime buffer  */
   void (* send)(mac_callback_t sent_callback, void *ptr);
-
-  /** Send a packet list */
   void (* send_list)(mac_callback_t sent_callback, void *ptr, struct rdc_buf_list *list);
-
-  /** Callback for getting notified of incoming packet. */
   void (* input)(void);
-
-  /** Turn the MAC layer on. */
   int (* on)(void);
-
-  /** Turn the MAC layer off. */
   int (* off)(int keep_radio_on);
-
-  /** Returns the channel check interval, expressed in clock_time_t ticks. */
   unsigned short (* channel_check_interval)(void);
 };
 #endif /* if 0; commented out code */
-
 };
 /*---------------------------------------------------------------------------*/
-uint16_t
-simplerdc_debug_print(void)
-{
-  return 0;
-}
+/*uint16_t*/
+/*simplerdc_debug_print(void)*/
+/*{*/
+/*  return 0;*/
+/*}*/
 /*---------------------------------------------------------------------------*/

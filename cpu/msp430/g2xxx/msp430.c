@@ -93,6 +93,17 @@ msp430_init_dco(void)
   P2DIR &=~ (XTIN | XTOUT);
   P2SEL |= (XTIN | XTOUT);
 
+
+  /* check for erased DCO calibration data */
+  if (CALBC1_1MHZ == 0xFF) {
+    /* if they are erased, we would end up in a possibly (to the mcu) dangerous
+    or unreliable condition if setting bogus values, and running at the default,
+    low speed is not feasible or ok. So, we stay here in that case. */
+    while(1);
+  }
+
+  /* set clock sources, dividers etc. */
+  DCOCTL = 0;
 #if F_CPU == 1000000ul
   DCOCTL = CALDCO_8MHZ;
   BCSCTL1 = CALBC1_8MHZ;
@@ -107,7 +118,7 @@ msp430_init_dco(void)
   BCSCTL1 = CALBC1_8MHZ;
   BCSCTL2 = SELM_0 | DIVM_0 | DIVS_1;
 #elif F_CPU == 12000000ul
-  #error F_CPU 12 MHz not supported due to UART not adapted to that speed yet
+  #error F_CPU 12 MHz not supported due to UART not adapted to that speed yet; choose another speed in platform-conf.h!
 /*  DCOCTL = CALDCO_12MHZ;*/
 /*  BCSCTL1 = CALBC1_12MHZ;*/
 /*  BCSCTL2 = SELM_0 | DIVM_1 | DIVS_2;*/

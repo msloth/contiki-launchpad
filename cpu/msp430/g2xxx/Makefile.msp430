@@ -6,9 +6,7 @@ endif
 .SUFFIXES:
 
 ### Define the CPU directory
-CONTIKI_CPU=$(CONTIKI)/cpu/msp430
-
-### Define the source files we have in the MSP430 port
+CONTIKI_CPU=$(CONTIKI)/cpu/msp430/g2xxx
 
 ifndef CONTIKI_CPU_FAM_DIR
  ifneq (,$(findstring msp430g2,$(MCU)))
@@ -34,26 +32,37 @@ ifndef CONTIKI_CPU_FAM_DIR
  ${error Unhandled MSP430 family: "$(MCU)"}
 endif
 
-CONTIKI_CPU_DIRS = $(CONTIKI_CPU_FAM_DIR) . dev $(CONTIKI_CPU_FAM_DIR)/dev
+# Define what folders we should look in for files
+CONTIKI_CPU_DIRS = . dev $(CONTIKI_CPU_FAM_DIR)/dev .. ../dev
 
-MSP430     = msp430.c flash.c clock.c rtimer-arch.c \
-             watchdog.c lpm.c mtarch.c uart0.c \
-             lpleds.c
+#CONTIKI_CPU_DIRS = $(CONTIKI_CPU_FAM_DIR) . dev $(CONTIKI_CPU_FAM_DIR)/dev 
+
+# Define what source files we have for the MSP430 mcu arch
+MSP430     = msp430.c flash.c clock.c minileds.c \
+             watchdog.c lpm.c mtarch.c rtimer-arch.c
 UIPDRIVERS = me.c me_tabs.c slip.c crc16.c
 ELFLOADER  = elfloader.c elfloader-msp430.c symtab.c
 
-CONTIKI_TARGET_SOURCEFILES += $(MSP430) \
-                              $(SYSAPPS) $(ELFLOADER) \
+#MSP430     = msp430.c flash.c clock.c rtimer-arch.c \
+#             watchdog.c lpm.c mtarch.c uart0.c \
+#             lpleds.c
+
+#UIPDRIVERS = me.c me_tabs.c slip.c crc16.c
+#ELFLOADER  = elfloader.c elfloader-msp430.c symtab.c
+
+CONTIKI_TARGET_SOURCEFILES += $(MSP430)                 \
+                              $(SYSAPPS)                \
+                              $(ELFLOADER)              \
                               $(UIPDRIVERS)
 
 CONTIKI_SOURCEFILES        += $(CONTIKI_TARGET_SOURCEFILES)
 
 ### Compiler definitions
-
 ifdef WERROR
 CFLAGSWERROR=-Werror
 endif
 
+# For the IAR compiler ---------------------------------------------------------
 ifdef IAR
 CC	     = icc430
 LD       = xlink
@@ -82,6 +91,7 @@ LDFLAGSNO += -B -l contiki-$(TARGET).map -s __program_start
 ifndef IAR_STACK_SIZE
  IAR_STACK_SIZE=300
 endif
+
 # Set this to a positive number (hex) to enable malloc/free with IAR compiler
 ifndef IAR_DATA16_HEAP_SIZE
  IAR_DATA16_HEAP_SIZE=100
@@ -114,6 +124,7 @@ CUSTOM_RULE_C_TO_CO = 1
 
 AROPTS = -o
 
+# GCC compiler -----------------------------------------------------------------
 else
 
 GCC      = 1
@@ -150,17 +161,26 @@ endif
 ifndef CFLAGSNO
 CFLAGSNO = -Wall -mmcu=$(CC_MCU) -g $(CFLAGSWERROR)
 endif
+
+# using a sample application, see the following sizes:
+#  Using -O3
+#     text	   data	    bss	    dec	    hex	filename
+#    13262	     84	    338	  13684	   3574	dumb.launchpad
+#  Using -Os
+#     text	   data	    bss	    dec	    hex	filename
+#     8944	     84	    332	   9360	   2490	dumb.launchpad
+
 CFLAGS  += -Os -fno-strict-aliasing
 LDFLAGS += -mmcu=$(CC_MCU) -Wl,-Map=contiki-$(TARGET).map
 
-### These flags can reduce the code size and RAM usage with up to 10%
+# remove unused functions and sections
 ifeq ($(SMALL),1)
 CFLAGS += -ffunction-sections
-# CFLAGS += -fdata-sections
+CFLAGS += -fdata-sections
 LDFLAGS += -Wl,--gc-sections,--undefined=_reset_vector__,--undefined=InterruptVectors,--undefined=_copy_data_init__,--undefined=_clear_bss_init__,--undefined=_end_of_init__
 endif # SMALL
 
-endif # IAR
+endif # IAR/GCC ----------------------------------------------------------------
 
 CFLAGS  += $(CFLAGSNO)
 

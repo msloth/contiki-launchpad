@@ -131,7 +131,7 @@ PROCESS(clockdisplay_process, "HPDL-1414 Process");
 PROCESS(ui_process, "Serial echo Process");
 AUTOSTART_PROCESSES(&clockdisplay_process, &ui_process);
 /*---------------------------------------------------------------------------*/
-static void update_time_and_ascii_buffer(void);
+static void update_ascii_buffer(void);
 static void byte_to_ascii(char *buf, uint8_t val, uint8_t zero_tens_char);
 static void store_time(void);
 static int  load_time(void);
@@ -163,7 +163,7 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
     hpdlbuf[3] = 0;
   }
   hpdlbuf[4] = 0;
-  update_time_and_ascii_buffer();
+  update_ascii_buffer();
   hpdl_write_string(hpdlbuf);
   
   /* the big 'ole clock loop */
@@ -175,7 +175,20 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
     if(!clock_is_in_confmode) {
       /* find new time, and if we need to, update the display */
       seconds++;
-      update_time_and_ascii_buffer();
+      if(seconds >= 60) {
+        seconds = 0;
+        minutes++;
+      }
+      if(minutes >= 60) {
+        minutes = 0;
+        hours++;
+        /* store current time in flash; seconds is to fine granularity, hours too coarse */
+        store_time();
+      }
+      if(hours >= 24) {
+        hours = 0;
+      }
+      update_ascii_buffer();
       hpdl_write_string(hpdlbuf);
     }
   }
@@ -209,13 +222,61 @@ PROCESS_THREAD(ui_process, ev, data)
     printf("*** in confmode\n");
     leds_on(LEDS_RED);
 
-    /* blink to show that we are in set-time-mode */
+    /* setting hours -------------------------------------------------------- */
+    /* blink to show that we are in set-time-mode, setting hours */
     for(blink_counter = 0; blink_counter < MODE_SWITCH_BLINK_COUNT; blink_counter += 1) {
       etimer_set(&button_ui_update_timer, MODE_SWITCH_BLINK_INTERVAL);
       PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&button_ui_update_timer));
-/*      hpdl_write_char(1, ' ');*/
-/*      hpdl_write_char(2, ' ');*/
-      hpdl_clear();
+      hpdl_write_char(1, ' ');
+      hpdl_write_char(2, ' ');
+
+      etimer_set(&button_ui_update_timer, MODE_SWITCH_BLINK_INTERVAL);
+      PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&button_ui_update_timer));
+      hpdl_write_string(hpdlbuf);
+    }
+
+    /* handle button presses until button haven't been pressed for a while */
+    timer_set(&ui_timeout_timer, UI_TIMEOUT);
+    do {
+      etimer_set(&button_ui_update_timer, BUTTON_HOLD_UPDATE_INTERVAL);
+      PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&button_ui_update_timer));
+
+      if(BTN_IS_HELD_DOWN()) {
+        /* reset UI-keep-alive-time */
+        timer_set(&ui_timeout_timer, UI_TIMEOUT);
+        
+        /* tick up minutes if needed */
+        button_hold_count++;
+        if(button_hold_count == update_counter) {
+          button_hold_count = 0;
+          hold_minutecount++;
+          if(hold_minutecount == BUTTON_HOLD_UPDATE_FAST_THRESHOLD) {
+            /* we've held the button for enough time, increase spinning speed */
+            update_counter = BUTTON_HOLD_MINUTES_UPDATERATE_FAST;
+          }
+          hours++;
+          if(hours == 24) {
+            hours = 0;
+          }
+          update_ascii_buffer();
+          hpdl_write_string(hpdlbuf);
+        }
+      } else {
+        /* the button is released, do nothing; the timer will time-out if we
+            don't press the button, returning clock to clock-mode */
+        button_hold_count = 0;
+        hold_minutecount = 0;
+        update_counter = BUTTON_HOLD_MINUTES_UPDATERATE_SLOW;
+      }
+    } while(!timer_expired(&ui_timeout_timer));
+
+    /* setting minutes ------------------------------------------------------ */
+    /* blink to show that we are in set-minutes-mode */
+    for(blink_counter = 0; blink_counter < MODE_SWITCH_BLINK_COUNT; blink_counter += 1) {
+      etimer_set(&button_ui_update_timer, MODE_SWITCH_BLINK_INTERVAL);
+      PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&button_ui_update_timer));
+      hpdl_write_char(3, ' ');
+      hpdl_write_char(4, ' ');
 
       etimer_set(&button_ui_update_timer, MODE_SWITCH_BLINK_INTERVAL);
       PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&button_ui_update_timer));
@@ -242,7 +303,10 @@ PROCESS_THREAD(ui_process, ev, data)
             update_counter = BUTTON_HOLD_MINUTES_UPDATERATE_FAST;
           }
           minutes++;
-          update_time_and_ascii_buffer();
+          if(minutes == 60) {
+            minutes = 0;
+          }
+          update_ascii_buffer();
           hpdl_write_string(hpdlbuf);
         }
       } else {
@@ -254,23 +318,23 @@ PROCESS_THREAD(ui_process, ev, data)
       }
     } while(!timer_expired(&ui_timeout_timer));
 
-    /* return to normal clock-mode */
-    clock_is_in_confmode = 0;
-    printf("*** clock mode\n");
-    leds_off(LEDS_RED);
 
-    /* blink to show that we are in clock-mode */
+    /* blink to show that we are going back to clock mode */
     for(blink_counter = 0; blink_counter < MODE_SWITCH_BLINK_COUNT; blink_counter += 1) {
       etimer_set(&button_ui_update_timer, MODE_SWITCH_BLINK_INTERVAL);
       PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&button_ui_update_timer));
-/*      hpdl_write_char(3, ' ');*/
-/*      hpdl_write_char(4, ' ');*/
       hpdl_clear();
 
       etimer_set(&button_ui_update_timer, MODE_SWITCH_BLINK_INTERVAL);
       PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&button_ui_update_timer));
       hpdl_write_string(hpdlbuf);
     }
+
+    /* return to normal clock-mode */
+    clock_is_in_confmode = 0;
+    printf("*** clock mode\n");
+    leds_off(LEDS_RED);
+
   }  
   PROCESS_END();
 }
@@ -317,21 +381,8 @@ fix_ones:
 }
 /*---------------------------------------------------------------------------*/
 static void
-update_time_and_ascii_buffer(void)
+update_ascii_buffer(void)
 {
-  if(seconds >= 60) {
-    seconds = 0;
-    minutes++;
-  }
-  if(minutes >= 60) {
-    minutes = 0;
-    hours++;
-    /* store current time in flash; seconds is to fine granularity, hours too coarse */
-    store_time();
-  }
-  if(hours >= 24) {
-    hours = 0;
-  }
   byte_to_ascii(&(hpdlbuf[0]), hours, '0');
   byte_to_ascii(&(hpdlbuf[2]), minutes, '0');
 }

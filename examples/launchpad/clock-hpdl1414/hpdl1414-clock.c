@@ -148,14 +148,39 @@ static volatile uint8_t hours = 0;
 static char hpdlbuf[5];
 /*---------------------------------------------------------------------------*/
 static struct etimer clock_timer;
+static const char splash_message[] = "HPDL-1414 clock; Contiki 2.6 on Launchpad";
+#define SPLASH_LENGTH                   14
+#define SPLASH_UPDATE_INTERVAL          (CLOCK_SECOND / 8)
+#define SPLASH_POST_SPLASH_WAIT         (CLOCK_SECOND)
+
+
 
 /* this is the normal clock-mode process */
 PROCESS_THREAD(clockdisplay_process, ev, data)
 {
   PROCESS_BEGIN();
+  static uint8_t i;
 
   /* init display and clock ASCII buffer, reading last time from flash */
   hpdl_init();
+
+  /* show splash message */
+  for(i = 0; i < SPLASH_LENGTH; i += 1) {
+    hpdl_write_string(splash_message[i]);
+    etimer_set(&clock_timer, SPLASH_UPDATE_INTERVAL);
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
+  }
+  etimer_set(&clock_timer, SPLASH_POST_SPLASH_WAIT);
+  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
+
+  hpdl_write_string("Time");
+  etimer_set(&clock_timer, CLOCK_SECOND / 2);
+  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
+  hpdl_write_string(" is ");
+  etimer_set(&clock_timer, CLOCK_SECOND / 2);
+  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
+
+  /* prepare and set initial time */
   if(!load_time()) {
     hpdlbuf[0] = 0;
     hpdlbuf[1] = 0;
@@ -166,7 +191,7 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
   update_ascii_buffer();
   hpdl_write_string(hpdlbuf);
   
-  /* the big 'ole clock loop */
+  /* the big 'ole clock loop; counts seconds and sets time accordingly. */
   while(1) {
     etimer_set(&clock_timer, CLOCK_SECOND);
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));

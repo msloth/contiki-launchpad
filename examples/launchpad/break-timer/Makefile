@@ -28,15 +28,5 @@ CFLAGS += -Wl,--oihex
 all: $(PROJECT)
 	@msp430-size $(PROJECT).launchpad
 
-ul:
-	@rm $(PROJECT).launchpad
-	@make all
-	@msp430-objcopy $(PROJECT).launchpad -Oihex
-	@mspdebug rf2500 "prog $(PROJECT).launchpad"
- 
- 
-erase:
-	mspdebug rf2500 "erase"
-
 # must be here, it makes sure Contiki is included :)
 include $(CONTIKI)/Makefile.include

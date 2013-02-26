@@ -187,24 +187,10 @@ CFLAGS  += $(CFLAGSNO)
 PROJECT_OBJECTFILES += ${addprefix $(OBJECTDIR)/,$(CONTIKI_TARGET_MAIN:.c=.o)}
 
 ### Compilation rules
-
-%-stripped.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
-	$(STRIP) --strip-unneeded -g -x $@
-
-%.cm: %.co
-	$(LD) -i -r --unresolved-symbols=ignore-in-object-files -mmsp430x149 -o $@ $^
-	$(STRIP) --strip-unneeded -g -x $@
-
-%-stripped.o: %.o
-	$(STRIP) --strip-unneeded -g -x -o $@ $<
-
 %.o: ${CONTIKI_TARGET}/loader/%.S
 	$(AS) -o $(notdir $(<:.S=.o)) $<
 
-%.firmware:	%.${TARGET}
-	mv $< $@
-
+.PRECIOUS: %.ihex
 ifdef IAR
 %.ihex: %.co $(PROJECT_OBJECTFILES) $(PROJECT_LIBRARIES) contiki-$(TARGET).a
 	$(LD) $(LDFLAGSNO) -Fintel-extended $(TARGET_STARTFILES) ${filter-out %.a,$^} ${filter %.a,$^} $(TARGET_LIBFILES) -o $@
@@ -212,25 +198,6 @@ else
 %.ihex: %.$(TARGET)
 	$(OBJCOPY) $^ -O ihex $@
 endif
-
-%.mspsim:	%.${TARGET}
-	java -jar ${CONTIKI}/tools/mspsim/mspsim.jar -platform=${TARGET} $<
-
-mspsim-maptable:	contiki-${TARGET}.map
-	java -classpath ${CONTIKI}/tools/mspsim/mspsim.jar se.sics.mspsim.util.MapTable $<
-
-core-labels.o: core.${TARGET}
-	${CONTIKI}/tools/msp430-make-labels core.${TARGET} > core-labels.S
-	$(AS) -o $@ core-labels.S
-#	cp core-labels.o app/
-
-core-globals.o: core.${TARGET}
-	${CONTIKI}/tools/msp430-make-globals core.${TARGET} > core-globals.S
-	$(AS) -o $@ core-globals.S
-
-loader-init.o: ${CONTIKI_TARGET}/loader/loader-init.S
-	$(AS) -o $(notdir $(<:.S=.o)) $<
-# 	cp loader-init.o build-app/
 
 ifdef CORE
 .PHONY: symbols.c symbols.h
@@ -241,3 +208,35 @@ symbols.c symbols.h:
 	cp ${CONTIKI}/tools/empty-symbols.c symbols.c
 	cp ${CONTIKI}/tools/empty-symbols.h symbols.h
 endif
+
+
+
+#%-stripped.o: %.c
+#	$(CC) $(CFLAGS) -c $< -o $@
+#	$(STRIP) --strip-unneeded -g -x $@
+
+#%.cm: %.co
+#	$(LD) -i -r --unresolved-symbols=ignore-in-object-files -mmsp430x149 -o $@ $^
+#	$(STRIP) --strip-unneeded -g -x $@
+
+#%-stripped.o: %.o
+#	$(STRIP) --strip-unneeded -g -x -o $@ $<
+
+#%.mspsim:	%.${TARGET}
+#	java -jar ${CONTIKI}/tools/mspsim/mspsim.jar -platform=${TARGET} $<
+
+#mspsim-maptable:	contiki-${TARGET}.map
+#	java -classpath ${CONTIKI}/tools/mspsim/mspsim.jar se.sics.mspsim.util.MapTable $<
+
+#core-labels.o: core.${TARGET}
+#	${CONTIKI}/tools/msp430-make-labels core.${TARGET} > core-labels.S
+#	$(AS) -o $@ core-labels.S
+
+#core-globals.o: core.${TARGET}
+#	${CONTIKI}/tools/msp430-make-globals core.${TARGET} > core-globals.S
+#	$(AS) -o $@ core-globals.S
+
+#loader-init.o: ${CONTIKI_TARGET}/loader/loader-init.S
+#	$(AS) -o $(notdir $(<:.S=.o)) $<
+
+

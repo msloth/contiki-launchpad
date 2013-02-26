@@ -149,7 +149,7 @@ static char hpdlbuf[5];
 /*---------------------------------------------------------------------------*/
 static struct etimer clock_timer;
 static const char splash_message[] = "HPDL-1414 clock; Contiki 2.6 on Launchpad";
-#define SPLASH_LENGTH                   14
+#define SPLASH_LENGTH                   (sizeof(splash_message) + 1)
 #define SPLASH_UPDATE_INTERVAL          (CLOCK_SECOND / 8)
 #define SPLASH_POST_SPLASH_WAIT         (CLOCK_SECOND)
 
@@ -166,17 +166,17 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
 
   /* show splash message */
   for(i = 0; i < SPLASH_LENGTH; i += 1) {
-    hpdl_write_string(splash_message[i]);
+    hpdl_write_string(&(splash_message[i]));
     etimer_set(&clock_timer, SPLASH_UPDATE_INTERVAL);
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
   }
   etimer_set(&clock_timer, SPLASH_POST_SPLASH_WAIT);
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
 
-  hpdl_write_string("Time");
+  hpdl_write_string("Set");
   etimer_set(&clock_timer, CLOCK_SECOND / 2);
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
-  hpdl_write_string(" is ");
+  hpdl_write_string("time");
   etimer_set(&clock_timer, CLOCK_SECOND / 2);
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
 

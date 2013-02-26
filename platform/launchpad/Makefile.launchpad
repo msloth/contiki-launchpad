@@ -2,179 +2,135 @@
 # at present, this file contains a whole lot of old Sky legacy. Clean up.
 
 # set mcu
-# XXX todo, something to automatically switch between these depending on _MCU_ define in platform-conf.h
+ifndef MCU
 MCU=msp430g2553
 #MCU=msp430g2452
-
-
-
-
-CONTIKI_TARGET_SOURCEFILES += spi.c i2c.c                                   \
-                              uart0-putchar.c uart0.c                       \
-                              button.c adc.c pwm.c                          \
-                              cc2500.c cc2500-arch.c                        \
-                              alphanumeric.c servo.c hpdl1414.c
-#	sht11.c sht11-sensor.c  slip_uart1.c
-
-ifndef SMALL
-SMALL=1
 endif
 
+# we need to make a 'small' compile, ie removes unused sections etc
+SMALL=1
+
+# we are not using uIP here, target is too small
+CFLAGS += -DWITH_UIP6=0
+
+# output is intel hex format so it can be uploaded to target with mspdebug
+CFLAGS += -Wl,--oihex
+
+# remove these too when running 'make clean'
+CLEAN += *.launchpad symbols.c symbols.h
+
+# Core arch sources
+ARCH_SOURCES+=  spi.c                                         \
+                i2c.c                                         \
+                uart0-putchar.c                               \
+                uart0.c                                       \
+                adc.c                                         \
+                pwm.c                                         \
+                button.c
+
+# device drivers (optional)
+DEV_SOURCES+=   alphanumeric.c                                \
+                servo.c                                       \
+                hpdl1414.c                                    \
+                en25qxx.c
+#                logging.c                                     \
+
+# radio sources (optional)
+RADIO_SOURCES+= cc2500.c                                      \
+                cc2500-arch.c
+
+#	sht11.c sht11-sensor.c  slip_uart1.c
+
+CONTIKI_TARGET_SOURCEFILES+=$(ARCH_SOURCES) $(RADIO_SOURCES) $(DEV_SOURCES)
+
+# include these target folders
 CONTIKI_TARGET_DIRS = . dev
+
+# this is the main file that contains the 'main' function and the event loop
 ifndef CONTIKI_TARGET_MAIN
 CONTIKI_TARGET_MAIN = contiki-launchpad-main.c
 endif
 
-# we are not using uIP here, target is too small
-CFLAGS += -DWITH_UIP6=0
-# output is intel hex format so it can be uploaded to target with mspdebug
-CFLAGS += -Wl,--oihex
-
-include $(CONTIKI)/cpu/msp430/Makefile.msp430
+# include mcu-related files and build flags etc
+include $(CONTIKI)/cpu/msp430/g2xxx/Makefile.msp430
+# this one was the original line, using the original msp430 Makefile. No particular
+# change in size in any way so check if it works, otherwise change back!
+#include $(CONTIKI)/cpu/msp430/Makefile.msp430
 
 contiki-$(TARGET).a: ${addprefix $(OBJECTDIR)/,symbols.o}
 #	$(AR) rcf $@ $^
 
-ifdef IAR
-# IAR not tested yet
-#CFLAGS += -D__MSP430G2452__=1 -e --vla -Ohz --multiplier=16s --core=430 --double=32
-CFLAGS += -D__MSP430G2553__=1 -e --vla -Ohz --multiplier=16s --core=430 --double=32
-CFLAGSNO = --dlib_config "$(IAR_PATH)/LIB/DLIB/dl430fn.h" $(CFLAGSWERROR)
+#IHEXFILE=tmpimage.ihex
 
-#LDFLAGSNO += -B -xm "$(IAR_PATH)/lib/dlib/dl430fn.r43" -f "$(IAR_PATH)/config/lnk430f1611.xcl" -l contiki-$(TARGET).map -s __program_start -D_STACK_SIZE=80 -D_DATA16_HEAP_SIZE=80 -D_DATA20_HEAP_SIZE=80
-LDFLAGSNO += -B -xm "$(IAR_PATH)/lib/dlib/dl430fn.r43" -f "$(IAR_PATH)/config/lnk430g2553.xcl" -l contiki-$(TARGET).map -s __program_start -D_STACK_SIZE=80 -D_DATA16_HEAP_SIZE=80 -D_DATA20_HEAP_SIZE=80
-LDFLAGS += $(LDFLAGSNO) -Felf -yn
-endif # IAR
-
-NUMPAR=20
-IHEXFILE=tmpimage.ihex
-
-# Check if we are running under Windows
+# Check what operating system we are using as it affects what commands we run
 ifeq ($(HOST_OS),Windows)
+# Windows?
   USBDEVPREFIX=/dev/com
   SERIALDUMP = $(CONTIKI)/tools/sky/serialdump-windows
-  MOTELIST = $(CONTIKI)/tools/sky/motelist-windows
-  TMOTE_BSL_FILE = tmote-bsl
-  TMOTE_BSL=$(if $(wildcard $(CONTIKI)/tools/sky/$(TMOTE_BSL_FILE).exe),1,0)
-  ifeq ($(TMOTE_BSL), 1)
-    NUMPAR = 1
-    BSL =  $(CONTIKI)/tools/sky/$(TMOTE_BSL_FILE)
-    MOTES = $(shell $(MOTELIST) | grep COM | \
-       cut -f 4 -d \  )
-  else
-    BSL = $(CONTIKI)/tools/sky/msp430-bsl-windows --telosb
-    BSL_FILETYPE = -I
-    MOTES = $(shell $(MOTELIST) | grep COM | \
-       cut -f 4 -d \  | \
-       perl -ne 'print $$1 - 1 . " " if(/COM(\d+)/);')
-  endif
-  CMOTES = $(shell $(MOTELIST) | grep COM | \
-     cut -f 4 -d \  | \
-     perl -ne 'print $$1 . " " if(/COM(\d+)/);')
 else
-# Check if we are running under OSX/Mac
+# OSX/Mac?
 ifeq ($(HOST_OS),Darwin)
   ifndef MOTELIST
     USBDEVPREFIX=
     SERIALDUMP = $(CONTIKI)/tools/sky/serialdump-macos
-    MOTELIST = $(CONTIKI)/tools/sky/motelist-macos
-    TMOTE_BSL_FILE = tmote-bsl-linux
-    TMOTE_BSL=$(if $(wildcard $(CONTIKI)/tools/sky/$(TMOTE_BSL_FILE)),1,0)
-    ifeq ($(TMOTE_BSL), 1)
-      PATH := $(PATH):$(CONTIKI)/tools/sky
-      BSL =  $(CONTIKI)/tools/sky/$(TMOTE_BSL_FILE)
-      NUMPAR = 1
-    else
-      BSL = $(CONTIKI)/tools/sky/msp430-bsl-linux --telosb
-      BSL_FILETYPE = -I
-    endif
-    MOTES = $(shell $(MOTELIST) 2>&- | grep usbserial | \
-       cut -f 4 -d \  | \
-       perl -ne 'print $$1 . " " if(m-(/dev/[\w+\.\-]+)-);')
-    CMOTES=$(MOTES)
   endif
 else
-  # Else we assume Linux
+  # Else we assume Linux.
   ifndef MOTELIST
     USBDEVPREFIX=
     SERIALDUMP = $(CONTIKI)/tools/sky/serialdump-linux
-    MOTELIST = $(CONTIKI)/tools/sky/motelist-linux
-    TMOTE_BSL_FILE = tmote-bsl-linux
-    TMOTE_BSL=$(if $(wildcard $(CONTIKI)/tools/sky/$(TMOTE_BSL_FILE)),1,0)
-    ifeq ($(TMOTE_BSL), 1)
-      PATH := $(PATH):$(CONTIKI)/tools/sky
-      BSL =  $(CONTIKI)/tools/sky/$(TMOTE_BSL_FILE)
-      NUMPAR = 1
-    else
-      BSL = $(CONTIKI)/tools/sky/msp430-bsl-linux --telosb
-      BSL_FILETYPE = -I
-    endif
-    MOTES = $(shell $(MOTELIST) 2>&- | grep USB | \
-       cut -f 4 -d \  | \
-       perl -ne 'print $$1 . " " if(m-(/dev/[\w+\.\-]+)-);')
-    CMOTES=$(MOTES)
   endif
 endif
 endif
 
-motelist: sky-motelist
-
-sky-motelist:
-	$(MOTELIST)
-sky-motes:
-	@echo $(MOTES)
-
-ifdef MOTE
+# upload to the Launchpad
 %.upload: %.ihex
-	cp $< $(IHEXFILE)
-	$(MAKE) sky-u.$(subst /,_,$(word $(MOTE), $(MOTES)))
-else # MOTE
-%.upload: %.ihex
-	cp $< $(IHEXFILE)
-	$(MAKE) sky-reset sky-upload
-endif # MOTE
+	@echo "Programming Launchpad with $<"
+	mspdebug rf2500 "prog $<"
 
-upload-ihex:
-ifdef FILE
-	@echo Uploading $(FILE)
-	cp $(FILE) $(IHEXFILE)
-ifdef MOTE
-	$(MAKE) sky-u.$(subst /,_,$(word $(MOTE), $(MOTES)))
-else # MOTE
-	$(MAKE) sky-reset sky-upload
-endif # MOTE
-else
-	@echo Example: $(MAKE) upload-ihex FILE=myfile.ihex
-endif
+# full (except Info segments) chip erase
+.PHONY: erase
+erase:
+	mspdebug rf2500 "erase"
 
-sky-upload: sky-reset
-	$(MAKE) -j $(NUMPAR) sky-upload-sequence
+# open a serial connection to Launchpad
+login:
+	$(SERIALDUMP) -b115200 $(USBDEVPREFIX)$(firstword $(CMOTES))
 
-sky-upload-sequence:	$(foreach PORT, $(MOTES), sky-u.$(subst /,_,$(PORT)))
-	@echo Done
+# as 'login' but with timestamps
+serialdump:
+	$(SERIALDUMP) -b115200 $(USBDEVPREFIX)$(firstword $(CMOTES)) | $(CONTIKI)/tools/timestamp | tee serialdump-`date +%Y%m%d-%H%M`
 
-sky-reset:
-	$(MAKE) -k -j $(NUMPAR) sky-reset-sequence
+# print out some helpful messages
+help:
+	@echo ""
+	@echo "*** Contiki for TI Launchpad ***"
+	@echo "***   Some useful commands   ***"
+	@echo ""
+	@echo "Save target"
+	@echo "   make TARGET=launchpad savetarget"
+	@echo "Compile a project"
+	@echo "   make all"
+	@echo "Clean up any compiled object files, target files etc"
+	@echo "   make clean"
+	@echo "Compile and program a Launchpad with project 'blink'"
+	@echo "   make blink.upload"
+	@echo "Perform a full (except Info segments) chip erase"
+	@echo "   make erase"
+	@echo "Open a serial connection - ie see printf output and send to the LP"
+	@echo "   make login"
+	@echo ""
+	@echo "For more information, and to see how to use drivers and peripherals,"
+	@echo "eg button, LEDs, see the folders in examples/launchpad and the files"
+	@echo "in platform/launchpad and cpu/msp430/g2xxxx."
+	@echo ""
 
-sky-reset-sequence:	$(foreach PORT, $(MOTES), sky-r.$(subst /,_,$(PORT)))
-	@echo Done
 
-sky-u.%:
-	@echo +++++ Erasing $(subst _,/,$*); \
-	$(BSL) -c $(subst _,/,$*) -e && sleep 2 ; \
-	echo +++++ Programming $(subst _,/,$*) ; \
-	$(BSL) -c $(subst _,/,$*) $(BSL_FILETYPE) -p $(IHEXFILE) && sleep 2 ; \
-	echo +++++ Resetting $(subst _,/,$*) ; \
-	$(BSL) -c $(subst _,/,$*) -r
 
-sky-r.%:
-	$(BSL) -c $(subst _,/,$*) -r
 
-sizeplot:
-	msp430-size $(OBJECTDIR)/*.o | $(CONTIKI)/tools/sky/check-size > size-data
-	gnuplot $(CONTIKI)/tools/sky/plot-size
-	gv size.pdf
 
+
+# legacy 'sky' stuff; we likely won't run uip on these-----------------------------
 winslip:
 ifdef INTERFACE
 	$(CONTIKI)/tools/wpcapslip/wpcapslip -s $(USBDEVPREFIX)$(firstword $(CMOTES)) $(INTERFACE) 172.16.0.0 255.255.0.0
@@ -189,22 +145,3 @@ linslip: $(CONTIKI)/tools/tunslip
 $(CONTIKI)/tools/tunslip:
 	(cd $(CONTIKI)/tools; $(MAKE) tunslip)
 
-ifdef MOTE
-serialdump:
-	$(SERIALDUMP) -b115200 $(USBDEVPREFIX)$(word $(MOTE), $(CMOTES)) | $(CONTIKI)/tools/timestamp | tee serialdump-`date +%Y%m%d-%H%M`
-
-serialview:
-	$(SERIALDUMP) -b115200 $(USBDEVPREFIX)$(word $(MOTE), $(CMOTES)) | $(CONTIKI)/tools/timestamp
-
-login:
-	$(SERIALDUMP) -b115200 $(USBDEVPREFIX)$(word $(MOTE), $(CMOTES))
-else
-serialdump:
-	$(SERIALDUMP) -b115200 $(USBDEVPREFIX)$(firstword $(CMOTES)) | $(CONTIKI)/tools/timestamp | tee serialdump-`date +%Y%m%d-%H%M`
-
-serialview:
-	$(SERIALDUMP) -b115200 $(USBDEVPREFIX)$(firstword $(CMOTES)) | $(CONTIKI)/tools/timestamp
-
-login:
-	$(SERIALDUMP) -b115200 $(USBDEVPREFIX)$(firstword $(CMOTES))
-endif

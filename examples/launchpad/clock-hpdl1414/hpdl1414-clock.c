@@ -134,8 +134,6 @@ AUTOSTART_PROCESSES(&clockdisplay_process, &ui_process);
 /*---------------------------------------------------------------------------*/
 static void update_ascii_buffer(void);
 static void byte_to_ascii(char *buf, uint8_t val, uint8_t zero_tens_char);
-static void store_time(void);
-static int  load_time(void);
 /*---------------------------------------------------------------------------*/
 /* flag that halts regular time-keeping while clock is in set-mode */
 static volatile uint8_t clock_is_in_confmode = 0;
@@ -153,8 +151,6 @@ static const char splash_message[] = "HPDL-1414 clock; Contiki 2.6 on Launchpad"
 #define SPLASH_LENGTH                   (sizeof(splash_message) + 1)
 #define SPLASH_UPDATE_INTERVAL          (CLOCK_SECOND / 8)
 #define SPLASH_POST_SPLASH_WAIT         (CLOCK_SECOND)
-
-
 
 /* this is the normal clock-mode process */
 PROCESS_THREAD(clockdisplay_process, ev, data)
@@ -182,12 +178,10 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
 
   /* prepare and set initial time */
-  if(!load_time()) {
-    hpdlbuf[0] = 0;
-    hpdlbuf[1] = 0;
-    hpdlbuf[2] = 0;
-    hpdlbuf[3] = 0;
-  }
+  hpdlbuf[0] = 0;
+  hpdlbuf[1] = 0;
+  hpdlbuf[2] = 0;
+  hpdlbuf[3] = 0;
   hpdlbuf[4] = 0;
   update_ascii_buffer();
   hpdl_write_string(hpdlbuf);
@@ -208,8 +202,6 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
       if(minutes >= 60) {
         minutes = 0;
         hours++;
-        /* store current time in flash; seconds is to fine granularity, hours too coarse */
-        store_time();
       }
       if(hours >= 24) {
         hours = 0;
@@ -411,20 +403,5 @@ update_ascii_buffer(void)
 {
   byte_to_ascii(&(hpdlbuf[0]), hours, '0');
   byte_to_ascii(&(hpdlbuf[2]), minutes, '0');
-}
-/*---------------------------------------------------------------------------*/
-/* store current time in some way so that it can be easily restored after power loss */
-static void
-store_time(void)
-{
-  
-}
-/*--------------------------------------------------------------------------*/
-/* load previously stored time */
-static int
-load_time(void)
-{
-  /* on error, return 0 */
-  return 1;
 }
 /*---------------------------------------------------------------------------*/

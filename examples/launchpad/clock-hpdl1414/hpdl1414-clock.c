@@ -37,6 +37,29 @@
  */
 
 /* 
+  Hardware: a msp430g2452 or g2553 with 32.768 kHz xtal to XIN/XOUT and a press-
+      button to P1.3, just like on the regular Launchpad. Then a HPDL-1414
+      connected like this
+
+
+ *            1.6   2.3   2.2   2.1   2.0    GND        LP/MSP430G2553 pin
+ *            12    11    10    9     8      7          pin# acc to datasheet
+ *            |     |     |     |     |      |
+ *         +--|-----|-----|-----|-----|------|----+
+ *         |  D6    D3    D2    D1    D0    GND   |     pin function
+ *         |                                      |
+ *         |                                      |
+ *         |    (1)     (2)       (3)     (4)     |     char# acc to this driver
+ *         |                                      |
+ *         |                                      |
+ *         |  D5    D4    WR    A1    A0    Vcc   |     pin function
+ *         +--|-----|-----|-----|-----|------|----+
+ *            |     |     |     |     |      |
+ *            1     2     3     4     5      6          pin# acc to datasheet
+ *            2.5   2.4   1.7   1.5   1.4    +5V        LP/MSP430G2553 pin
+      
+
+
   The clock works like this:
     * it starts in clock mode
     * once every second, a second-counter is increased and the display is updated
@@ -47,49 +70,55 @@
       released
     * when the button is not pressed for a while, the clock returns to clock mode.
 
+  Issues/todo:
+      setting time goes either too fast or too slow.
+        --Should start slow and then go faster
+      losing power == losing time == messy to start over with setting time
+        --Should on every minute update store time in flash or similar and load on bootup
+        --no, perhaps on every hour with some wear-leveling mechanism. 10^4-10^5 cycles
+          means less than 1.5 years before meltdown if on the hour and no WL mechanism.
+          come up with something better
  */
 
 #include "contiki.h"
 #include "dev/button.h"
 
-
 /* setting DEBUG makes the clock use leds and serial output instead of the HPDL-1414 */
 #define DEBUG 1
-#if DEBUG
-#include <stdio.h>
-#include "dev/leds.h"
-#else   /* DEBUG */
-#include "dev/hpdl1414.h"
-#define printf(...)
-#define leds_on(...)
-#define leds_off(...)
-#endif  /* DEBUG */
-/*---------------------------------------------------------------------------*/
 
-/* 
-  Issues/todo:
-      setting time goes either too fast or too slow.
-        --Should start slow and then go faster
-      losing power == losing time == messy to start over with setting time
-        --Should on every minute update store time in EEPROM or similar and load on bootup
- */
+#if DEBUG
+  #include <stdio.h>
+  #include "dev/leds.h"
+  #define hpdl_init()                 printf("HPDL:init\n");
+  #define hpdl_clear()                printf("HPDL Clr\n");
+  #define hpdl_write_string(b)        printf("HPDL W:%s\n", b);
+#else   /* DEBUG */
+  #include "dev/hpdl1414.h"
+  #define printf(...)
+  #define leds_on(...)
+  #define leds_off(...)
+#endif  /* DEBUG */
 
 /* configurations-------------------------------------------------------------*/
 /* the time for time-set-mode to timeout if button isn't pressed again */
-#define UI_TIMEOUT                        (CLOCK_SECOND * 5)
+#define UI_TIMEOUT                              (CLOCK_SECOND * 5)
+
+/* this many minutes++ per second in set-time mode; lower means spinning through
+  time is faster when setting time. Use a power of two (1,2,4,8,16..) preferably  */
+#define BUTTON_HOLD_MINUTES_UPDATERATE_SLOW     32
+#define BUTTON_HOLD_MINUTES_UPDATERATE_FAST     8
+
+/* this many minute-increments before switching to the fast update rate */
+#define BUTTON_HOLD_UPDATE_FAST_THRESHOLD       10
 
 /* this many times per second check if the button is still held; higher means
   a more responsive UI as the button is checked more frequently */
-#define BUTTON_HOLD_CHECK_RATE            32
-
-/* this many minutes++ per second in set-time mode; higher means spinning through
-  time is faster when setting time */
-#define BUTTON_HOLD_MINUTES_UPDATERATE    32
+#define BUTTON_HOLD_CHECK_RATE                  64
 
 /* when switching between clock-mode and set-time-mode, the display is blinked
     this many times with this interval */
-#define MODE_SWITCH_BLINK_INTERVAL        (CLOCK_SECOND / 16)
-#define MODE_SWITCH_BLINK_COUNT           5
+#define MODE_SWITCH_BLINK_INTERVAL              (CLOCK_SECOND / 16)
+#define MODE_SWITCH_BLINK_COUNT                 5
 
 /* derived and other definitions-------------------------------------------- */
 #define BUTTON_HOLD_UPDATE_INTERVAL       (CLOCK_SECOND / BUTTON_HOLD_CHECK_RATE)
@@ -103,7 +132,9 @@ PROCESS(ui_process, "Serial echo Process");
 AUTOSTART_PROCESSES(&clockdisplay_process, &ui_process);
 /*---------------------------------------------------------------------------*/
 static void update_time_and_ascii_buffer(void);
-void byte_to_ascii(char *buf, uint8_t val, uint8_t zero_tens_char);
+static void byte_to_ascii(char *buf, uint8_t val, uint8_t zero_tens_char);
+static void store_time(void);
+static int  load_time(void);
 /*---------------------------------------------------------------------------*/
 /* flag that halts regular time-keeping while clock is in set-mode */
 static volatile uint8_t clock_is_in_confmode = 0;
@@ -116,25 +147,6 @@ static volatile uint8_t hours = 0;
 /* ASCII buffer of time */
 static char hpdlbuf[5];
 /*---------------------------------------------------------------------------*/
-#if DEBUG
-/* temporary while developing; they use serial output instead of the HPDL */
-static void
-hpdl_init(void)
-{
-  printf("HPDL:init\n");
-}
-static void
-hpdl_clear(void)
-{
-  printf("HPDL Clr\n");
-}
-static void
-hpdl_write_string(char *b)
-{
-  printf("HPDL W:%s\n", b);
-}
-#endif  /* DEBUG */
-/*---------------------------------------------------------------------------*/
 static struct etimer clock_timer;
 
 /* this is the normal clock-mode process */
@@ -142,8 +154,14 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
 {
   PROCESS_BEGIN();
 
-  /* init display and clock ASCII buffer */
+  /* init display and clock ASCII buffer, reading last time from flash */
   hpdl_init();
+  if(!load_time()) {
+    hpdlbuf[0] = 0;
+    hpdlbuf[1] = 0;
+    hpdlbuf[2] = 0;
+    hpdlbuf[3] = 0;
+  }
   hpdlbuf[4] = 0;
   update_time_and_ascii_buffer();
   hpdl_write_string(hpdlbuf);
@@ -175,9 +193,15 @@ PROCESS_THREAD(ui_process, ev, data)
 {
   PROCESS_BEGIN();
   static uint8_t button_hold_count = 0;
-  static uint8_t blink_counter;
+
+  /* how many minutes increased during this hold of the button; for knowning when to switch to fast update rate */
+  static uint8_t hold_minutecount = 0;
+
+  /* this is the target count before increasing minutes */
+  static uint8_t update_counter = BUTTON_HOLD_MINUTES_UPDATERATE_SLOW;
 
   while(1) {
+    static uint8_t blink_counter;   /* count the number of blinks when switching modes */
     PROCESS_WAIT_EVENT_UNTIL(ev == button_event);
     
     /* user has started to set time */
@@ -189,6 +213,8 @@ PROCESS_THREAD(ui_process, ev, data)
     for(blink_counter = 0; blink_counter < MODE_SWITCH_BLINK_COUNT; blink_counter += 1) {
       etimer_set(&button_ui_update_timer, MODE_SWITCH_BLINK_INTERVAL);
       PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&button_ui_update_timer));
+/*      hpdl_write_char(1, ' ');*/
+/*      hpdl_write_char(2, ' ');*/
       hpdl_clear();
 
       etimer_set(&button_ui_update_timer, MODE_SWITCH_BLINK_INTERVAL);
@@ -208,8 +234,13 @@ PROCESS_THREAD(ui_process, ev, data)
         
         /* tick up minutes if needed */
         button_hold_count++;
-        if(button_hold_count == BUTTON_HOLD_UPDATE_COUNT) {
+        if(button_hold_count == update_counter) {
           button_hold_count = 0;
+          hold_minutecount++;
+          if(hold_minutecount == BUTTON_HOLD_UPDATE_FAST_THRESHOLD) {
+            /* we've held the button for enough time, increase spinning speed */
+            update_counter = BUTTON_HOLD_MINUTES_UPDATERATE_FAST;
+          }
           minutes++;
           update_time_and_ascii_buffer();
           hpdl_write_string(hpdlbuf);
@@ -218,6 +249,8 @@ PROCESS_THREAD(ui_process, ev, data)
         /* the button is released, do nothing; the timer will time-out if we
             don't press the button, returning clock to clock-mode */
         button_hold_count = 0;
+        hold_minutecount = 0;
+        update_counter = BUTTON_HOLD_MINUTES_UPDATERATE_SLOW;
       }
     } while(!timer_expired(&ui_timeout_timer));
 
@@ -230,6 +263,8 @@ PROCESS_THREAD(ui_process, ev, data)
     for(blink_counter = 0; blink_counter < MODE_SWITCH_BLINK_COUNT; blink_counter += 1) {
       etimer_set(&button_ui_update_timer, MODE_SWITCH_BLINK_INTERVAL);
       PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&button_ui_update_timer));
+/*      hpdl_write_char(3, ' ');*/
+/*      hpdl_write_char(4, ' ');*/
       hpdl_clear();
 
       etimer_set(&button_ui_update_timer, MODE_SWITCH_BLINK_INTERVAL);
@@ -291,11 +326,28 @@ update_time_and_ascii_buffer(void)
   if(minutes >= 60) {
     minutes = 0;
     hours++;
+    /* store current time in flash; seconds is to fine granularity, hours too coarse */
+    store_time();
   }
   if(hours >= 24) {
     hours = 0;
   }
   byte_to_ascii(&(hpdlbuf[0]), hours, '0');
   byte_to_ascii(&(hpdlbuf[2]), minutes, '0');
+}
+/*---------------------------------------------------------------------------*/
+/* store current time in some way so that it can be easily restored after power loss */
+static void
+store_time(void)
+{
+  
+}
+/*--------------------------------------------------------------------------*/
+/* load previously stored time */
+static int
+load_time(void)
+{
+  /* on error, return 0 */
+  return 1;
 }
 /*---------------------------------------------------------------------------*/

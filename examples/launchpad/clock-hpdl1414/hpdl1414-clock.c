@@ -92,6 +92,7 @@
   #define hpdl_init()                 printf("HPDL:init\n");
   #define hpdl_clear()                printf("HPDL Clr\n");
   #define hpdl_write_string(b)        printf("HPDL W:%s\n", b);
+  #define hpdl_write_char(p, c)       printf("HPDL Wchar: %u:%c\n", p, c);
 #else   /* DEBUG */
   #include "dev/hpdl1414.h"
   #define printf(...)

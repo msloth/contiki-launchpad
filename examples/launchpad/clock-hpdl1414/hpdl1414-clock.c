@@ -84,7 +84,7 @@
 #include "dev/button.h"
 
 /* setting DEBUG makes the clock use leds and serial output instead of the HPDL-1414 */
-#define DEBUG 1
+#define DEBUG 0
 
 #if DEBUG
   #include <stdio.h>

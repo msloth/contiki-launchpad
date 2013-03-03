@@ -73,11 +73,14 @@
   Issues/todo:
       setting time goes either too fast or too slow.
         --Should start slow and then go faster
+        ++ done
       losing power == losing time == messy to start over with setting time
         --Should on every minute update store time in flash or similar and load on bootup
         --no, perhaps on every hour with some wear-leveling mechanism. 10^4-10^5 cycles
           means less than 1.5 years before meltdown if on the hour and no WL mechanism.
           come up with something better
+        ++skip storing time (unless we later get an RTC/EEPROM or similar), made setting
+          time simpler and faster instead.
  */
 
 #include "contiki.h"
@@ -102,19 +105,18 @@
 
 /* configurations-------------------------------------------------------------*/
 /* the time for time-set-mode to timeout if button isn't pressed again */
-#define UI_TIMEOUT                              (CLOCK_SECOND * 5)
+#define UI_TIMEOUT                              (CLOCK_SECOND * 2)
 
-/* this many minutes++ per second in set-time mode; lower means spinning through
-  time is faster when setting time. Use a power of two (1,2,4,8,16..) preferably  */
-#define BUTTON_HOLD_MINUTES_UPDATERATE_SLOW     32
-#define BUTTON_HOLD_MINUTES_UPDATERATE_FAST     8
+/*
+ * increment speed when setting time;
+ * range 1..(BUTTON_HOLD_CHECK_RATE-1)
+ * higher is faster
+ */
+#define BUTTON_HOLD_MINUTES_UPDATERATE_SLOW     16
+#define BUTTON_HOLD_MINUTES_UPDATERATE_FAST     55
 
 /* this many minute-increments before switching to the fast update rate */
 #define BUTTON_HOLD_UPDATE_FAST_THRESHOLD       10
-
-/* this many times per second check if the button is still held; higher means
-  a more responsive UI as the button is checked more frequently */
-#define BUTTON_HOLD_CHECK_RATE                  64
 
 /* when switching between clock-mode and set-time-mode, the display is blinked
     this many times with this interval */
@@ -122,8 +124,9 @@
 #define MODE_SWITCH_BLINK_COUNT                 5
 
 /* derived and other definitions-------------------------------------------- */
-#define BUTTON_HOLD_UPDATE_INTERVAL       (CLOCK_SECOND / BUTTON_HOLD_CHECK_RATE)
-#define BUTTON_HOLD_UPDATE_COUNT          (BUTTON_HOLD_CHECK_RATE / BUTTON_HOLD_MINUTES_UPDATERATE)
+/* how often to check the button to see if it is held down */
+#define BUTTON_HOLD_CHECK_RATE            64
+#define BUTTON_HOLD_CHECK_INTERVAL        (CLOCK_SECOND / BUTTON_HOLD_CHECK_RATE)
 
 /* this uses the defintions from dev/button.h */
 #define BTN_IS_HELD_DOWN()                (!(BUTTON_PORT(IN) & BUTTON_2))
@@ -236,16 +239,19 @@ static struct etimer button_ui_update_timer;
 PROCESS_THREAD(ui_process, ev, data)
 {
   PROCESS_BEGIN();
-  static uint8_t button_hold_count = 0;
-
-  /* how many minutes increased during this hold of the button; for knowning when to switch to fast update rate */
-  static uint8_t hold_minutecount = 0;
-
-  /* this is the target count before increasing minutes */
-  static uint8_t update_counter = BUTTON_HOLD_MINUTES_UPDATERATE_SLOW;
 
   while(1) {
-    static uint8_t blink_counter;   /* count the number of blinks when switching modes */
+    /* count the number of blinks when switching modes */
+    static uint8_t blink_counter;
+    
+    static uint8_t button_hold_count = 0;
+
+    /* how many minutes increased during this hold of the button; for knowning when to switch to fast update rate */
+    static uint8_t time_increase = 0;
+
+    /* this is the target count before increasing minutes */
+    static uint8_t update_counter = BUTTON_HOLD_CHECK_RATE - BUTTON_HOLD_MINUTES_UPDATERATE_SLOW;
+
     PROCESS_WAIT_EVENT_UNTIL(ev == button_event);
     
     /* user has started to set time */
@@ -269,35 +275,49 @@ PROCESS_THREAD(ui_process, ev, data)
     /* handle button presses until button haven't been pressed for a while */
     timer_set(&ui_timeout_timer, UI_TIMEOUT);
     do {
-      etimer_set(&button_ui_update_timer, BUTTON_HOLD_UPDATE_INTERVAL);
+      etimer_set(&button_ui_update_timer, BUTTON_HOLD_CHECK_INTERVAL);
       PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&button_ui_update_timer));
 
       if(BTN_IS_HELD_DOWN()) {
         /* reset UI-keep-alive-time */
         timer_set(&ui_timeout_timer, UI_TIMEOUT);
-        
-        /* tick up minutes if needed */
-        button_hold_count++;
-        if(button_hold_count == update_counter) {
-          button_hold_count = 0;
-          hold_minutecount++;
-          if(hold_minutecount == BUTTON_HOLD_UPDATE_FAST_THRESHOLD) {
-            /* we've held the button for enough time, increase spinning speed */
-            update_counter = BUTTON_HOLD_MINUTES_UPDATERATE_FAST;
-          }
+
+        if(button_hold_count == 0) {
+          /* on first press, increase time */
+          button_hold_count++;
           hours++;
+          time_increase++;
           if(hours == 24) {
             hours = 0;
           }
           update_ascii_buffer();
           hpdl_write_string(hpdlbuf);
+
+        } else if(button_hold_count == update_counter) {
+          /* held long enough, increase time */
+          button_hold_count = 1;
+          hours++;
+          time_increase++;
+          if(time_increase == BUTTON_HOLD_UPDATE_FAST_THRESHOLD) {
+            /* we've held the button for enough time, increase spinning speed */
+            update_counter = BUTTON_HOLD_CHECK_RATE - BUTTON_HOLD_MINUTES_UPDATERATE_FAST;
+          }
+
+          if(hours == 24) {
+            hours = 0;
+          }
+          update_ascii_buffer();
+          hpdl_write_string(hpdlbuf);
+        } else {
+          button_hold_count++;
         }
+
       } else {
         /* the button is released, do nothing; the timer will time-out if we
             don't press the button, returning clock to clock-mode */
         button_hold_count = 0;
-        hold_minutecount = 0;
-        update_counter = BUTTON_HOLD_MINUTES_UPDATERATE_SLOW;
+        time_increase = 0;
+        update_counter = BUTTON_HOLD_CHECK_RATE - BUTTON_HOLD_MINUTES_UPDATERATE_SLOW;
       }
     } while(!timer_expired(&ui_timeout_timer));
 
@@ -317,38 +337,51 @@ PROCESS_THREAD(ui_process, ev, data)
     /* handle button presses until button haven't been pressed for a while */
     timer_set(&ui_timeout_timer, UI_TIMEOUT);
     do {
-      etimer_set(&button_ui_update_timer, BUTTON_HOLD_UPDATE_INTERVAL);
+      etimer_set(&button_ui_update_timer, BUTTON_HOLD_CHECK_INTERVAL);
       PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&button_ui_update_timer));
 
       if(BTN_IS_HELD_DOWN()) {
         /* reset UI-keep-alive-time */
         timer_set(&ui_timeout_timer, UI_TIMEOUT);
-        
-        /* tick up minutes if needed */
-        button_hold_count++;
-        if(button_hold_count == update_counter) {
-          button_hold_count = 0;
-          hold_minutecount++;
-          if(hold_minutecount == BUTTON_HOLD_UPDATE_FAST_THRESHOLD) {
-            /* we've held the button for enough time, increase spinning speed */
-            update_counter = BUTTON_HOLD_MINUTES_UPDATERATE_FAST;
-          }
+
+        if(button_hold_count == 0) {
+          /* on first press, increase time */
+          button_hold_count++;
           minutes++;
+          time_increase++;
           if(minutes == 60) {
             minutes = 0;
           }
           update_ascii_buffer();
           hpdl_write_string(hpdlbuf);
+
+        } else if(button_hold_count == update_counter) {
+          /* held long enough, increase time */
+          button_hold_count = 1;
+          minutes++;
+          time_increase++;
+          if(time_increase == BUTTON_HOLD_UPDATE_FAST_THRESHOLD) {
+            /* we've held the button for enough time, increase spinning speed */
+            update_counter = BUTTON_HOLD_CHECK_RATE - BUTTON_HOLD_MINUTES_UPDATERATE_FAST;
+          }
+
+          if(minutes == 60) {
+            minutes = 0;
+          }
+          update_ascii_buffer();
+          hpdl_write_string(hpdlbuf);
+        } else {
+          button_hold_count++;
         }
+
       } else {
         /* the button is released, do nothing; the timer will time-out if we
             don't press the button, returning clock to clock-mode */
         button_hold_count = 0;
-        hold_minutecount = 0;
-        update_counter = BUTTON_HOLD_MINUTES_UPDATERATE_SLOW;
+        time_increase = 0;
+        update_counter = BUTTON_HOLD_CHECK_RATE - BUTTON_HOLD_MINUTES_UPDATERATE_SLOW;
       }
     } while(!timer_expired(&ui_timeout_timer));
-
 
     /* blink to show that we are going back to clock mode */
     for(blink_counter = 0; blink_counter < MODE_SWITCH_BLINK_COUNT; blink_counter += 1) {

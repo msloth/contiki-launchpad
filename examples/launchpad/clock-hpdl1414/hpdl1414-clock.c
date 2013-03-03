@@ -127,6 +127,19 @@
 
 /* this uses the defintions from dev/button.h */
 #define BTN_IS_HELD_DOWN()                (!(BUTTON_PORT(IN) & BUTTON_2))
+/*---------------------------------------------------------------------------*/
+/* sanity check */
+#if BUTTON_HOLD_MINUTES_UPDATERATE_SLOW == 0 || BUTTON_HOLD_MINUTES_UPDATERATE_SLOW > BUTTON_HOLD_CHECK_RATE
+#error BUTTON_HOLD_MINUTES_UPDATERATE_SLOW is misconfigured, check range (hpdl1414-clock.c)
+#endif
+
+#if BUTTON_HOLD_MINUTES_UPDATERATE_FAST == 0 || BUTTON_HOLD_MINUTES_UPDATERATE_FAST > BUTTON_HOLD_CHECK_RATE
+#error BUTTON_HOLD_MINUTES_UPDATERATE_FAST is misconfigured, check range (hpdl1414-clock.c)
+#endif
+
+#if BUTTON_HOLD_MINUTES_UPDATERATE_SLOW > BUTTON_HOLD_MINUTES_UPDATERATE_FAST
+#warning ********   Button update speeds might be misconfigured; now SLOW is faster than FAST. Do you want that? (hpdl1414-clock.c)
+#endif
 /* -------------------------------------------------------------------------- */
 PROCESS(clockdisplay_process, "HPDL-1414 Process");
 PROCESS(ui_process, "Serial echo Process");

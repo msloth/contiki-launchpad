@@ -65,10 +65,12 @@
     * once every second, a second-counter is increased and the display is updated
     * if a button is pressed, the clock changes into 'set-time-mode', indicated by
       flashing of the display a few times.
-    * in 'set-time-mode', pressing the button increases minutes by one. Holding
-      the button increases time one minute at a time but faster until button is
-      released
-    * when the button is not pressed for a while, the clock returns to clock mode.
+    * in 'set-time-mode', pressing the button increases hours by one. Holding
+      the button will increase setting-speed
+    * when the button is not pressed for a while, setting will change to setting
+      of minutes
+    * after not pressing the button for a while again, the clock returns to clock
+      mode.
 
   Issues/todo:
       setting time goes either too fast or too slow.
@@ -81,6 +83,10 @@
           come up with something better
         ++skip storing time (unless we later get an RTC/EEPROM or similar), made setting
           time simpler and faster instead.
+      increase power efficiency
+        --don't update the display every second
+        --reduce clock speed (1 MHz, or slower)
+        --power off the display after a while, turn on by button press
  */
 
 #include "contiki.h"
@@ -104,6 +110,11 @@
 #endif  /* DEBUG */
 
 /* configurations-------------------------------------------------------------*/
+static const char splash_message[] =    "HPDL-1414 clock - Contiki 2.6";
+#define SPLASH_LENGTH                   (sizeof(splash_message) + 1)
+#define SPLASH_UPDATE_INTERVAL          (CLOCK_SECOND / 8)
+#define SPLASH_POST_SPLASH_WAIT         (CLOCK_SECOND)
+
 /* the time for time-set-mode to timeout if button isn't pressed again */
 #define UI_TIMEOUT                              (CLOCK_SECOND * 2)
 
@@ -115,8 +126,8 @@
 #define BUTTON_HOLD_MINUTES_UPDATERATE_SLOW     16
 #define BUTTON_HOLD_MINUTES_UPDATERATE_FAST     55
 
-/* this many minute-increments before switching to the fast update rate */
-#define BUTTON_HOLD_UPDATE_FAST_THRESHOLD       10
+/* this many time-increments before switching to the fast update rate */
+#define BUTTON_HOLD_UPDATE_FAST_THRESHOLD       5
 
 /* when switching between clock-mode and set-time-mode, the display is blinked
     this many times with this interval */
@@ -163,10 +174,6 @@ static volatile uint8_t hours = 0;
 static char hpdlbuf[5];
 /*---------------------------------------------------------------------------*/
 static struct etimer clock_timer;
-static const char splash_message[] = "HPDL-1414 clock; Contiki 2.6 on Launchpad";
-#define SPLASH_LENGTH                   (sizeof(splash_message) + 1)
-#define SPLASH_UPDATE_INTERVAL          (CLOCK_SECOND / 8)
-#define SPLASH_POST_SPLASH_WAIT         (CLOCK_SECOND)
 
 /* this is the normal clock-mode process */
 PROCESS_THREAD(clockdisplay_process, ev, data)

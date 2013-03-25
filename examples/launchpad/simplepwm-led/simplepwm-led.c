@@ -69,7 +69,7 @@ PROCESS_THREAD(pwmled_process, ev, data)
   PROCESS_EXITHANDLER(simple_pwm_off(););
   PROCESS_BEGIN();
 
-  simple_pwm_confpin(LEDBIG_PIN);
+  simple_pwm_confpin(LEDRED_PIN);
 
   while(1) {
     simple_pwm_on(i);

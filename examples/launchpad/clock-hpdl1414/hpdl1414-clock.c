@@ -108,7 +108,10 @@
               LED blink
               display dimming (global override)
               display off or dimming during the night + set hours for that
-              
+        check long-term accuracy of the clock
+          how much due to cheap 32.768 xtal?
+          how much due to using etimer wait for 1 second?
+            --instead perhaps use clock_seconds() if better
       
 
 
@@ -133,9 +136,17 @@
 #include "dev/button.h"
 #include "simple-pwm.h"
 
-/* setting DEBUG makes the clock use leds and serial output instead of the HPDL-1414 */
-#define DEBUG 0
+/* setting DEBUG uses LED and prints over serial port instead of HPDL1414 */
+#define DEBUG                             0
+#define ENABLE_DEMO_MODE_ON_STARTUP       1
+#define ENABLE_SPLASH_MESSAGE             1
 
+/* set fading style, only one can be non-zero at once */
+#define FADE_STYLE_LINEAR                 0   /* doesn't work very well now.. */
+#define FADE_STYLE_SINUS                  0   /* doesn't work very well now.. */
+#define FADE_STYLE_JUST_CUT               0
+#define FADE_STYLE_SIMPLE                 1
+/*---------------------------------------------------------------------------*/
 #if DEBUG
   #include <stdio.h>
   #include "dev/leds.h"
@@ -150,12 +161,15 @@
   #define leds_off(...)
 #endif  /* DEBUG */
 
+
 /* configurations-------------------------------------------------------------*/
+/* splash message */
 static const char splash_message[] =    "HPDL-1414 clock - Contiki 2.6";
 #define SPLASH_LENGTH                   (sizeof(splash_message) + 1)
 #define SPLASH_UPDATE_INTERVAL          (CLOCK_SECOND / 8 + CLOCK_SECOND / 16)
 #define SPLASH_POST_SPLASH_WAIT         (CLOCK_SECOND / 2)
-
+/*---------------------------------------------------------------------------*/
+/* button interface / setting time */
 /* the time for time-set-mode to timeout if button isn't pressed again */
 #define UI_TIMEOUT                              (CLOCK_SECOND * 2)
 
@@ -182,8 +196,8 @@ static const char splash_message[] =    "HPDL-1414 clock - Contiki 2.6";
 
 /* this uses the defintions from dev/button.h */
 #define BTN_IS_HELD_DOWN()                (!(BUTTON_PORT(IN) & BUTTON_2))
-/*---------------------------------------------------------------------------*/
-/* sanity check */
+
+/* sanity checks */
 #if BUTTON_HOLD_MINUTES_UPDATERATE_SLOW == 0 || BUTTON_HOLD_MINUTES_UPDATERATE_SLOW > BUTTON_HOLD_CHECK_RATE
 #error BUTTON_HOLD_MINUTES_UPDATERATE_SLOW is misconfigured, check range (hpdl1414-clock.c)
 #endif
@@ -195,6 +209,9 @@ static const char splash_message[] =    "HPDL-1414 clock - Contiki 2.6";
 #if BUTTON_HOLD_MINUTES_UPDATERATE_SLOW > BUTTON_HOLD_MINUTES_UPDATERATE_FAST
 #warning ********   Button update speeds might be misconfigured; now SLOW is faster than FAST. Do you want that? (hpdl1414-clock.c)
 #endif
+
+
+
 /*---------------------------------------------------------------------------*/
 /* string buffers for the two messages */
 static volatile char msg_first[4];
@@ -207,7 +224,6 @@ PROCESS(clockdisplay_process, "HPDL-1414 Process");
 PROCESS(ui_process, "Serial echo Process");
 PROCESS(display_dim_process, "Display dimmer process");
 AUTOSTART_PROCESSES(&clockdisplay_process, &ui_process, &display_dim_process);
-/*AUTOSTART_PROCESSES(&clockdisplay_process);*/
 /*---------------------------------------------------------------------------*/
 static void update_ascii_buffer(char *buf);
 static void byte_to_ascii(char *buf, uint8_t val, uint8_t zero_tens_char);
@@ -220,9 +236,10 @@ static volatile uint8_t seconds = 0;
 static volatile uint8_t minutes = 0;
 static volatile uint8_t hours = 12;
 
-/* ASCII buffer of time */
+/* ASCII buffer for time */
 static char hpdlbuf[5];
 /*--------------------------------------------------------------------------*/
+/* for a blinking LED, this timer and callback turns the LED off */
 static struct ctimer led_ctimer;
 void
 led_off_cb(void *d)
@@ -230,6 +247,7 @@ led_off_cb(void *d)
   P1OUT &= ~(1<<0);
 }
 /*---------------------------------------------------------------------------*/
+/* the main clock timer that is used in the clock loop */
 static struct etimer clock_timer;
 
 /* this is the normal clock-mode process */
@@ -257,7 +275,7 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
   etimer_set(&clock_timer, CLOCK_SECOND/2);
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
 
-#if 1
+#if ENABLE_DEMO_MODE_ON_STARTUP
   {
     char buf[4];
     char anim[] = {'|', '/', '-', '\\', '|', '/', '-', '\\'};
@@ -304,7 +322,7 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
 
 
   /* show splash message */
-#if 1
+#if ENABLE_SPLASH_MESSAGE
   for(i = 0; i < SPLASH_LENGTH - 1; i += 1) {
     hpdl_write_string(&(splash_message[i]));
     etimer_set(&clock_timer, SPLASH_UPDATE_INTERVAL);
@@ -335,15 +353,6 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
   hpdlbuf[4] = 0;
   update_ascii_buffer(hpdlbuf);
   hpdl_write_string(hpdlbuf);
-
-#if 0
-  while(1) {
-    process_post(&display_dim_process, dim_event, NULL);
-    etimer_set(&clock_timer, CLOCK_SECOND*3);
-    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
-  }
-#endif /* if 0; commented out code */
-
   
   /* the big 'ole clock loop; counts seconds and sets time accordingly. */
   etimer_set(&clock_timer, CLOCK_SECOND);
@@ -647,19 +656,13 @@ pwm_off_cb(void)
 #endif
 }
 /*---------------------------------------------------------------------------*/
-/* set style, only one can be non-zero at once */
-#define PWM_STYLE_LINEAR            0   /* doesn't work very well now.. */
-#define PWM_STYLE_SINUS             0   /* doesn't work very well now.. */
-#define PWM_STYLE_JUST_CUT          0
-#define PWM_STYLE_SIMPLE            1
-
 /* for linear: to dim faster, increase step or reduce interval */
 #define PWM_MIN                     0
 #define PWM_MAX                     100
 #define PWM_STEP                    10
 
 /* for sinus: lookup table */
-#if PWM_STYLE_SINUS
+#if FADE_STYLE_SINUS
   /* The top half look are not that different (all bright), so we use only a subset, the bottom elements. */
   #define SIN_ELEMENTS_MAXUSED      37
   #define SIN_ELEMENTS_STEP         3
@@ -697,7 +700,7 @@ PROCESS_THREAD(display_dim_process, ev, data)
     printf("dim event\n");
     if(1) {
       printf("%s -> %s\n", msg_first, msg_second);
-  #if PWM_STYLE_LINEAR
+  #if FADE_STYLE_LINEAR
       /* dim down the first message (old time) */
       msg_string = msg_first;
       for(i = PWM_MAX; i >= PWM_MIN + PWM_STEP; i -= PWM_STEP) {
@@ -719,7 +722,7 @@ PROCESS_THREAD(display_dim_process, ev, data)
       hpdl_write_string(msg_second);
   #endif
 
-  #if PWM_STYLE_SINUS
+  #if FADE_STYLE_SINUS
       /* dim down the first message (old time) */
       msg_string = msg_first;
       for(i = SIN_ELEMENTS_MAXUSED; i >= SIN_ELEMENTS_STEP; i -= SIN_ELEMENTS_STEP) {
@@ -740,12 +743,12 @@ PROCESS_THREAD(display_dim_process, ev, data)
       hpdl_write_string(msg_second);
   #endif
 
-  #if PWM_STYLE_JUST_CUT
+  #if FADE_STYLE_JUST_CUT
     /* no fancy dimming, just change the text to the new time */
     hpdl_write_string(msg_second);
   #endif
 
-  #if PWM_STYLE_SIMPLE
+  #if FADE_STYLE_SIMPLE
       {
         /* dim down the first message (old time) */
         msg_string = msg_first;

@@ -23,7 +23,7 @@ PROJECT = hpdl1414-clock
 # any overridden Contiki source file (in this project) is listed here
 #CONTIKI_SOURCEFILES += 
 # for changed simplepwm:
-CONTIKI_SOURCEFILES += rtimer-arch.c
+CONTIKI_SOURCEFILES += rtimer-arch.c button.c
 
 CFLAGS += -Wl,--oihex
 

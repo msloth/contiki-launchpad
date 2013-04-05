@@ -101,6 +101,7 @@
       setting time goes either too fast or too slow.
         --Should start slow and then go faster
         ++ done
+
   
  */
 
@@ -253,14 +254,22 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
   etimer_set(&clock_timer, SPLASH_POST_SPLASH_WAIT);
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
 
-  hpdl_write_string("Set");
+  msg_first = "    "
+  msg_second = "Set "
+/*  hpdl_write_string("Set");*/
+/*  etimer_set(&clock_timer, CLOCK_SECOND);*/
+/*  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));*/
+  process_post(&display_dim_process, dim_event, NULL);
   etimer_set(&clock_timer, CLOCK_SECOND);
-  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
+  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer) || ev == dim_done_event);
 
-  //msg_second = "time"
-  hpdl_write_string("time");
+  //hpdl_write_string("time");
+  msg_first = "Set"
+  msg_second = "time"
+  process_post(&display_dim_process, dim_event, NULL);
   etimer_set(&clock_timer, CLOCK_SECOND);
-  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
+  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer) || ev == dim_done_event);
+/*  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));*/
 #endif /* if 0; commented out code */
 
   /* prepare and set initial time */

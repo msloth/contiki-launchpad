@@ -86,21 +86,45 @@
         --power off the display after a while, turn on by button press
         --more efficient voltage regulator
         --display dims after a while
-      enable dimming the display
-        highest might be to bright
-        --use simplepwm
       alarm functionality
         could use the pin for LED to instead power a vibrator (perhaps /and/) an LED
         how set alarm?
       debug/show-off mode
         for showing the beautiful display
         --if button held at startup, according to some pattern, then show all chars
-        --or, start this form clock mode, then we won't have to reset the clock
+        --or, start this from clock mode; then we won't have to reset the clock to demo it
+      fix smoother dims: sinus particularly
+      temperature sensor (msp430 built-in)
+        when show? how show?
+          --pressing once to set time, then when timeouts, shows temp.
+        accuracy?
+          --doens't matter that much, just for fun anyway.
+        better separation of modules, eg UI/display updater vs UI/button handler
+          --well, yes, but not a priority at this stage, the project is not anticipated to swell much more
+        for what use the LED
+          blinks on every second can be annoying
+        configuration mode?
+          to set eg
+              LED blink
+              display dimming (global override)
+              display off or dimming during the night + set hours for that
+              
+      
+
 
   done
+      enable dimming the display
+        highest might be to bright
+          --no, skip that, always brightest
+        for fading strings
+          --use simplepwm
       setting time goes either too fast or too slow.
         --Should start slow and then go faster
         ++ done
+      dim "Set Time"
+      broadcast dim_done_event
+
+
 
   
  */

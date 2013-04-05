@@ -128,8 +128,8 @@
 /* configurations-------------------------------------------------------------*/
 static const char splash_message[] =    "HPDL-1414 clock - Contiki 2.6";
 #define SPLASH_LENGTH                   (sizeof(splash_message) + 1)
-#define SPLASH_UPDATE_INTERVAL          (CLOCK_SECOND / 8)
-#define SPLASH_POST_SPLASH_WAIT         (CLOCK_SECOND)
+#define SPLASH_UPDATE_INTERVAL          (CLOCK_SECOND / 8 + CLOCK_SECOND / 16)
+#define SPLASH_POST_SPLASH_WAIT         (CLOCK_SECOND / 2)
 
 /* the time for time-set-mode to timeout if button isn't pressed again */
 #define UI_TIMEOUT                              (CLOCK_SECOND * 2)
@@ -205,10 +205,17 @@ static volatile uint8_t clock_is_in_confmode = 0;
 /* keeps track of time */
 static volatile uint8_t seconds = 0;
 static volatile uint8_t minutes = 0;
-static volatile uint8_t hours = 0;
+static volatile uint8_t hours = 12;
 
 /* ASCII buffer of time */
 static char hpdlbuf[5];
+/*--------------------------------------------------------------------------*/
+static struct ctimer led_ctimer;
+void
+led_off_cb(void *d)
+{
+  P1OUT &= ~(1<<0);
+}
 /*---------------------------------------------------------------------------*/
 static struct etimer clock_timer;
 
@@ -255,6 +262,9 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
   while(1) {
     etimer_set(&clock_timer, CLOCK_SECOND);
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
+    
+    P1OUT |= 1<<0;
+    ctimer_set(&led_ctimer, CLOCK_SECOND/64, led_off_cb, NULL);
 
     /* if we are currently setting time, we freeze updating time here */
     if(!clock_is_in_confmode) {

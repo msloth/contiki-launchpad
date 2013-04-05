@@ -172,31 +172,19 @@ static const char splash_message[] =    "HPDL-1414 clock - Contiki 2.6";
 #endif
 /*---------------------------------------------------------------------------*/
 /* string buffers for the two messages */
-#if 1
-static char msg_first[4];
-static char msg_second[4];
+static volatile char msg_first[4];
+static volatile char msg_second[4];
 
-struct dim_msg_data_s {
-  const char* first;
-  const char* second;
-} dim_msg;
-#if 0
- = {
-  .first = msg_first;
-  .second = msg_second;
-};
-#endif /* if 0; commented out code */
-#endif /* if 0; commented out code */
-
-process_event_t dim_event;
-
+static process_event_t dim_event;
+static process_event_t dim_done_event;
 /* -------------------------------------------------------------------------- */
 PROCESS(clockdisplay_process, "HPDL-1414 Process");
 PROCESS(ui_process, "Serial echo Process");
 PROCESS(display_dim_process, "Display dimmer process");
-AUTOSTART_PROCESSES(&clockdisplay_process, &ui_process);
+AUTOSTART_PROCESSES(&clockdisplay_process, &ui_process, &display_dim_process);
+/*AUTOSTART_PROCESSES(&clockdisplay_process);*/
 /*---------------------------------------------------------------------------*/
-static void update_ascii_buffer(void);
+static void update_ascii_buffer(char *buf);
 static void byte_to_ascii(char *buf, uint8_t val, uint8_t zero_tens_char);
 /*---------------------------------------------------------------------------*/
 /* flag that halts regular time-keeping while clock is in set-mode */
@@ -224,17 +212,40 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
 {
   PROCESS_BEGIN();
   static uint8_t i;
+  static uint8_t onoff = 0;
+
+  static struct etimer etio;
+
+  /* init LED */
+  P1DIR |= 1<<0;
+  P1SEL &= ~(1<<0);
+  P1SEL2 &= ~(1<<0);
 
   /* allocate the dim event */
   dim_event = process_alloc_event();
-  dim_msg.first = msg_first;
-  dim_msg.second = msg_second;
+  dim_done_event = process_alloc_event();
 
-  /* init display and clock ASCII buffer, reading last time from flash */
+  /* init display and ASCII buffer */
   hpdl_init();
+  
+  /* check for show-off mode start condition */
+#if 0
+  do {
+    if(BTN_IS_HELD_DOWN()) {
+      i++;
+    }
+    etimer_set(&clock_timer, CLOCK_SECOND/8);
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
+  } while(BTN_IS_HELD_DOWN() && clock_time() < SHOW_OFF_START_CONDITION_TIME);
+
+  etimer_set(&clock_timer, CLOCK_SECOND);
+  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
+#endif /* if 0; commented out code */
+
 
   /* show splash message */
-  for(i = 0; i < SPLASH_LENGTH; i += 1) {
+#if 1
+  for(i = 0; i < SPLASH_LENGTH - 1; i += 1) {
     hpdl_write_string(&(splash_message[i]));
     etimer_set(&clock_timer, SPLASH_UPDATE_INTERVAL);
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
@@ -243,20 +254,28 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
 
   hpdl_write_string("Set");
-  etimer_set(&clock_timer, CLOCK_SECOND / 2);
-  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
-  hpdl_write_string("time");
-  etimer_set(&clock_timer, CLOCK_SECOND / 2);
+  etimer_set(&clock_timer, CLOCK_SECOND);
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
 
+  //msg_second = "time"
+  hpdl_write_string("time");
+  etimer_set(&clock_timer, CLOCK_SECOND);
+  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
+#endif /* if 0; commented out code */
+
   /* prepare and set initial time */
-  hpdlbuf[0] = 0;
-  hpdlbuf[1] = 0;
-  hpdlbuf[2] = 0;
-  hpdlbuf[3] = 0;
   hpdlbuf[4] = 0;
-  update_ascii_buffer();
+  update_ascii_buffer(hpdlbuf);
   hpdl_write_string(hpdlbuf);
+
+#if 0
+  while(1) {
+    process_post(&display_dim_process, dim_event, NULL);
+    etimer_set(&clock_timer, CLOCK_SECOND*3);
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
+  }
+#endif /* if 0; commented out code */
+
   
   /* the big 'ole clock loop; counts seconds and sets time accordingly. */
   while(1) {
@@ -270,8 +289,13 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
     if(!clock_is_in_confmode) {
       uint8_t update = 0;
       /* find new time, and if we need to, update the display */
+/*      update_ascii_buffer(msg_first);*/
       seconds++;
+#if DEBUG
+      if(seconds >= 5) {
+#else
       if(seconds >= 60) {
+#endif
         seconds = 0;
         minutes++;
         update = 1;
@@ -286,16 +310,20 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
       }
 
       if(update) {
-        update_ascii_buffer();
-        
-        
-        // XXX here, should update the ascii buffers for before and after dim!
-        
-        dim_msg.first = "";
-        dim_msg.second = "";
-        
-        process_post(&display_dim_process, dim_event, (void*) &dim_msg);
-        //hpdl_write_string(hpdlbuf);
+        /* copy the old buffer */
+        msg_first[0] = hpdlbuf[0];
+        msg_first[1] = hpdlbuf[1];
+        msg_first[2] = hpdlbuf[2];
+        msg_first[3] = hpdlbuf[3];
+
+        /* update and copy the new buffer */
+        update_ascii_buffer(hpdlbuf);
+        msg_second[0] = hpdlbuf[0];
+        msg_second[1] = hpdlbuf[1];
+        msg_second[2] = hpdlbuf[2];
+        msg_second[3] = hpdlbuf[3];
+        process_post(&display_dim_process, dim_event, NULL);
+        printf("update: %s -> %s\n", msg_first, msg_second);
       }
     }
   }
@@ -363,7 +391,7 @@ PROCESS_THREAD(ui_process, ev, data)
           if(hours == 24) {
             hours = 0;
           }
-          update_ascii_buffer();
+          update_ascii_buffer(hpdlbuf);
           hpdl_write_string(hpdlbuf);
 
         } else if(button_hold_count == update_counter) {
@@ -379,7 +407,7 @@ PROCESS_THREAD(ui_process, ev, data)
           if(hours == 24) {
             hours = 0;
           }
-          update_ascii_buffer();
+          update_ascii_buffer(hpdlbuf);
           hpdl_write_string(hpdlbuf);
         } else {
           button_hold_count++;
@@ -425,7 +453,7 @@ PROCESS_THREAD(ui_process, ev, data)
           if(minutes == 60) {
             minutes = 0;
           }
-          update_ascii_buffer();
+          update_ascii_buffer(hpdlbuf);
           hpdl_write_string(hpdlbuf);
 
         } else if(button_hold_count == update_counter) {
@@ -441,7 +469,7 @@ PROCESS_THREAD(ui_process, ev, data)
           if(minutes == 60) {
             minutes = 0;
           }
-          update_ascii_buffer();
+          update_ascii_buffer(hpdlbuf);
           hpdl_write_string(hpdlbuf);
         } else {
           button_hold_count++;
@@ -517,44 +545,55 @@ fix_ones:
   buf[1] = '0' + val;
 }
 /*---------------------------------------------------------------------------*/
+
 static void
-update_ascii_buffer(void)
+update_ascii_buffer(char *buf)
 {
-  byte_to_ascii(&(hpdlbuf[0]), hours, '0');
-  byte_to_ascii(&(hpdlbuf[2]), minutes, '0');
+  byte_to_ascii(&(buf[0]), hours, '0');
+  byte_to_ascii(&(buf[2]), minutes, '0');
 }
 /*---------------------------------------------------------------------------*/
 /* callbacks invoked from simplepwm for dimming the clock display */
-char *msg_string;
+volatile char *msg_string;
 
+/* invoked when PWM is in 'on'-mode; sets the display message according to string pointer */
 void
 pwm_on_cb(void)
 {
-  hpdl_write_string(msg_string);
+#if DEBUG
+  P1OUT &= ~(1<<0);
+#else
+  hpdl_clear();
+#endif
 }
 
+/* invoked when PWM is in 'off'-mode; clears the display */
 void
 pwm_off_cb(void)
 {
-  hpdl_clear();
+#if DEBUG
+  P1OUT |= 1<<0;
+#else
+  hpdl_write_string(msg_string);
+#endif
 }
 /*---------------------------------------------------------------------------*/
-/* to dim faster, increase step or reduce interval */
+/* set style, only one can be non-zero at once */
+#define PWM_STYLE_LINEAR            0   /* doesn't work very well now.. */
+#define PWM_STYLE_SINUS             0   /* doesn't work very well now.. */
+#define PWM_STYLE_JUST_CUT          0
+#define PWM_STYLE_SIMPLE            1
+
+/* for linear: to dim faster, increase step or reduce interval */
 #define PWM_MIN                     0
 #define PWM_MAX                     100
-#define PWM_STEP                    1
-#define PWM_STEP_INTERVAL           CLOCK_SECOND/64
+#define PWM_STEP                    10
 
-/* set style, only one can be non-zero at once */
-#define PWM_STYLE_LINEAR            1
-#define PWM_STYLE_SINUS             0
-#define PWM_STYLE_INVERT_SINUS      0
-#define PWM_STYLE_JUST_CUT          0
-
-/* lookup table */
-#if PWM_STYLE_SINUS || PWM_STYLE_INVERTED_SINUS
+/* for sinus: lookup table */
+#if PWM_STYLE_SINUS
   /* The top half look are not that different (all bright), so we use only a subset, the bottom elements. */
   #define SIN_ELEMENTS_MAXUSED      37
+  #define SIN_ELEMENTS_STEP         3
   /* Pre-generated vector of delays from sin(x) where x==[0..1,5..90], 63 elements */
 #if 0
   const uint8_t sin_lut[] = {0, 2, 4, 6, 13, 20, 26, 33, 40, 46, 53, 59, 66, 72,
@@ -565,12 +604,14 @@ pwm_off_cb(void)
                           254, 255, 255, 255, 255, 255};  // 64th elements
 #endif /* if 0; commented out code */
 
-  const uint8_t sin_lut[] = {0, 3, 6, 10, 13, 17, 20, 24, 27, 30, 34, 37, 40, 43,
-                              46, 49, 52, 55, 58, 61, 64, 66, 69, 71, 74, 76, 78,
-                              80, 82, 84, 86, 88, 89, 91, 92, 93, 95, 96, 97, 97,
-                              98, 99, 99, 99, 99}         // 45 elements
+  const uint8_t sin_lut[] =  {0, 3,  6, 10, 13, 17, 20, 24, 27, 30, 34, 37, 40, 43,   // 14
+                                46, 49, 52, 55, 58, 61, 64, 66, 69, 71, 74, 76, 78,   // 13
+                                80, 82, 84, 86, 88, 89, 91, 92, 93, 95, 96, 97, 97,   // 13
+                                98, 99, 99, 99, 99};                                  // +5 = 45 elements
 #endif
 
+/* common for all */
+#define PWM_STEP_INTERVAL           CLOCK_SECOND/16
 
 /* this process changes the text on the display by dimming down the current text,
   changes to the new, and dims up to full strength. */
@@ -582,59 +623,99 @@ PROCESS_THREAD(display_dim_process, ev, data)
 
   static uint8_t i = 1;     /* counter */
   static struct etimer etr;
-  PROCESS_WAIT_EVENT_UNTIL(ev == dim_event);
-  if(data != NULL) {
+  while(1) {
+    PROCESS_WAIT_EVENT_UNTIL(ev == dim_event);
+    printf("dim event\n");
+    if(1) {
+      printf("%s -> %s\n", msg_first, msg_second);
+  #if PWM_STYLE_LINEAR
+      /* dim down the first message (old time) */
+      msg_string = msg_first;
+      for(i = PWM_MAX; i >= PWM_MIN + PWM_STEP; i -= PWM_STEP) {
+        simple_pwm_on(i);
+        etimer_set(&etr, PWM_STEP_INTERVAL);
+        PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
+      }
 
-#if PWM_STYLE_LINEAR
-    /* dim down */
-    msg_string = ((struct dim_msg_data_s*) data)->first;
-    for(i = PWM_MAX; i >= PWM_STEP; i -= PWM_STEP) {
-      simple_pwm_on(i);
-      etimer_set(&etr, PWM_STEP_INTERVAL);
-      PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
+      /* dim up the new message (new time) */
+      msg_string = msg_second;
+      for(i = PWM_MIN; i <= PWM_MAX - PWM_STEP; i += PWM_STEP) {
+        simple_pwm_on(i);
+        etimer_set(&etr, PWM_STEP_INTERVAL);
+        PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
+      }
+
+      /* full dim/intensity */
+      simple_pwm_on(100);
+      hpdl_write_string(msg_second);
+  #endif
+
+  #if PWM_STYLE_SINUS
+      /* dim down the first message (old time) */
+      msg_string = msg_first;
+      for(i = SIN_ELEMENTS_MAXUSED; i >= SIN_ELEMENTS_STEP; i -= SIN_ELEMENTS_STEP) {
+        simple_pwm_on(sin_lut[i]);
+        etimer_set(&etr, PWM_STEP_INTERVAL);
+        PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
+      }
+
+      /* dim up the new message (new time) */
+      msg_string = msg_second;
+      for(i = 0; i <= SIN_ELEMENTS_MAXUSED - SIN_ELEMENTS_STEP; i += SIN_ELEMENTS_STEP) {
+        simple_pwm_on(sin_lut[i]);
+        etimer_set(&etr, PWM_STEP_INTERVAL);
+        PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
+      }
+      /* full dim/intensity */
+      simple_pwm_on(100);
+      hpdl_write_string(msg_second);
+  #endif
+
+  #if PWM_STYLE_JUST_CUT
+    /* no fancy dimming, just change the text to the new time */
+    hpdl_write_string(msg_second);
+  #endif
+
+  #if PWM_STYLE_SIMPLE
+      {
+        /* dim down the first message (old time) */
+        msg_string = msg_first;
+        hpdl_write_string(msg_string);
+        simple_pwm_on(90);
+        etimer_set(&etr, PWM_STEP_INTERVAL);
+        PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
+        simple_pwm_on(60);
+        etimer_set(&etr, PWM_STEP_INTERVAL);
+        PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
+        simple_pwm_on(30);
+        etimer_set(&etr, PWM_STEP_INTERVAL);
+        PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
+        simple_pwm_on(10);
+        etimer_set(&etr, PWM_STEP_INTERVAL);
+        PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
+        simple_pwm_on(5);
+        etimer_set(&etr, PWM_STEP_INTERVAL);
+        PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
+
+        msg_string = msg_second;
+        simple_pwm_on(10);
+        etimer_set(&etr, PWM_STEP_INTERVAL);
+        PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
+        simple_pwm_on(30);
+        etimer_set(&etr, PWM_STEP_INTERVAL);
+        PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
+        simple_pwm_on(60);
+        etimer_set(&etr, PWM_STEP_INTERVAL);
+        PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
+        simple_pwm_on(90);
+        etimer_set(&etr, PWM_STEP_INTERVAL);
+        PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
+        simple_pwm_on(100);
+        hpdl_write_string(msg_string);
+      }
+  #endif
+      process_post(PROCESS_BROADCAST, dim_done_event, NULL);
     }
-
-    /* dim up */
-    msg_string = ((struct dim_msg_data_s*) data)->second;
-    for(i = PWM_MIN; i <= PWM_MAX; i += PWM_STEP) {
-      simple_pwm_on(i);
-      etimer_set(&etr, PWM_STEP_INTERVAL);
-      PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
-    }
-    /* full dim/intensity */
-    simple_pwm_on(100);
-#endif
-
-#if PWM_STYLE_SINUS
-    /* dim down */
-    msg_string = ((struct dim_msg_data_s*) data)->first;
-    for(i = SIN_ELEMENTS_MAXUSED; i > 0; i -= 1) {
-      simple_pwm_on(sin_lut[i]);
-      etimer_set(&etr, PWM_STEP_INTERVAL);
-      PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
-    }
-
-    /* dim up */
-    msg_string = ((struct dim_msg_data_s*) data)->second;
-    for(i = 0; i <= SIN_ELEMENTS_MAXUSED; i += 1) {
-      simple_pwm_on(sin_lut[i]);
-      etimer_set(&etr, PWM_STEP_INTERVAL);
-      PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
-    }
-    /* full dim/intensity */
-    simple_pwm_on(100);
-#endif
-
-#if PWM_STYLE_INVERT_SINUS
-    /* full dim/intensity */
-    simple_pwm_on(100);
-#endif
-
-#if PWM_STYLE_JUST_CUT
-  /* no fance dimming, just change the text */
-  hpdl_write_string(((struct dim_msg_data_s*) data)->second);
-#endif
-
   }
   PROCESS_END();
 }

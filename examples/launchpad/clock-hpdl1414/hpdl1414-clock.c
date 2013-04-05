@@ -253,18 +253,53 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
   /* init display and ASCII buffer */
   hpdl_init();
   
-  /* check for show-off mode start condition */
-#if 0
-  do {
-    if(BTN_IS_HELD_DOWN()) {
-      i++;
-    }
-    etimer_set(&clock_timer, CLOCK_SECOND/8);
-    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
-  } while(BTN_IS_HELD_DOWN() && clock_time() < SHOW_OFF_START_CONDITION_TIME);
-
-  etimer_set(&clock_timer, CLOCK_SECOND);
+  /* back off a little while */
+  etimer_set(&clock_timer, CLOCK_SECOND/2);
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
+
+#if 1
+  {
+    char buf[4];
+    char anim[] = {'|', '/', '-', '\\', '|', '/', '-', '\\'};
+
+    /* check for demo conditions */
+    do {
+      if(BTN_IS_HELD_DOWN()) {
+        i++;
+      }
+      etimer_set(&clock_timer, CLOCK_SECOND/8);
+      PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
+    } while(BTN_IS_HELD_DOWN() && clock_time() < SHOW_OFF_START_CONDITION_TIME);
+
+    /* do demo-mode */
+    /* spinner */
+    hpdl_clear();
+    while(clock_seconds() < last_time + 20) {
+      /* positions are 1..4 counting from left to right */
+      hpdl_write_char(2, anim[c]);
+      hpdl_write_char(3, anim[7-c]);
+      c++;
+      if(c > 7) {
+        c = 0;
+      }
+      etimer_set(&et, CLOCK_SECOND/16);
+      PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+    }
+    hpdl_clear();
+
+    /* all characters */
+    //valid range: i > 0x20, i < 0x5f
+    for(i = 0x21; i < 0x5f-3; i += 1) {
+      buf[0] = i;
+      buf[1] = i + 1;
+      buf[2] = i + 2;
+      buf[3] = i + 3;
+      hpdl_write_string(buf);
+      etimer_set(&et, CLOCK_SECOND/4);
+      PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+    }
+  }
+
 #endif /* if 0; commented out code */
 
 

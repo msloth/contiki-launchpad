@@ -346,9 +346,10 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
 
   
   /* the big 'ole clock loop; counts seconds and sets time accordingly. */
+  etimer_set(&clock_timer, CLOCK_SECOND);
   while(1) {
-    etimer_set(&clock_timer, CLOCK_SECOND);
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
+    etimer_reset(&clock_timer);
     
     P1OUT |= 1<<0;
     ctimer_set(&led_ctimer, CLOCK_SECOND/64, led_off_cb, NULL);

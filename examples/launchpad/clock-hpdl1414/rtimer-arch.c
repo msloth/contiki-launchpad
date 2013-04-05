@@ -62,8 +62,6 @@ static uint8_t period_end = 0;
 
 extern void pwm_on_cb(void);
 extern void pwm_off_cb(void);
-
-
 /*--------------------------------------------------------------------------*/
 ISR(TIMER0_A1, rtimer_a01_isr)
 {
@@ -182,7 +180,7 @@ simple_pwm_on(uint8_t dc)
     TA0CCTL2 &= ~CCIE;  /* no need for interrupt */
     spwm.on_time = period;
 /*    SIMPLE_PWM_PORT(OUT) |= (1 << spwm.pin);*/
-    pwm_on_cb();
+/*    pwm_on_cb();*/
 
   } else if(dc == 0) {
     TA0CCTL2 &= ~CCIE;  /* no need for interrupt */

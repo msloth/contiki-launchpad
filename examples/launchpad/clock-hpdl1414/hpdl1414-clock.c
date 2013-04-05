@@ -73,9 +73,6 @@
       mode.
 
   Issues/todo:
-      setting time goes either too fast or too slow.
-        --Should start slow and then go faster
-        ++ done
       losing power == losing time == messy to start over with setting time
         --Should on every minute update store time in flash or similar and load on bootup
         --no, perhaps on every hour with some wear-leveling mechanism. 10^4-10^5 cycles
@@ -87,6 +84,24 @@
         --don't update the display every second
         --reduce clock speed (1 MHz, or slower)
         --power off the display after a while, turn on by button press
+        --more efficient voltage regulator
+        --display dims after a while
+      enable dimming the display
+        highest might be to bright
+        --use simplepwm
+      alarm functionality
+        could use the pin for LED to instead power a vibrator (perhaps /and/) an LED
+        how set alarm?
+      debug/show-off mode
+        for showing the beautiful display
+        --if button held at startup, according to some pattern, then show all chars
+        --or, start this form clock mode, then we won't have to reset the clock
+
+  done
+      setting time goes either too fast or too slow.
+        --Should start slow and then go faster
+        ++ done
+  
  */
 
 #include "contiki.h"

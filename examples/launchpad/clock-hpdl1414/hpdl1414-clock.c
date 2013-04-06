@@ -147,6 +147,7 @@
 #define FADE_STYLE_JUST_CUT               0
 #define FADE_STYLE_SIMPLE                 1
 /*---------------------------------------------------------------------------*/
+#define DEBUG_FASTTIME                1   /* minutes are sped up to 5 seconds */
 #if DEBUG
   #include <stdio.h>
   #include "dev/leds.h"
@@ -164,7 +165,7 @@
 
 /* configurations-------------------------------------------------------------*/
 /* splash message */
-static const char splash_message[] =    "HPDL-1414 clock - Contiki 2.6";
+static const char splash_message[] =    "    HPDL-1414 clock - Contiki 2.6";
 #define SPLASH_LENGTH                   (sizeof(splash_message) + 1)
 #define SPLASH_UPDATE_INTERVAL          (CLOCK_SECOND / 8 + CLOCK_SECOND / 16)
 #define SPLASH_POST_SPLASH_WAIT         (CLOCK_SECOND / 2)
@@ -209,11 +210,12 @@ static const char splash_message[] =    "HPDL-1414 clock - Contiki 2.6";
 #if BUTTON_HOLD_MINUTES_UPDATERATE_SLOW > BUTTON_HOLD_MINUTES_UPDATERATE_FAST
 #warning ********   Button update speeds might be misconfigured; now SLOW is faster than FAST. Do you want that? (hpdl1414-clock.c)
 #endif
-
-
-
+/*---------------------------------------------------------------------------*/
+#define MSGCOPY(s, d)   do {d[0]=s[0];d[1]=s[1];d[2]=s[2];d[3]=s[3];} while(0);
 /*---------------------------------------------------------------------------*/
 /* string buffers for the two messages */
+/*static volatile char *msg_first;*/
+/*static volatile char *msg_second;*/
 static volatile char msg_first[4];
 static volatile char msg_second[4];
 
@@ -221,15 +223,15 @@ static process_event_t dim_event;
 static process_event_t dim_done_event;
 /* -------------------------------------------------------------------------- */
 PROCESS(clockdisplay_process, "HPDL-1414 Process");
-PROCESS(ui_process, "Serial echo Process");
-PROCESS(display_dim_process, "Display dimmer process");
+PROCESS(ui_process, "UI Process");
+PROCESS(display_dim_process, "Display fade process");
 AUTOSTART_PROCESSES(&clockdisplay_process, &ui_process, &display_dim_process);
 /*---------------------------------------------------------------------------*/
 static void update_ascii_buffer(char *buf);
 static void byte_to_ascii(char *buf, uint8_t val, uint8_t zero_tens_char);
 /*---------------------------------------------------------------------------*/
-/* flag that halts regular time-keeping while clock is in set-mode */
-static volatile uint8_t clock_is_in_confmode = 0;
+/* the main clock timer that is used in the clock loop */
+static struct etimer clock_timer;
 
 /* keeps track of time */
 static volatile uint8_t seconds = 0;
@@ -238,6 +240,13 @@ static volatile uint8_t hours = 12;
 
 /* ASCII buffer for time */
 static char hpdlbuf[5];
+
+/* flag that halts regular time-keeping while clock is in set-mode */
+static volatile uint8_t clock_is_in_confmode = 0;
+
+/* this flag is set when all booting (demo, splash etc) is done; holds off the
+  UI process so we don't configure the clock before it is running. */
+static volatile uint8_t clock_bootdone = 0;
 /*--------------------------------------------------------------------------*/
 /* for a blinking LED, this timer and callback turns the LED off */
 static struct ctimer led_ctimer;
@@ -247,9 +256,6 @@ led_off_cb(void *d)
   P1OUT &= ~(1<<0);
 }
 /*---------------------------------------------------------------------------*/
-/* the main clock timer that is used in the clock loop */
-static struct etimer clock_timer;
-
 /* this is the normal clock-mode process */
 PROCESS_THREAD(clockdisplay_process, ev, data)
 {
@@ -271,50 +277,58 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
   /* init display and ASCII buffer */
   hpdl_init();
   
-  /* back off a little while */
-  etimer_set(&clock_timer, CLOCK_SECOND/2);
-  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
 
 #if ENABLE_DEMO_MODE_ON_STARTUP
   {
-    char buf[4];
-    char anim[] = {'|', '/', '-', '\\', '|', '/', '-', '\\'};
+    static char buf[4];
+    static const char anim[] = {'|', '/', '-', '\\', '|', '/', '-', '\\'};
+    static clock_time_t t0;
 
+    /* back off a little while so the user have time to press the button */
+    etimer_set(&clock_timer, CLOCK_SECOND/2);
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
+
+#define DEMO_START_CONDITION_DURATION   (CLOCK_SECOND * 2)  
+#define DEMO_SPINNER_DURATION       (CLOCK_SECOND * 4)
     /* check for demo conditions */
-    do {
-      if(BTN_IS_HELD_DOWN()) {
-        i++;
-      }
+    t0 = clock_time();
+    while((clock_time() < (t0 + DEMO_START_CONDITION_DURATION)) && BTN_IS_HELD_DOWN()) {
       etimer_set(&clock_timer, CLOCK_SECOND/8);
       PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
-    } while(BTN_IS_HELD_DOWN() && clock_time() < SHOW_OFF_START_CONDITION_TIME);
-
-    /* do demo-mode */
-    /* spinner */
-    hpdl_clear();
-    while(clock_seconds() < last_time + 20) {
-      /* positions are 1..4 counting from left to right */
-      hpdl_write_char(2, anim[c]);
-      hpdl_write_char(3, anim[7-c]);
-      c++;
-      if(c > 7) {
-        c = 0;
-      }
-      etimer_set(&et, CLOCK_SECOND/16);
-      PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
     }
-    hpdl_clear();
 
-    /* all characters */
-    //valid range: i > 0x20, i < 0x5f
-    for(i = 0x21; i < 0x5f-3; i += 1) {
-      buf[0] = i;
-      buf[1] = i + 1;
-      buf[2] = i + 2;
-      buf[3] = i + 3;
-      hpdl_write_string(buf);
-      etimer_set(&et, CLOCK_SECOND/4);
-      PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+    if(BTN_IS_HELD_DOWN()) {
+      /* do demo-mode */
+      static uint8_t c = 0;
+    
+      /* spinner */
+      hpdl_clear();
+      t0 = clock_time();
+      while(clock_time() < (t0 + DEMO_SPINNER_DURATION)) {
+        /* positions are 1..4 counting from left to right */
+        hpdl_write_char(2, anim[c]);
+        hpdl_write_char(3, anim[7-c]);
+        c++;
+        if(c > 7) {
+          c = 0;
+        }
+        etimer_set(&etio, CLOCK_SECOND/16);
+        PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etio));
+      }
+      hpdl_clear();
+
+      /* all characters */
+      //valid range: i > 0x20, i < 0x5f
+      for(i = 0x21; i < 0x5f-3; i += 1) {
+        buf[0] = i;
+        buf[1] = i + 1;
+        buf[2] = i + 2;
+        buf[3] = i + 3;
+        hpdl_write_string(buf);
+        etimer_set(&etio, CLOCK_SECOND/4);
+        PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etio));
+      }
+      hpdl_clear();
     }
   }
 
@@ -331,28 +345,42 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
   etimer_set(&clock_timer, SPLASH_POST_SPLASH_WAIT);
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
 
-  msg_first = "    "
-  msg_second = "Set "
+/*  msg_first = "    ";*/
+/*  msg_second = "Set ";*/
+  MSGCOPY("    ", msg_first);
+  MSGCOPY("Set ", msg_second);
+  
 /*  hpdl_write_string("Set");*/
 /*  etimer_set(&clock_timer, CLOCK_SECOND);*/
 /*  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));*/
   process_post(&display_dim_process, dim_event, NULL);
   etimer_set(&clock_timer, CLOCK_SECOND);
-  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer) || ev == dim_done_event);
+  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
+/*  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer) || ev == dim_done_event);*/
 
   //hpdl_write_string("time");
-  msg_first = "Set"
-  msg_second = "time"
+/*  msg_first = "Set";*/
+/*  msg_second = "time";*/
+  MSGCOPY("Set ", msg_first);
+  MSGCOPY("time", msg_second);
+  process_post(&display_dim_process, dim_event, NULL);
+  etimer_set(&clock_timer, CLOCK_SECOND*2);
+  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
+/*  msg_first = "time";*/
+/*  msg_second = "    ";*/
+  MSGCOPY("time", msg_first);
+  MSGCOPY("    ", msg_second);
   process_post(&display_dim_process, dim_event, NULL);
   etimer_set(&clock_timer, CLOCK_SECOND);
-  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer) || ev == dim_done_event);
-/*  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));*/
+  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
+/*  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(dim_done_event));*/
 #endif /* if 0; commented out code */
 
   /* prepare and set initial time */
   hpdlbuf[4] = 0;
   update_ascii_buffer(hpdlbuf);
   hpdl_write_string(hpdlbuf);
+  clock_bootdone = 1;
   
   /* the big 'ole clock loop; counts seconds and sets time accordingly. */
   etimer_set(&clock_timer, CLOCK_SECOND);
@@ -369,7 +397,7 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
       /* find new time, and if we need to, update the display */
 /*      update_ascii_buffer(msg_first);*/
       seconds++;
-#if DEBUG
+#if DEBUG_FASTTIME
       if(seconds >= 5) {
 #else
       if(seconds >= 60) {
@@ -431,7 +459,7 @@ PROCESS_THREAD(ui_process, ev, data)
     /* this is the target count before increasing minutes */
     static uint8_t update_counter = BUTTON_HOLD_CHECK_RATE - BUTTON_HOLD_MINUTES_UPDATERATE_SLOW;
 
-    PROCESS_WAIT_EVENT_UNTIL(ev == button_event);
+    PROCESS_WAIT_EVENT_UNTIL(ev == button_event && clock_bootdone);
     
     /* user has started to set time */
     clock_is_in_confmode = 1;

@@ -138,6 +138,7 @@
 
 /* setting DEBUG uses LED and prints over serial port instead of HPDL1414 */
 #define DEBUG                             0
+#define DEBUG_FASTTIME                    0   /* minutes are sped up to 5 seconds */
 #define ENABLE_DEMO_MODE_ON_STARTUP       1
 #define ENABLE_SPLASH_MESSAGE             1
 
@@ -147,7 +148,6 @@
 #define FADE_STYLE_JUST_CUT               0
 #define FADE_STYLE_SIMPLE                 1
 /*---------------------------------------------------------------------------*/
-#define DEBUG_FASTTIME                1   /* minutes are sped up to 5 seconds */
 #if DEBUG
   #include <stdio.h>
   #include "dev/leds.h"
@@ -169,6 +169,9 @@ static const char splash_message[] =    "    HPDL-1414 clock - Contiki 2.6";
 #define SPLASH_LENGTH                   (sizeof(splash_message) + 1)
 #define SPLASH_UPDATE_INTERVAL          (CLOCK_SECOND / 8 + CLOCK_SECOND / 16)
 #define SPLASH_POST_SPLASH_WAIT         (CLOCK_SECOND / 2)
+
+#define DEMO_START_CONDITION_DURATION       (CLOCK_SECOND * 2)  
+#define DEMO_SPINNER_DURATION               (CLOCK_SECOND * 4)
 /*---------------------------------------------------------------------------*/
 /* button interface / setting time */
 /* the time for time-set-mode to timeout if button isn't pressed again */
@@ -221,6 +224,9 @@ static volatile char msg_second[4];
 
 static process_event_t dim_event;
 static process_event_t dim_done_event;
+
+/* temperature readings */
+static volatile uint16_t temperature = 0;
 /* -------------------------------------------------------------------------- */
 PROCESS(clockdisplay_process, "HPDL-1414 Process");
 PROCESS(ui_process, "UI Process");
@@ -288,8 +294,6 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
     etimer_set(&clock_timer, CLOCK_SECOND/2);
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
 
-#define DEMO_START_CONDITION_DURATION   (CLOCK_SECOND * 2)  
-#define DEMO_SPINNER_DURATION       (CLOCK_SECOND * 4)
     /* check for demo conditions */
     t0 = clock_time();
     while((clock_time() < (t0 + DEMO_START_CONDITION_DURATION)) && BTN_IS_HELD_DOWN()) {
@@ -328,6 +332,8 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
         etimer_set(&etio, CLOCK_SECOND/4);
         PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etio));
       }
+      etimer_set(&etio, CLOCK_SECOND/2);
+      PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etio));
       hpdl_clear();
     }
   }
@@ -345,35 +351,23 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
   etimer_set(&clock_timer, SPLASH_POST_SPLASH_WAIT);
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
 
-/*  msg_first = "    ";*/
-/*  msg_second = "Set ";*/
   MSGCOPY("    ", msg_first);
   MSGCOPY("Set ", msg_second);
-  
-/*  hpdl_write_string("Set");*/
-/*  etimer_set(&clock_timer, CLOCK_SECOND);*/
-/*  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));*/
   process_post(&display_dim_process, dim_event, NULL);
   etimer_set(&clock_timer, CLOCK_SECOND);
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
-/*  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer) || ev == dim_done_event);*/
 
-  //hpdl_write_string("time");
-/*  msg_first = "Set";*/
-/*  msg_second = "time";*/
   MSGCOPY("Set ", msg_first);
   MSGCOPY("time", msg_second);
   process_post(&display_dim_process, dim_event, NULL);
   etimer_set(&clock_timer, CLOCK_SECOND*2);
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
-/*  msg_first = "time";*/
-/*  msg_second = "    ";*/
+
   MSGCOPY("time", msg_first);
   MSGCOPY("    ", msg_second);
   process_post(&display_dim_process, dim_event, NULL);
   etimer_set(&clock_timer, CLOCK_SECOND);
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
-/*  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(dim_done_event));*/
 #endif /* if 0; commented out code */
 
   /* prepare and set initial time */
@@ -388,6 +382,10 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
     etimer_reset(&clock_timer);
     
+    /* get temperature reading (10 bits) from the internal temperature sensor */
+    adc_get_noblock(TEMP, &temperature);
+    
+    /* blink the LED */
     P1OUT |= 1<<0;
     ctimer_set(&led_ctimer, CLOCK_SECOND/64, led_off_cb, NULL);
 
@@ -395,7 +393,6 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
     if(!clock_is_in_confmode) {
       uint8_t update = 0;
       /* find new time, and if we need to, update the display */
-/*      update_ascii_buffer(msg_first);*/
       seconds++;
 #if DEBUG_FASTTIME
       if(seconds >= 5) {
@@ -430,6 +427,7 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
         msg_second[3] = hpdlbuf[3];
         process_post(&display_dim_process, dim_event, NULL);
         printf("update: %s -> %s\n", msg_first, msg_second);
+        printf("temperature: %u\n", temperature);
       }
     }
   }
@@ -448,10 +446,10 @@ PROCESS_THREAD(ui_process, ev, data)
   PROCESS_BEGIN();
 
   while(1) {
+    static uint8_t button_hold_count = 0;
+
     /* count the number of blinks when switching modes */
     static uint8_t blink_counter;
-    
-    static uint8_t button_hold_count = 0;
 
     /* how many minutes increased during this hold of the button; for knowning when to switch to fast update rate */
     static uint8_t time_increase = 0;
@@ -464,7 +462,26 @@ PROCESS_THREAD(ui_process, ev, data)
     /* user has started to set time */
     clock_is_in_confmode = 1;
     printf("*** in confmode\n");
-    leds_on(LEDS_RED);
+    
+    /* showing temperature */
+#if 0
+    MSGCOPY("    ", msg_first);
+    MSGCOPY("Temp", msg_second);
+    process_post(&display_dim_process, dim_event, NULL);
+    etimer_set(&clock_timer, CLOCK_SECOND);
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
+
+    if(temperature < 500) {
+      msg_first[0] = '-';
+    } else {
+      msg_first[0] = '+';
+    }
+    msg_first[3] = 'C';
+#endif /* if 0; commented out code */
+  
+
+
+
 
     /* setting hours -------------------------------------------------------- */
     /* blink to show that we are in set-time-mode, setting hours */
@@ -602,9 +619,9 @@ PROCESS_THREAD(ui_process, ev, data)
     }
 
     /* return to normal clock-mode */
+    seconds = 0;
     clock_is_in_confmode = 0;
     printf("*** clock mode\n");
-    leds_off(LEDS_RED);
 
   }  
   PROCESS_END();

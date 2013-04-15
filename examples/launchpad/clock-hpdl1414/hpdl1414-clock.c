@@ -135,10 +135,11 @@
 #include "contiki.h"
 #include "dev/button.h"
 #include "simple-pwm.h"
+#include "dev/adc.h"
 
 /* setting DEBUG uses LED and prints over serial port instead of HPDL1414 */
-#define DEBUG                             0
-#define DEBUG_FASTTIME                    0   /* minutes are sped up to 5 seconds */
+#define DEBUG                             1
+#define DEBUG_FASTTIME                    1   /* minutes are sped up to 5 seconds */
 #define ENABLE_DEMO_MODE_ON_STARTUP       1
 #define ENABLE_SPLASH_MESSAGE             1
 
@@ -219,8 +220,8 @@ static const char splash_message[] =    "    HPDL-1414 clock - Contiki 2.6";
 /* string buffers for the two messages */
 /*static volatile char *msg_first;*/
 /*static volatile char *msg_second;*/
-static volatile char msg_first[4];
-static volatile char msg_second[4];
+static volatile char msg_first[5];
+static volatile char msg_second[5];
 
 static process_event_t dim_event;
 static process_event_t dim_done_event;
@@ -242,7 +243,7 @@ static struct etimer clock_timer;
 /* keeps track of time */
 static volatile uint8_t seconds = 0;
 static volatile uint8_t minutes = 0;
-static volatile uint8_t hours = 12;
+static volatile uint8_t hours = 9;
 
 /* ASCII buffer for time */
 static char hpdlbuf[5];
@@ -282,7 +283,8 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
 
   /* init display and ASCII buffer */
   hpdl_init();
-  
+  msg_first[4] = 0;
+  msg_second[4] = 0;
 
 #if ENABLE_DEMO_MODE_ON_STARTUP
   {
@@ -426,8 +428,8 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
         msg_second[2] = hpdlbuf[2];
         msg_second[3] = hpdlbuf[3];
         process_post(&display_dim_process, dim_event, NULL);
-        printf("update: %s -> %s\n", msg_first, msg_second);
-        printf("temperature: %u\n", temperature);
+        //printf("update: %s -> %s\n", msg_first, msg_second);
+        //printf("temperature: %u\n", temperature);
       }
     }
   }

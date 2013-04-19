@@ -94,7 +94,6 @@ Here is a short summary of the Launchpad mcu's
     will it accomodate the PWM or serial modules as they use the second timer.
 */
 
-
 /* use serial port? (printfs); saves space if not */
 #define USE_SERIAL              1
 
@@ -128,9 +127,9 @@ Here is a short summary of the Launchpad mcu's
  * on other pins. You will likely have to change in cpu/msp430/g2xxx/leds-arch.c
  * as well as core/dev/leds.{c, h} if you want to add more LEDs or change pins.
  */
+//#define LEDS_PxDIR              P1DIR
+//#define LEDS_PxOUT              P1OUT
 #define LEDS_PORT(type)         P1##type
-#define LEDS_PxDIR              P1DIR
-#define LEDS_PxOUT              P1OUT
 #define LEDS_CONF_RED           (1<<0)
 #define LEDS_CONF_GREEN         (1<<6)
 #define LEDS_CONF_YELLOW        (1<<6)    /* only here to remove compilation errors */
@@ -170,7 +169,7 @@ Here is a short summary of the Launchpad mcu's
 
 /*--------------------------------------------------------------------------*/
 /*
- * The CC2500 definitions - pins, ports, interrupt vector etc - is defined in
+ * The CC2500 definitions - pins, ports, interrupt vector etc - are defined in
  * the following files:
  *    spi.c, spi.h
  *    cc2500.c, cc2500.h, cc2500-arch.c, cc2500-const.h
@@ -207,15 +206,6 @@ project-conf.h)!"
 #if HAS_EXT_OSC != 1
 #error "You must have the external 32.768 oscillator populated on board."
 #endif
-
-
-
-
-
-
-
-
-
 /* other various things ----------------------------*/
 #define BAUD2UBR(baud) ((F_CPU/baud))
 #define CCIF
@@ -228,49 +218,5 @@ project-conf.h)!"
 #define w_memcpy memcpy
 #endif /* __GNUC__ &&  __MSP430__ && MSP430_MEMCPY_WORKAROUND */
 #include "msp430def.h"
-
-#if 0
-/* DCO speed periodic resynchronization for more robust UART, etc. */
-#ifndef DCOSYNCH_CONF_ENABLED
-#define DCOSYNCH_CONF_ENABLED 0
-#endif /* DCOSYNCH_CONF_ENABLED */
-#ifndef DCOSYNCH_CONF_PERIOD
-#define DCOSYNCH_CONF_PERIOD 30
-#endif /* DCOSYNCH_CONF_PERIOD */
-#endif
 /*--------------------------------------------------------------------------*/
-
-
-
-/* USART0 Tx ready? */
-//  #define SPI_WAITFOREOTx() while ((U0TCTL & TXEPT) == 0)
-///* USART0 Rx ready? */
-//  #define SPI_WAITFOREORx() while ((IFG1 & URXIFG0) == 0)
-///* USART0 Tx buffer ready? */
-//  #define SPI_WAITFORTxREADY() while ((IFG1 & UTXIFG0) == 0)
-
-
-/* defines related to CFS (file system) and flash; only relevant if we had
- * external storage or want to rewrite flash. */
-  //#define ROM_ERASE_UNIT_SIZE  512
-  //#define XMEM_ERASE_UNIT_SIZE (64*1024L)
-  //#define CFS_CONF_OFFSET_TYPE    long
-
-  /* Use the first 64k of external flash for node configuration */
-  //#define NODE_ID_XMEM_OFFSET     (0 * XMEM_ERASE_UNIT_SIZE)
-
-  /* Use the second 64k of external flash for codeprop. */
-  //#define EEPROMFS_ADDR_CODEPROP  (1 * XMEM_ERASE_UNIT_SIZE)
-
-  //#define CFS_XMEM_CONF_OFFSET    (2 * XMEM_ERASE_UNIT_SIZE)
-  //#define CFS_XMEM_CONF_SIZE      (1 * XMEM_ERASE_UNIT_SIZE)
-
-  //#define CFS_RAM_CONF_SIZE 4096
-
-
-
-
-
-
-
 #endif /* __PLATFORM_CONF_H__ */

@@ -1,10 +1,11 @@
 
 # at present, this file contains a whole lot of old Sky legacy. Clean up.
 
-# set mcu
+# set mcu according to command line option, eg MCU=msp430g2452
+# note that this does not yet fully propagate so do change in platform-conf.h
+# and contiki-conf.h instead.
 ifndef MCU
 MCU=msp430g2553
-#MCU=msp430g2452
 endif
 
 # we need to make a 'small' compile, ie removes unused sections etc
@@ -60,10 +61,17 @@ include $(CONTIKI)/cpu/msp430/g2xxx/Makefile.msp430
 # change in size in any way so check if it works, otherwise change back!
 #include $(CONTIKI)/cpu/msp430/Makefile.msp430
 
-contiki-$(TARGET).a: ${addprefix $(OBJECTDIR)/,symbols.o}
-#	$(AR) rcf $@ $^
+#contiki-$(TARGET).a: $(CONTIKI_OBJECTFILES)
+#	$(AR) $(AROPTS) $@ $^
+#ifdef IAR
+#contiki-$(TARGET).a: ${addprefix $(OBJECTDIR)/,symbols.o}
+#else
+#endif
 
-#IHEXFILE=tmpimage.ihex
+#CUSTOM_RULE_ALLOBJS_TO_TARGETLIB=yes
+#contiki-$(TARGET).a: ${addprefix $(OBJECTDIR)/,symbols.o}
+#	$(AR) rcf $@ $^
+#	$(SIZE) $(PROJECT).launchpad
 
 # Check what operating system we are using as it affects what commands we run
 ifeq ($(HOST_OS),Windows)
@@ -127,8 +135,6 @@ help:
 	@echo "eg button, LEDs, see the folders in examples/launchpad and the files"
 	@echo "in platform/launchpad and cpu/msp430/g2xxxx."
 	@echo ""
-
-
 
 
 

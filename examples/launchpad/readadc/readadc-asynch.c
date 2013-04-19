@@ -88,12 +88,12 @@ PROCESS_THREAD(adc_reading_process, ev, data)
      * read analog in A7, store the result in variable adc when done (no
      * notification will be given when so happens)
      */
-    adc_get_noblock(A7, &adc);
+    adc_get_noblock(TEMP, &adc);
     leds_toggle(LEDS_GREEN);
-    etimer_set(&et, CLOCK_SECOND/8);
+    etimer_set(&et, CLOCK_SECOND);
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
-    printf("ADC: %u\n", adc);
+    printf("TADC: %u\n", adc);
   }
   PROCESS_END();
 }

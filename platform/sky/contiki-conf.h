@@ -11,11 +11,13 @@
 #endif /* PLATFORM_CONF_H */
 
 #ifndef NETSTACK_CONF_MAC
-#define NETSTACK_CONF_MAC     csma_driver
+#define NETSTACK_CONF_MAC     nullmac_driver
+//#define NETSTACK_CONF_MAC     csma_driver
 #endif /* NETSTACK_CONF_MAC */
 
 #ifndef NETSTACK_CONF_RDC
-#define NETSTACK_CONF_RDC     contikimac_driver
+//#define NETSTACK_CONF_RDC     contikimac_driver
+#define NETSTACK_CONF_RDC     simplerdc_driver
 #endif /* NETSTACK_CONF_RDC */
 
 #ifndef NETSTACK_CONF_RDC_CHANNEL_CHECK_RATE
@@ -27,7 +29,8 @@
 #endif /* NETSTACK_CONF_RADIO */
 
 #ifndef NETSTACK_CONF_FRAMER
-#define NETSTACK_CONF_FRAMER  framer_802154
+#define NETSTACK_CONF_FRAMER  framer_nullmac
+//#define NETSTACK_CONF_FRAMER  framer_802154
 #endif /* NETSTACK_CONF_FRAMER */
 
 #ifndef CC2420_CONF_AUTOACK

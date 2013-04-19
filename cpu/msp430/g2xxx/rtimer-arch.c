@@ -34,6 +34,7 @@
 /**
  * \file
  *         rtimer implementation for msp430g2553 and 2452
+ *         also handles the simplepwm
  * \author
  *         Marcus Lunden <marcus.lunden@gmail.com>
  */

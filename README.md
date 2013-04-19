@@ -64,7 +64,7 @@ features that I haven't ported yet.
 
 ### Not working on this port, not ported yet or very limited support
 *  energest - energy estimation (save RAM)
-*  uIPv6 - maybe later, depends on how small packetbuf+Rime gets (save RAM).
+*  uIPv6 - some parts may come later, depends on how small packetbuf+Rime gets (save RAM).
 *  the sensors module was way too complex and hard to add new sensors so it is
    now replaced by a generic ADC module
 *  the rimestats module - it needs 72 B RAM = too much. see ''contiki/core/net/rime/rimestats.h''.
@@ -92,14 +92,14 @@ features that I haven't ported yet.
 
 Of course, this is subject to change and this file might not be up-to-date.
 
-*  radio drivers for CC2500 (very, very soon! dec-12)
+*  radio drivers for CC2500 (they are there and almost fully working)
+*  simple power-saving MAC protocol, like a re-implementation of X-MAC or ContikiMAC
+   to reduce complexity and RAM/ROM-requirements --it's there, running at 7% idle DC with avg 64ms latency.
 *  a driver for HD44780-based LCD displays
-*  a driver for alphanumeric displays (a la Sparkfun)
+*  a driver for alphanumeric displays (a la Sparkfun) --done!
 *  really simple (eg likely not that reliable or high performance) network stuff
    like leaf nodes to sink data routing, data dissemination through polite gossip
    and similar things.
-*  simple power-saving MAC protocol, like a re-implementation of X-MAC or ContikiMAC
-   to reduce complexity and RAM/ROM-requirements
 *  UART with interrupts; now it is just blocking which works but as the speed is
    limited in hardware to 9600 baud any printf's can block the mcu quite long time
 *  Contiki serial shell; now serial input works (wait for serial_input_events)

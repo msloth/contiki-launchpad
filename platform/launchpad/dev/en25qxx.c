@@ -34,7 +34,7 @@
  * \author
  *    Marcus Lunden <marcus.lunden@gmail.com>
  * \desc
- *    driver for the EN25Q{61, 128 etc} serial flash
+ *    driver for the EN25Q{64, 128 etc} serial flash.
  */
 
 #include <stdio.h>
@@ -44,30 +44,130 @@
 #include "en25qxx.h"
 
 /*---------------------------------------------------------------------------*/
-void
+/**
+ * \brief      init flash and SPI for the flash
+ * \return     execution result
+ * \retval 0   successful
+ * \retval -1  not successful
+ *
+ */
+
+int
 en25qxx_init(void)
 {
+  
 }
 /*---------------------------------------------------------------------------*/
+/**
+ * \brief           write a single byte
+ * \param dest      what address to write to
+ * \param wd        data byte to write
+ *
+ */
+
 void
-en25qxx_write_byte(uint32_t dest, uint8_t wd);
+en25qxx_write_byte(uint32_t dest, uint8_t wd)
 {
+  
 }
 /*---------------------------------------------------------------------------*/
+/**
+ * \brief           write a stream of bytes
+ * \param dest      what address to write to
+ * \param srcbuf    pointer to start of buffer containing the data to write
+ * \param len       number of bytes to write
+ * \return          number of bytes written
+ *
+ */
+
 uint32_t
-en25qxx_write_burst(uint32_t dest, uint8_t *srcbuf, uint32_t len);
+en25qxx_write_burst(uint32_t dest, uint8_t *srcbuf, uint32_t len)
 {
+  
+  return 0;
 }
 /*---------------------------------------------------------------------------*/
+/**
+ * \brief           read a single byte
+ * \param from      what address to read from
+ * \return          the read byte
+ *
+ */
+
 uint8_t
 en25qxx_read_byte(uint32_t from)
 {
+  
+  return 0;
 }
 /*---------------------------------------------------------------------------*/
+/**
+ * \brief           read a stream of bytes
+ * \param from      what address to start reading from
+ * \param destbuf   pointer to start of buffer to write read data to
+ * \param len       number of bytes to read
+ * \return          number of bytes read
+ *
+ */
 uint32_t
 en25qxx_read_burst(uint32_t from, uint8_t *destbuf, uint32_t len)
 {
+  
+  return 0;
 }
 /*---------------------------------------------------------------------------*/
-
-
+/**
+ * \brief      seek to address
+ * \param from address to seek to
+ * \return     sdf
+ * \retval 0   Functions that return a few specified values
+ * \retval 1   can use the \retval keyword instead of \return.
+ *
+ */
+uint8_t
+en25qxx_seek(uint32_t from)
+{
+  
+  return 0;
+}
+/*---------------------------------------------------------------------------*/
+/**
+ * \brief      read from address prev seek'ed to
+ * \return     the read byte
+ *
+ */
+uint8_t
+en25qxx_read(void)
+{
+  
+  return 0;
+}
+/*---------------------------------------------------------------------------*/
+/**
+ * \brief      format a page of the entire flash
+ * \return     execution result
+ * \retval 0   successful
+ * \retval -1  not successful
+ *
+ */
+int
+en25qxx_format_page(int pno)
+{
+  
+  return 0;
+}
+/*---------------------------------------------------------------------------*/
+/**
+ * \brief      format the entire flash
+ * \return     execution result
+ * \retval 0   successful
+ * \retval -1  not successful
+ *
+ */
+int
+en25qxx_format_all(void)
+{
+  
+  return 0;
+}
+/*---------------------------------------------------------------------------*/

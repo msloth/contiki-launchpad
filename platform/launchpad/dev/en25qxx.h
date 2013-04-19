@@ -34,7 +34,14 @@
  * \author
  *    Marcus Lunden <marcus.lunden@gmail.com>
  * \desc
- *    driver for the EN25Q{61, 128 etc} serial flash
+ *    driver for the EN25Q{64, 128 etc} serial flash
+ *    This driver is intended just for basic flash read/write/format functional-
+ *    ity, all the rest (any file system etc) happens above this driver.
+ *    
+ *    
+ *    
+ *    
+ *    
  */
 
 #ifndef __EN25QXX_H__
@@ -46,7 +53,7 @@
 
 /*--------------------------------------------------------------------------*/
 /* init the serial flash */
-void        en25qxx_init(void);
+int         en25qxx_init(void);
 
 /* write a single byte at an address */
 void        en25qxx_write_byte(uint32_t dest, uint8_t wd);
@@ -59,6 +66,18 @@ uint8_t     en25qxx_read_byte(uint32_t from);
 
 /* read a series of bytes from flash */
 uint32_t    en25qxx_read_burst(uint32_t from, uint8_t *destbuf, uint32_t len);
+
+/* seek to address */
+uint8_t     en25qxx_seek(uint32_t from);
+
+/* read from address prev seek'ed to */
+uint8_t     en25qxx_read(void);
+/*--------------------------------------------------------------------------*/
+/* format a page of the entire flash */
+int en25qxx_format_page(int pno);
+
+/* format the entire flash */
+int en25qxx_format_all(void);
 /*--------------------------------------------------------------------------*/
 
 #endif /* __EN25QXX_H__ */

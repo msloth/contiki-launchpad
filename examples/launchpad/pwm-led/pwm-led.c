@@ -74,12 +74,12 @@ AUTOSTART_PROCESSES(&button_process, &pwmled_process);
 /*---------------------------------------------------------------------------*/ 
 /* set the PWM duty cycle on the pins (ie the LEDs) out of phase from eachother */
 
+static struct etimer etr;
 PROCESS_THREAD(pwmled_process, ev, data)
 {
   PROCESS_POLLHANDLER();
   PROCESS_EXITHANDLER(pwm_all_off(); etimer_stop(&etr););
   PROCESS_BEGIN();
-  static struct etimer etr;
   static uint8_t i = 1;     /* counter */
   static uint8_t up = 1;    /* counting up or down? */
 

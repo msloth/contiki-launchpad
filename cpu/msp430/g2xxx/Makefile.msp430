@@ -136,6 +136,7 @@ NM       = msp430-nm
 OBJCOPY  = msp430-objcopy
 STRIP    = msp430-strip
 BSL      = msp430-bsl
+SIZE     = msp430-size
 
 # From version 4.6.x, mspgcc does not support generic MCU identifiers such as
 # msp430x1611 in contrast to msp430f1611
@@ -144,16 +145,19 @@ ifndef CC_MCU
   MSPGCC_VERSION := ${shell $(CC) -dumpversion}
  endif
 endif
+
 ifndef CC_MCU
  ifneq (,$(findstring 4.4.,$(MSPGCC_VERSION)))
   CC_MCU := ${subst msp430f,msp430x,$(MCU)}
  endif
 endif
+
 ifndef CC_MCU
  ifneq (,$(findstring 3.2.,$(MSPGCC_VERSION)))
   CC_MCU := ${subst msp430f,msp430x,$(MCU)}
  endif
 endif
+
 ifndef CC_MCU
  CC_MCU := $(MCU)
 endif
@@ -171,6 +175,7 @@ endif
 #     8944	     84	    332	   9360	   2490	dumb.launchpad
 
 CFLAGS  += -Os -fno-strict-aliasing
+
 LDFLAGS += -mmcu=$(CC_MCU) -Wl,-Map=contiki-$(TARGET).map
 
 # remove unused functions and sections

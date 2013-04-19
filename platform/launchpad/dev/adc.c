@@ -88,8 +88,7 @@ init_pininput(uint8_t pin)
 /*  ADC10CTL1 |= (pin);*/   // XXX ooops, shouldn't have been here! check that it works, then delete
 }
 /*--------------------------------------------------------------------------*/
-/* init the button by initing the port and pins, set up the interrupt and 
- * register what process should be notified upon button pressed */
+/* init the ADC. This is called automatically on bootup. */
 void
 adc_init(void)
 {
@@ -106,11 +105,17 @@ adc_init(void)
 void
 adc_stop(void)
 {
-  // XXX not yet implemented
+  /* set CONSEQx = 0 and ENC = 0 to stop immediately */
+  ADC10CTL0 = 0;
+  ADC10CTL1 = 0;
+
+  /* then re-init regs */
+  ADC10CTL0 = SREF_0 | ADC10ON | ADC10SHT_2;
+  ADC10CTL1 = (SHS_0 | ADC10SSEL_2 | CONSEQ_0);
   return;
 }
 /*--------------------------------------------------------------------------*/
-/* returns true if the ADC is currently doing a conversion */
+/* returns non-zero if the ADC is currently doing a conversion */
 uint8_t
 adc_busy(void)
 {
@@ -119,6 +124,7 @@ adc_busy(void)
 }
 /*--------------------------------------------------------------------------*/
 /* 
+ * Do an analog to digital conversion.
  * use this when you plan on using the conversion a bit later (>50 us later) 
  * and it is not that important. Will not block while converting.
  * val will contain the result when done.
@@ -148,6 +154,7 @@ adc_get_noblock(uint8_t adc_ch, uint16_t *val)
 }
 /*--------------------------------------------------------------------------*/
 /*
+ * Do an analog to digital conversion.
  * use this when you need the result as soon as it is done; it will block until
  * it is finished with the conversion (ca 50 us)
  */
@@ -175,6 +182,7 @@ adc_get(uint8_t adc_ch)
 }
 /*--------------------------------------------------------------------------*/
 /*
+ * Do an analog to digital conversion.
  * use this when you want to be notified as soon as the conversion is done.
  * The process p will be sent an event when conversion is done.
  *    adc_get_event(A7, PROCESS_CURRENT());
@@ -202,6 +210,7 @@ adc_get_event(uint8_t adc_ch, struct process *p)
 }
 /*--------------------------------------------------------------------------*/
 /*
+ * Do an analog to digital conversion.
  * use this when you want to be notified as soon as the conversion is done.
  * The process will be polled when conversion is done.
  */

@@ -58,7 +58,7 @@ enum ADC_CHANNELS {
   A5 = 5,
   A6 = 6,   // LED2
   A7 = 7,
-  TEMP = 0xB,
+  TEMP = 0xA,   /* internal temp sensor; VTEMP = 0.00355 * (TEMPC) + 0.986 */
 };
 
 #define ADC_NONBLOCK_GET(x)      adc_asynch_get(x)
@@ -67,10 +67,24 @@ enum ADC_CHANNELS {
 
 process_event_t adc_event;
 
+/*
+ * Initialize the ADC. Called on bootup automatically.
+ */
 void adc_init(void);
 
+/*
+ * Do an analog to digital conversion.
+ * If you can't decide which method to use, then use this. It's easiest.
+ * use this when you need the result as soon as it is done; it will block until
+ * it is finished with the conversion (<50 us)
+ *    reading = adc_get(A0);
+ * 
+ */
+uint16_t adc_get(uint8_t adc_ch);
+
 /* 
- * use this when you plan on using the conversion a bit later (ca x ms later) 
+ * Do an analog to digital conversion.
+ * Use this when you plan on using the conversion a bit later (ca x ms later) 
  * and it is not that important. Will not block while converting.
  *    uint16_t val;
  *    adc_get_noblock(A7, &val);
@@ -79,34 +93,33 @@ void adc_init(void);
 void adc_get_noblock(uint8_t adc_ch, uint16_t *val);
 
 /*
- * use this when you need the result as soon as it is done; it will block until
- * it is finished with the conversion (<50 us)
- *    reading = adc_get(A0);
- * 
- */
-uint16_t adc_get(uint8_t adc_ch);
-
-/*
+ * Do an analog to digital conversion.
  * use this when you want to be notified as soon as the conversion is done.
  * The process will be sent an event when conversion is done.
  *    adc_get_event(A0, PROCESS_CURRENT());
  *    PROCESS_WAIT_EVENT_UNTIL(ev == adc_event);
  * 
- * If the process pointer argument is NULL, then the event is sent to all
+ * If the process pointer argument is NULL, then the event is broadcasted to all processes.
  *    adc_get_event(A7, NULL);
  * 
  */
 void adc_get_event(uint8_t adc_ch, struct process *p);
 
 /*
+ * Do an analog to digital conversion.
  * use this when you want to be notified as soon as the conversion is done.
  * The process will be polled when conversion is done.
+ *    PROCESS_POLLHANDLER(handle_adc());
+ *    ...
  *    adc_get_poll(A7, PROCESS_CURRENT());
  *    
  */
 void adc_get_poll(uint8_t adc_ch, uint16_t *buf, struct process *p);
 
-/* returns true if the ADC is currently doing a conversion */
+/* 
+ * Check if we are currently doing an ADC.
+ * returns non-zero if the ADC is currently doing a conversion
+ */
 uint8_t adc_busy(void);
 
 

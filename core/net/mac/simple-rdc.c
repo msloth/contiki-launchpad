@@ -93,6 +93,29 @@
 #include "sys/rtimer.h"
 #include "sys/clock.h"
 
+
+#if 0
+
+todo-----------------------------------------------
+  * what's holding up the transmissions on real hardware? CCA? prob in radio driver
+  * changing the etimers in the powercycle process so that the wake-up phase is not disturbed by transmissions/receiving
+        --enables other nodes to learn phase, even though these do not
+  * verify unicast ACKs from simpleRDC on real hardware
+  * verify broadcast turns off between transmissions
+  * finish radio-layer ACKs for shorter wake-ups, with address filtering
+  * if CRC-drop in receiving, wait awake for a while (timer) as it's probable that we'll get sth again soon as part of a transmission
+  * if CRC ok in receiving, then off() radio
+  * write phase optimizations for larger devices (?)
+
+
+#endif /* if 0; commented out code */
+
+
+
+
+
+
+
 /*---------------------------------------------------------------------------*/
 #define DEBUG 0
 #if DEBUG
@@ -251,7 +274,8 @@ Ie, time to receive a packet, copy ACK->fifo, send ACK, would be < 0.30 ms, but
  *    #define CC2420_CONF_AUTOACK       1
  * 
  */
-#define SIMPLERDC_ACK_UNICAST             0
+#define SIMPLERDC_ACK_UNICAST             1
+
 #if 0
 old: /* Radio returns TX_OK/TX_NOACK after autoack wait */
     #ifndef RDC_CONF_HARDWARE_ACK
@@ -367,32 +391,6 @@ off(void)
 static int
 send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_list *buf_list)
 {
-#if 0
-
-Possible return values
-
-  /**< The MAC layer transmission was OK. */
-  MAC_TX_OK,
-
-  /**< The MAC layer transmission could not be performed due to a collision. */
-  MAC_TX_COLLISION,
-
-  /**< The MAC layer did not get an acknowledgement for the packet. */
-  MAC_TX_NOACK,
-
-  /**< The MAC layer deferred the transmission for a later time. */
-  MAC_TX_DEFERRED,
-
-  /**< The MAC layer transmission could not be performed because of an
-     error. The upper layer may try again later. */
-  MAC_TX_ERR,
-
-  /**< The MAC layer transmission could not be performed because of a
-     fatal error. The upper layer does not need to try again, as the
-     error will be fatal then as well. */
-  MAC_TX_ERR_FATAL,
-
-#endif /* if 0; commented out code */
   uint8_t is_broadcast = 0;
   uint8_t is_reliable = 0;
   int hdrlen;
@@ -406,12 +404,14 @@ Possible return values
   PRINTF("SimpleRDC send\n");
 
   /* sanity checks ---------------------------------------------------------- */
+#if 0
   /* Exit if RDC and radio were explicitly turned off */
-  /* XXX allow send even though RDC &/| radio is off? */
-  if (!simplerdc_is_on && !simplerdc_keep_radio_on) {
+  if(!simplerdc_is_on && !simplerdc_keep_radio_on) {
     PRINTF("simplerdc: radio is turned off\n");
     return MAC_TX_ERR_FATAL;
   }
+#endif /* if 0; commented out code */
+
   /* bad length */
   if(packetbuf_totlen() == 0) {
     PRINTF("simplerdc: send_packet data len 0\n");
@@ -421,22 +421,18 @@ Possible return values
   /* prepare for transmission ----------------------------------------------- */
   packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &rimeaddr_node_addr);
 
-  // is this that packet needs to be ACKed? then yes, for unicasts but that is done automatically so don't use this
-  // might be for reliable comms though, but then the primitive itself sets this
-/*  packetbuf_set_attr(PACKETBUF_ATTR_MAC_ACK, 1);*/
-
-//--------------------------------------------------------------- header
   /* simplerdc header, like contikimac header, used to identify packets so they
       can be ACK'ed. Useful for eg unicasts to end a tx-train early and conserve
       some energy */
 
-  /* with simpleRDC header */
+  /* simpleRDC header ------------------------------------------------------- */
   hdrlen = packetbuf_totlen();
   if(packetbuf_hdralloc(sizeof(struct hdr)) == 0) {
     /* Failed to allocate space for contikimac header */
     PRINTF("simplerdc: send failed, too large header\n");
     return MAC_TX_ERR_FATAL;
   }
+
   chdr = packetbuf_hdrptr();
   chdr->receiver.u8[0] = packetbuf_addr(PACKETBUF_ADDR_SENDER)->u8[0];
   chdr->receiver.u8[1] = packetbuf_addr(PACKETBUF_ADDR_SENDER)->u8[1];
@@ -453,14 +449,14 @@ Possible return values
   }
   hdrlen += sizeof(struct hdr);
 
-#if 0
-/*old, before header-stuff*/
-  if(NETSTACK_FRAMER.create() < 0) {
-    /* Failed to allocate space for headers */
-    PRINTF("simplerdc: send failed, too large header\n");
-    return MAC_TX_ERR_FATAL;
-  }
-#endif /* if 0; commented out code */
+  #if 0
+  /*old, having no header */
+    if(NETSTACK_FRAMER.create() < 0) {
+      /* Failed to allocate space for headers */
+      PRINTF("simplerdc: send failed, too large header\n");
+      return MAC_TX_ERR_FATAL;
+    }
+  #endif /* if 0; commented out code */
 
 
   /* let radio copy to TXFIFO and do what it needs to do */

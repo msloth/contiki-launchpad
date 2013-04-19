@@ -75,6 +75,7 @@ PROCESS_THREAD(testhpdl_process, ev, data)
 
     /* Shows a simple animation, spinning bar */
     while(clock_seconds() < last_time + 20) {
+      /* positions are 1..4 counting from left to right */
       hpdl_write_char(2, anim[c]);
       hpdl_write_char(3, anim[7-c]);
       c++;
@@ -125,6 +126,8 @@ PROCESS_THREAD(serial_echo_process, ev, data)
 
   PROCESS_WAIT_EVENT_UNTIL(ev == button_event);
   process_exit(&testhpdl_process);
+/*  hpdl_init();*/
+
   hpdl_clear();
   while(1) {
     char* buf;

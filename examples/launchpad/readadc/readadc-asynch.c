@@ -85,8 +85,10 @@ PROCESS_THREAD(adc_reading_process, ev, data)
   PROCESS_BEGIN();
   while(1) {
     /*
-     * read analog in A7, store the result in variable adc when done (no
-     * notification will be given when so happens)
+     * read temp sensor (built in on the MSP430 mcu), store the result in
+     * variable adc when done (no notification will be given when so happens).
+     * For an channel on a GPIO, instead use eg
+     *    adc_get_noblock(A7, &adc);
      */
     adc_get_noblock(TEMP, &adc);
     leds_toggle(LEDS_GREEN);

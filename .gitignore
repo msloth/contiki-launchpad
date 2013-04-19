@@ -11,3 +11,4 @@ doc/html
 patches-*
 tools/tunslip6
 wip/
+tools/cooja/*

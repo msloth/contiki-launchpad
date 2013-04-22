@@ -126,10 +126,6 @@
         ++ done
       dim "Set Time"
       broadcast dim_done_event
-
-
-
-  
  */
 
 #include "contiki.h"
@@ -173,7 +169,7 @@
 
 /* configurations-------------------------------------------------------------*/
 /* splash message */
-static const char splash_message[] =    "    HPDL-1414 clock - Contiki 2.6";
+static const char splash_message[] =    "      HPDL-1414 clock - Contiki 2.6      ";
 #define SPLASH_LENGTH                   (sizeof(splash_message) + 1)
 #define SPLASH_UPDATE_INTERVAL          (CLOCK_SECOND / 8 + CLOCK_SECOND / 16)
 #define SPLASH_POST_SPLASH_WAIT         (CLOCK_SECOND / 2)
@@ -320,7 +316,7 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
       while(clock_time() < (t0 + DEMO_SPINNER_DURATION)) {
         /* positions are 1..4 counting from left to right */
         hpdl_write_char(2, anim[c]);
-        hpdl_write_char(3, anim[7-c]);
+        hpdl_write_char(3, anim[c]);
         c++;
         if(c > 7) {
           c = 0;
@@ -361,6 +357,12 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
 
   MSGCOPY("    ", msg_first);
+  MSGCOPY("Hi! ", msg_second);
+  process_post(&display_dim_process, dim_event, NULL);
+  etimer_set(&clock_timer, CLOCK_SECOND);
+  PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
+
+  MSGCOPY("Hi! ", msg_first);
   MSGCOPY("Set ", msg_second);
   process_post(&display_dim_process, dim_event, NULL);
   etimer_set(&clock_timer, CLOCK_SECOND);

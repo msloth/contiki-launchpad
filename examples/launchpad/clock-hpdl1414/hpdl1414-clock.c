@@ -138,7 +138,7 @@
 #include "dev/adc.h"
 
 /* setting DEBUG uses LED and prints over serial port instead of HPDL1414 */
-#define DEBUG                             1
+#define DEBUG                             0
 #define DEBUG_FASTTIME                    1   /* minutes are sped up to 5 seconds */
 #define ENABLE_DEMO_MODE_ON_STARTUP       1
 #define ENABLE_SPLASH_MESSAGE             1

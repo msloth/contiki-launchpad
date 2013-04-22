@@ -139,9 +139,16 @@
 
 /* setting DEBUG uses LED and prints over serial port instead of HPDL1414 */
 #define DEBUG                             0
-#define DEBUG_FASTTIME                    1   /* minutes are sped up to 5 seconds */
+#define DEBUG_FASTTIME                    0   /* minutes are sped up to 5 seconds */
 #define ENABLE_DEMO_MODE_ON_STARTUP       1
 #define ENABLE_SPLASH_MESSAGE             1
+
+/* ensure we never  */
+#if !DEBUG
+#warning "Warning! We are not compiling in DEBUG mode, yet DEBUG_FASTTIME is set! Is this what you want? (hpdl1414-clock.c)"
+//#undef DEBUG_FASTTIME
+//#define DEBUG_FASTTIME 0
+#endif
 
 /* set fading style, only one can be non-zero at once */
 #define FADE_STYLE_LINEAR                 0   /* doesn't work very well now.. */

@@ -51,19 +51,15 @@
 #else
 #include "platform-conf.h"
 #endif /* PLATFORM_CONF_H */
-
+/*---------------------------------------------------------------------------*/
 /* we are not using uip6, due to memory constraints. Needs to be set early. */
 #define WITH_UIP6                     0
-
-
 
 /* include the project config */
 /* PROJECT_CONF_H might be defined in the project Makefile */
 #ifdef PROJECT_CONF_H
 #include PROJECT_CONF_H
 #endif /* PROJECT_CONF_H */
-
-
 
 /* These can be lowered to reduce RAM size, to a certain point. Remember that
   a printf may not exceed this buffer size or unpredictable things will happen! */
@@ -73,9 +69,6 @@
 // g2xxxx/uart1.c; XXX until interrupt driven UART is done, these have no effect (and no RAM will be allocated either)
 #define TX_INTERRUPT_BUFSIZE_CONF           32
 #define RX_INTERRUPT_BUFSIZE_CONF           32
-
-
-
 /*--------------------------------------------------------------------------*/
 /* define the network and some related settings ------------------ */
 #ifndef NETSTACK_CONF_MAC

@@ -40,10 +40,10 @@
 
 
 /*--------------------------------------------------------------------------*/
-/* 
+/*
  * The following are some defines that can be changed in order to change what
- * is included at compile-time, what CPU speed is used etc. You should copy 
- * this file to your local project folder and change it there, not in the 
+ * is included at compile-time, what CPU speed is used etc. You should copy
+ * this file to your local project folder and change it there, not in the
  * platform/launchpad folder!
  */
 
@@ -64,7 +64,7 @@ a 2452, it will compile anyway. */
 #define _MCU_                   2553
 //#define _MCU_                   2452
 
-/* 
+/*
 Here is a short summary of the Launchpad mcu's
                  2211     2231    2452      2553
     ROM             2        2       8        16
@@ -106,8 +106,8 @@ Here is a short summary of the Launchpad mcu's
  * can use the DCO instead.
  */
 #define HAS_EXT_OSC             1
-  
-/* 
+
+/*
  * board revision: older boards had a pull-up resistor connected to the button
  * which was removed to conserve power and save money. If the resistor is there,
  * the button needs some extra care behind the curtains, which will happen if this is
@@ -122,7 +122,7 @@ Here is a short summary of the Launchpad mcu's
  */
 #define BOARD_OLD_REVISION      0
 
-/* 
+/*
  * LEDs; only change if you are not using the Launchpad board and have LEDs
  * on other pins. You will likely have to change in cpu/msp430/g2xxx/leds-arch.c
  * as well as core/dev/leds.{c, h} if you want to add more LEDs or change pins.

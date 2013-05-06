@@ -40,8 +40,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include "contiki.h"
-
 #include "en25qxx.h"
+
 
 /*---------------------------------------------------------------------------*/
 /**
@@ -55,7 +55,7 @@
 int
 en25qxx_init(void)
 {
-  
+  en25qxx_arch_init();
 }
 /*---------------------------------------------------------------------------*/
 /**
@@ -68,7 +68,7 @@ en25qxx_init(void)
 void
 en25qxx_write_byte(uint32_t dest, uint8_t wd)
 {
-  
+
 }
 /*---------------------------------------------------------------------------*/
 /**
@@ -83,7 +83,7 @@ en25qxx_write_byte(uint32_t dest, uint8_t wd)
 uint32_t
 en25qxx_write_burst(uint32_t dest, uint8_t *srcbuf, uint32_t len)
 {
-  
+
   return 0;
 }
 /*---------------------------------------------------------------------------*/
@@ -97,7 +97,7 @@ en25qxx_write_burst(uint32_t dest, uint8_t *srcbuf, uint32_t len)
 uint8_t
 en25qxx_read_byte(uint32_t from)
 {
-  
+
   return 0;
 }
 /*---------------------------------------------------------------------------*/
@@ -112,7 +112,7 @@ en25qxx_read_byte(uint32_t from)
 uint32_t
 en25qxx_read_burst(uint32_t from, uint8_t *destbuf, uint32_t len)
 {
-  
+
   return 0;
 }
 /*---------------------------------------------------------------------------*/
@@ -127,7 +127,7 @@ en25qxx_read_burst(uint32_t from, uint8_t *destbuf, uint32_t len)
 uint8_t
 en25qxx_seek(uint32_t from)
 {
-  
+
   return 0;
 }
 /*---------------------------------------------------------------------------*/
@@ -139,21 +139,21 @@ en25qxx_seek(uint32_t from)
 uint8_t
 en25qxx_read(void)
 {
-  
+
   return 0;
 }
 /*---------------------------------------------------------------------------*/
 /**
- * \brief      format a page of the entire flash
+ * \brief      format a 2kB sector
  * \return     execution result
  * \retval 0   successful
  * \retval -1  not successful
  *
  */
 int
-en25qxx_format_page(int pno)
+en25qxx_format_sector(int sector)
 {
-  
+
   return 0;
 }
 /*---------------------------------------------------------------------------*/
@@ -167,7 +167,84 @@ en25qxx_format_page(int pno)
 int
 en25qxx_format_all(void)
 {
-  
+
   return 0;
 }
 /*---------------------------------------------------------------------------*/
+#if 0
+static uint8_t
+read_single(uint32_t adr)
+{
+  uint8_t d;
+  uint8_t a0, a1, a2;
+  a0 = (uint8_t) ((data & 0xff))
+  a1 = (uint8_t) ((data & 0xff00) >> 8)
+  a2 = (uint8_t) ((data & 0xff0000) >> 16)
+
+  EN25QXX_SPI_ENABLE();
+
+  SPI_WRITE(EN25QXX_CMD_READ_DATA);
+  SPI_WRITE(a0);
+  SPI_WRITE(a1);
+  SPI_WRITE(a2);
+  SPI_READ(d);
+
+  EN25QXX_SPI_DISABLE();
+}
+/*---------------------------------------------------------------------------*/
+static uint8_t
+write_single(uint32_t adr, uint8_t data)
+{
+  uint8_t d;
+  uint8_t a0, a1, a2;
+  a0 = (uint8_t) ((data & 0xff))
+  a1 = (uint8_t) ((data & 0xff00) >> 8)
+  a2 = (uint8_t) ((data & 0xff0000) >> 16)
+
+  EN25QXX_SPI_ENABLE();
+
+  SPI_WRITE();
+  SPI_READ(d);
+
+  EN25QXX_SPI_DISABLE();
+}
+/*---------------------------------------------------------------------------*/
+static uint8_t
+read_burst(uint32_t adr, uint8_t *buf, uint16_t len)
+{
+  uint8_t d;
+  uint8_t a0, a1, a2;
+  a0 = (uint8_t) ((data & 0xff))
+  a1 = (uint8_t) ((data & 0xff00) >> 8)
+  a2 = (uint8_t) ((data & 0xff0000) >> 16)
+
+  EN25QXX_SPI_ENABLE();
+
+  SPI_WRITE(EN25QXX_CMD_READ_DATA);
+  SPI_WRITE(a0);
+  SPI_WRITE(a1);
+  SPI_WRITE(a2);
+  SPI_READ(d);
+
+  EN25QXX_SPI_DISABLE();
+}
+/*---------------------------------------------------------------------------*/
+static uint8_t
+write_burst(uint32_t adr, uint8_t *buf, uint16_t len)
+{
+  uint8_t d;
+  uint8_t a0, a1, a2;
+  a0 = (uint8_t) ((data & 0xff))
+  a1 = (uint8_t) ((data & 0xff00) >> 8)
+  a2 = (uint8_t) ((data & 0xff0000) >> 16)
+
+  EN25QXX_SPI_ENABLE();
+
+  SPI_WRITE();
+  SPI_READ(d);
+
+  EN25QXX_SPI_DISABLE();
+}
+/*---------------------------------------------------------------------------*/
+
+#endif  /* if 0; commented out code */

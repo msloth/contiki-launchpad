@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012
+ * Copyright (c) 2013, Marcus Linderoth, http://forfunandprof.it
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -14,10 +14,10 @@
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -25,20 +25,19 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
  */
 
 /**
  * \file
  *         Launchpad driver for Sparkfun electronics Alphanumeric display
  * \author
- *        Marcus Lunden <marcus.lunden@gmail.com>
+ *        Marcus Linderoth <linderoth.marcus@gmail.com>
  *        based on:
  *        "AlphaNumeric_Driver.cpp - Arduino library to control a string of
  *         AlphaNumeric Display Drivers.
  *         License: Beerware."
  *         See https://www.sparkfun.com/products/10103
- *        
+ *
  */
 
 #include <stdio.h>
@@ -57,11 +56,11 @@ static uint16_t   char_to_shift(char character);
     (off). The data stored in the latches is not affected by the state
     of OE. With OE active (low), the outputs are controlled by the
     state of their respective latches.
-    
+
     High data input rate: 30 MHz
-    
+
     3.0 to 5.5 V logic supply range
-    
+
     Rext = 4.7k now
     The maximum channel output current can be calculated as:
         IO(max) = (18483.1/ REXT) + 0.67 , for VDD = 3.0 to 3.6 V ,
@@ -94,7 +93,7 @@ alphanum_on(void)
 }
 /*---------------------------------------------------------------------------*/
 /* turn off all displays */
-void 
+void
 alphanum_off(void)
 {
   /* Output enable is active low */

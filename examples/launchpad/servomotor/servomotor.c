@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012
+ * Copyright (c) 2013, Marcus Linderoth, http://forfunandprof.it
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -14,10 +14,10 @@
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -25,7 +25,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
  */
 
 /**
@@ -34,7 +33,7 @@
  *          Demonstrates using the PWM API with a different frequency set, and
  *          setting PWM with absolute time rather than duty cycle.
  * \author
- *         Marcus Lunden <marcus.lunden@gmail.com>
+ *         Marcus Linderoth <linderoth.marcus@gmail.com>
  */
 
 #include <stdio.h>
@@ -47,12 +46,12 @@
  * One process moves the servo arm back and forth through setting PWM to the
  * servo control pin accordingly. Another process acts as an emergency stop control
  * and stops the motor if the button is pressed. To restart, reset the Launchpad.
- * 
+ *
  * The settings for the servo PWM are found by taking the PWM clock speed, which
  * is 32768 Hz, and the minimum and maximum control pulse lengths (ca 0.8..2.0 ms)
  *    SERVO_MAX = 2*(32768/1000) ~= 65
  *    SERVO_MIN = 0.8*(32768/1000) ~= 26
- * 
+ *
  */
 
 /* define port and pin for servo motor */
@@ -62,7 +61,7 @@
 PROCESS(button_process, "Button catcher");
 PROCESS(servo_process, "Servo motor control process");
 AUTOSTART_PROCESSES(&servo_process, &button_process);
-/*---------------------------------------------------------------------------*/ 
+/*---------------------------------------------------------------------------*/
 /* this process controls the servo arm back and forth, toggling green LED at arm
     endpoints */
 static struct etimer etr;

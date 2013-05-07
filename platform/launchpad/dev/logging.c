@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013
+ * Copyright (c) 2013, Marcus Linderoth, http://forfunandprof.it
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -14,10 +14,10 @@
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -25,21 +25,20 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
  */
 
 /**
  * \file
  *    logging.c
  * \author
- *    Marcus Lunden <marcus.lunden@gmail.com>
+ *         Marcus Linderoth <linderoth.marcus@gmail.com>
  * \desc
  *    logging utility; depends on some underlying layer to store and read data
  *    The calling layer is responsible for checking the return value and retrying
  *    if not successful, or handling sustained errors. This logging driver will
  *    just drop if unsuccessful. Generally, errors are returned as 0. Non-errors
  *    are returned as > 0.
- *    
+ *
  */
 
 #include <stdio.h>
@@ -125,7 +124,7 @@ logging_log(enum loggingtypes type, void *log, uint8_t len)
     log_state = LOGGING_OK_TO_LOG;
     return 0;
   }
-  
+
   /* logging was not ready to store the log, dropping */
   return 3;
 }
@@ -146,7 +145,7 @@ logging_serialprint(void)
   struct logheader lh;
 
   uint8_t k;  //XXX debug counter
-  
+
   /* XXX need to disable the watchdog before this? */
   /* Check logging status is ok first */
   if(log_state == LOGGING_NOT_INIT || log_state == LOGGING_FATAL_ERROR){
@@ -155,7 +154,7 @@ logging_serialprint(void)
   }
   /* If it is busy, we wait until it is ready */
   while(log_state == LOGGING_BUSY){ ; }
-    
+
   prev_state = log_state;
   log_state = LOGGING_BUSY;
   if(prev_state == LOGGING_OK_TO_LOG){
@@ -220,7 +219,7 @@ logging_serialprint(void)
 }
 /*----------------------------------------------------------------------------*/
 /**
- * \brief            Stops the logging aka close all files. Call logging_init() to open the file again 
+ * \brief            Stops the logging aka close all files. Call logging_init() to open the file again
  * \return           ret
  * \retval 0         logging stopped ok
  * \retval 1         error occurred

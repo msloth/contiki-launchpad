@@ -36,7 +36,7 @@
  *         rtimer implementation for msp430g2553 and 2452
  *         also handles the simplepwm
  * \author
- *         Marcus Lunden <marcus.lunden@gmail.com>
+ *         Marcus Linderoth <linderoth.marcus@gmail.com>
  */
 
 #include "contiki.h"
@@ -205,7 +205,7 @@ simple_pwm_on(uint8_t dc)
 /*---------------------------------------------------------------------------*/
 /*
  * set pwm on at a specified pulsetime measured in SIMPLE_PWM_SECOND ticks/s.
- * 
+ *
  * The period is (SIMPLE_PWM_SECOND / SIMPLE_PWM_FREQ) - 1, measured in the
  * same number of ticks/s. Default is 128 Hz and 32768 ticks/s, leaving us w
  * 255 ticks/period, so the range becomes 0..255.

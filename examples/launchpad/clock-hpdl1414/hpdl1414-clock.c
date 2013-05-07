@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012
+ * Copyright (c) 2013, Marcus Linderoth, http://forfunandprof.it
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -14,10 +14,10 @@
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -25,18 +25,18 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
  */
+
 /**
  * \file
  *    hpdl1414-clock.c
  * \author
- *    Marcus Lunden <marcus.lunden@gmail.com>
+ *         Marcus Linderoth <linderoth.marcus@gmail.com>
  * \desc
  *    A simple clock based on the HPDL-1414 display
  */
 
-/* 
+/*
   Hardware: a msp430g2452 or g2553 with 32.768 kHz xtal to XIN/XOUT and a press-
       button to P1.3, just like on the regular Launchpad. Then a HPDL-1414
       connected like this
@@ -57,7 +57,7 @@
  *            |     |     |     |     |      |
  *            1     2     3     4     5      6          pin# acc to datasheet
  *            2.5   2.4   1.7   1.5   1.4    +5V        LP/MSP430G2553 pin
-      
+
 
 
   The clock works like this:
@@ -112,7 +112,7 @@
           how much due to cheap 32.768 xtal?
           how much due to using etimer wait for 1 second?
             --instead perhaps use clock_seconds() if better
-      
+
 
 
   done
@@ -174,7 +174,7 @@ static const char splash_message[] =    "      HPDL-1414 clock - Contiki 2.6    
 #define SPLASH_UPDATE_INTERVAL          (CLOCK_SECOND / 8 + CLOCK_SECOND / 16)
 #define SPLASH_POST_SPLASH_WAIT         (CLOCK_SECOND / 2)
 
-#define DEMO_START_CONDITION_DURATION       (CLOCK_SECOND * 2)  
+#define DEMO_START_CONDITION_DURATION       (CLOCK_SECOND * 2)
 #define DEMO_SPINNER_DURATION               (CLOCK_SECOND * 4)
 /*---------------------------------------------------------------------------*/
 /* button interface / setting time */
@@ -309,7 +309,7 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
     if(BTN_IS_HELD_DOWN()) {
       /* do demo-mode */
       static uint8_t c = 0;
-    
+
       /* spinner */
       hpdl_clear();
       t0 = clock_time();
@@ -386,16 +386,16 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
   update_ascii_buffer(hpdlbuf);
   hpdl_write_string(hpdlbuf);
   clock_bootdone = 1;
-  
+
   /* the big 'ole clock loop; counts seconds and sets time accordingly. */
   etimer_set(&clock_timer, CLOCK_SECOND);
   while(1) {
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
     etimer_reset(&clock_timer);
-    
+
     /* get temperature reading (10 bits) from the internal temperature sensor */
     adc_get_noblock(TEMP, &temperature);
-    
+
     /* blink the LED */
     P1OUT |= 1<<0;
     ctimer_set(&led_ctimer, CLOCK_SECOND/64, led_off_cb, NULL);
@@ -469,11 +469,11 @@ PROCESS_THREAD(ui_process, ev, data)
     static uint8_t update_counter = BUTTON_HOLD_CHECK_RATE - BUTTON_HOLD_MINUTES_UPDATERATE_SLOW;
 
     PROCESS_WAIT_EVENT_UNTIL(ev == button_event && clock_bootdone);
-    
+
     /* user has started to set time */
     clock_is_in_confmode = 1;
     printf("*** in confmode\n");
-    
+
     /* showing temperature */
 #if 0
     MSGCOPY("    ", msg_first);
@@ -489,7 +489,7 @@ PROCESS_THREAD(ui_process, ev, data)
     }
     msg_first[3] = 'C';
 #endif /* if 0; commented out code */
-  
+
 
 
 
@@ -634,7 +634,7 @@ PROCESS_THREAD(ui_process, ev, data)
     clock_is_in_confmode = 0;
     printf("*** clock mode\n");
 
-  }  
+  }
   PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
@@ -847,6 +847,6 @@ PROCESS_THREAD(display_dim_process, ev, data)
   }
   PROCESS_END();
 }
-/*--------------------------------------------------------------------------.*/ 
+/*--------------------------------------------------------------------------.*/
 
 

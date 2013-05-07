@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012
+ * Copyright (c) 2013, Marcus Linderoth, http://forfunandprof.it
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -14,10 +14,10 @@
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -25,14 +25,13 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
  */
 
 /**
  * \file
  *         Launchpad button driver
  * \author
- *         Marcus Lunden <marcus.lunden@gmail.com>
+ *         Marcus Linderoth <linderoth.marcus@gmail.com>
  */
 
 #include "contiki.h"
@@ -45,8 +44,8 @@
 #define DEBOUNCE_TIME     (CLOCK_SECOND/8)
 static struct timer debouncetimer;
 /*---------------------------------------------------------------------------*/
-/* 
- * init the button by initing the port and pins, set up the interrupt and 
+/*
+ * init the button by initing the port and pins, set up the interrupt and
  * register what process should be notified upon button pressed
  */
 void
@@ -61,7 +60,7 @@ button_init(void)
   BUTTON_PORT(DIR) &= ~BUTTON_PINS;
 
   #if BOARD_OLD_REVISION
-  /* 
+  /*
    * the old revision of boards have a resistor R34 in place for the button; if
    * your board is such, then this becomes necessary (but untested now).
    */
@@ -103,7 +102,7 @@ ISR(PORT1, button_interrupt)
     if(timer_expired(&debouncetimer)) {
       btnp = BUTTON_PORT(IFG);
       timer_set(&debouncetimer, DEBOUNCE_TIME);
-      
+
       /* send a button event to all processes */
       process_post(PROCESS_BROADCAST, button_event, (void*) &btnp);
 

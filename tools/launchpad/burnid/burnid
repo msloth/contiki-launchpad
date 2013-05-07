@@ -2,11 +2,11 @@
 
 # ------------------------------------------------------------------------------
 # Script for burning id to a Launchpad node
-#     Author Marcus Lunden
+#     Author Marcus Linderoth <linderoth.marcus@gmail.com>
 #
 # You need to have a Launchpad connected and mspdebug in your path.
 # Assumes being called with two 8-bit decimals to write as address
-#     eg burnid 24 0 
+#     eg burnid 24 0
 # burns node id 24.0 into the node
 #
 # ------------------------------------------------------------------------------

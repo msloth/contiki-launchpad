@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012
+ * Copyright (c) 2013, Marcus Linderoth, http://forfunandprof.it
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -14,10 +14,10 @@
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -25,7 +25,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
  */
 
 /**
@@ -43,7 +42,7 @@
  *         To save RAM, each address is just 2 bytes (compare with IPv6 or even
  *         IPv4 address that are much longer). This makes eg routing tables and
  *         neighbor tables smaller if you want to use/implement such.
- *         
+ *
  *         Radio communication in Rime is implemented with logical channels. The
  *         channel numbers are embedded in each frame header so that a receiver
  *         knows how to interpret the packet. Because of this, a connection must
@@ -58,7 +57,7 @@
  *             };
  *         thus you see that you need to define two callbacks, or set to NULL
  *         (see code below).
- *         
+ *
  *         When a packet is received, the contents reside in the packet buffer,
  *         packetbuf. The packetbuf_dataptr() returns a (void *) to the data.
  *         The length in bytes is given by packetbuf_datalen().
@@ -66,9 +65,9 @@
  *            uint16_t hops = packetbuf_attr(PACKETBUF_ATTR_HOPS);
  *         see core/net/packetbuf.h for what attributes are possible and note
  *         that not all are set by all connections (see eg unicast.h).
- *         
+ *
  * \author
- *         Marcus Lunden <marcus.lunden@gmail.com>
+ *         Marcus Linderoth <linderoth.marcus@gmail.com>
  */
 
 #include <stdio.h>

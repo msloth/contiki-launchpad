@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012
+ * Copyright (c) 2013, Marcus Linderoth, http://forfunandprof.it
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -14,10 +14,10 @@
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -25,14 +25,13 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
  */
 
 /**
  * \file
  *         Launchpad PWM drivers
  * \author
- *         Marcus Lunden <marcus.lunden@gmail.com>
+ *         Marcus Linderoth <linderoth.marcus@gmail.com>
  */
 
 #include "contiki.h"
@@ -42,8 +41,8 @@
 
 
 /*
- * The PWM module; starts and handles PWM on pins. 
- * 
+ * The PWM module; starts and handles PWM on pins.
+ *
  * There are checks for MCU being an MSP430G2553 as the '2452 does not have two
  * hardware timers, which this module needs.
  */
@@ -66,10 +65,10 @@
 */
 /*---------------------------------------------------------------------------*/
 /*
- * a PWM-device is here a combination of a pin and an time for which to be in 
+ * a PWM-device is here a combination of a pin and an time for which to be in
  * 'on'-state. If time is zero, then the device is off. All PWM-devices has a
- * common period. Each PWM-device correspond to a CCR-register, for which the 
- * 2553 has three, but one is for the common period. 
+ * common period. Each PWM-device correspond to a CCR-register, for which the
+ * 2553 has three, but one is for the common period.
  */
 #define PWMDEVS   2     /* number of PWM devices; must not be changed */
 struct pwm_s {
@@ -80,7 +79,7 @@ struct pwm_s {
 
   /* possible enhancement 1: store port as well to enable PWM on several ports */
 /*  char *port;*/
-  
+
   /* possible enhancement 2: allows for more a more generic approach with more/less
   PWM-devices, but takes more RAM: store pointers to registers */
 /*  char *reg_ctl;*/
@@ -90,7 +89,7 @@ struct pwm_s {
 
 static uint16_t period = (PWM_SECOND / PWM_FREQ) - 1;
 /*---------------------------------------------------------------------------*/
-/* Init the PWM; up mode to CCR0, PWM periods CCR1, CCR2, clock source 
+/* Init the PWM; up mode to CCR0, PWM periods CCR1, CCR2, clock source
   XT1 @ 32.768. At lower freqs we get higher resolution as we have more available
   ticks at our disposal. */
 void
@@ -120,7 +119,7 @@ pwm_init(uint16_t freq)
 }
 /*--------------------------------------------------------------------------*/
 /* Turn on PWM on a PWM-device, for a certain pin on port 1, at a duty cycle dc;
-note, this makes an calculation with a division so it might be slow. Use 
+note, this makes an calculation with a division so it might be slow. Use
 pwm_on_fine if possible/necessary/fun. */
 void
 pwm_on(uint8_t pwmdevice, uint8_t pin, uint8_t dc)

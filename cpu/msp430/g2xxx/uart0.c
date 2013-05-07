@@ -31,9 +31,6 @@
 /**
  * \file
  *         MSP430 UART0 code
- * \author
- *         Marcus Lunden <marcus.lunden@gmail.com>
- *         and others
  */
 
 #include "contiki.h"

@@ -1,3 +1,5 @@
+# Author Marcus Linderoth <linderoth.marcus@gmail.com>
+# print out a sinus look-up table
 import math
 
 min = 0

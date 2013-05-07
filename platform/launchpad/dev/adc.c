@@ -5,41 +5,39 @@
  */
 
 /*
- * Copyright (c) 2012.
- * All rights reserved. 
+ * Copyright (c) 2013, Marcus Linderoth, http://forfunandprof.it
+ * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without 
- * modification, are permitted provided that the following conditions 
- * are met: 
- * 1. Redistributions of source code must retain the above copyright 
- *    notice, this list of conditions and the following disclaimer. 
- * 2. Redistributions in binary form must reproduce the above copyright 
- *    notice, this list of conditions and the following disclaimer in the 
- *    documentation and/or other materials provided with the distribution. 
- * 3. Neither the name of the Institute nor the names of its contributors 
- *    may be used to endorse or promote products derived from this software 
- *    without specific prior written permission. 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the Institute nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND 
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE 
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL 
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS 
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT 
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY 
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
- * SUCH DAMAGE. 
- *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
  */
 
 /*
  * \file
  *         A simple ADC-implementation
  * \author
- *         Marcus Lunden <marcus.lunden@gmail.com>
- *         
+ *         Marcus Linderoth <linderoth.marcus@gmail.com>
  */
 
 
@@ -92,7 +90,7 @@ init_pininput(uint8_t pin)
 void
 adc_init(void)
 {
-  /* 
+  /*
    * use Vcc, GND as references, single channel
    */
   ADC10CTL0 = SREF_0 | ADC10ON | ADC10SHT_2;
@@ -123,9 +121,9 @@ adc_busy(void)
   return (uint8_t)r;
 }
 /*--------------------------------------------------------------------------*/
-/* 
+/*
  * Do an analog to digital conversion.
- * use this when you plan on using the conversion a bit later (>50 us later) 
+ * use this when you plan on using the conversion a bit later (>50 us later)
  * and it is not that important. Will not block while converting.
  * val will contain the result when done.
  */
@@ -141,7 +139,7 @@ adc_get_noblock(uint8_t adc_ch, uint16_t *val)
   /* wait for already running ADC to finish */
   while (adc_busy()) {;}
   state = ASYNCH;
-  
+
   /* set up ports and pins */
   if(adc_ch <= A7) {
     init_pininput(1 << adc_ch);
@@ -164,7 +162,7 @@ adc_get(uint8_t adc_ch)
   /* wait for already running ADC to finish */
   while (adc_busy()) {;}
   state = SYNCH;
-  
+
   /* set up ports and pins */
   if(adc_ch <= A7) {
     /* all analog in are on port 1 on 2553 */
@@ -187,7 +185,7 @@ adc_get(uint8_t adc_ch)
  * The process p will be sent an event when conversion is done.
  *    adc_get_event(A7, PROCESS_CURRENT());
  *    PROCESS_WAIT_EVENT_UNTIL(ev == adc_event);
- * 
+ *
  */
 void
 adc_get_event(uint8_t adc_ch, struct process *p)
@@ -196,7 +194,7 @@ adc_get_event(uint8_t adc_ch, struct process *p)
   while (adc_busy()) {;}
   state = EVENT;
   calling_process = p;
-  
+
   /* set up ports and pins */
   if(adc_ch <= A7) {
     /* all analog in are on port 1 on 2553 */
@@ -271,7 +269,7 @@ ISR(ADC10, adc10_interrupt)
   default:
     break;
   }
-  
+
   /* wake the mcu up so the event can be handled */
   state = OFF;
   LPM4_EXIT;

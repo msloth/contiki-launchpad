@@ -33,8 +33,8 @@
  * \file
  *         Clock drivers for MSP430G2xxx chips
  * \author
- *         Marcus Lunden <marcus.lunden@gmail.com>
- *         and others
+ *         Marcus Linderoth <linderoth.marcus@gmail.com> for this file,
+ *         but based on previous files for other msp430's
  */
 
 #include "contiki.h"
@@ -62,7 +62,6 @@ static volatile uint16_t last_tar = 0;
 #error CLOCK_CONF_SECOND must be a power of two (i.e., 1, 2, 4, 8, 16, 32, 64, ...).
 #error Change CLOCK_CONF_SECOND in contiki-conf.h.
 #endif
-
 /*---------------------------------------------------------------------------*/
 void
 clock_set(clock_time_t clock, clock_time_t fclock)

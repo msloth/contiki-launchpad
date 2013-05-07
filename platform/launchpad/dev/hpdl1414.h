@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012
+ * Copyright (c) 2013, Marcus Linderoth, http://forfunandprof.it
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -14,10 +14,10 @@
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -25,16 +25,15 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
  */
 
 /**
  * \file
- *         Driver for HPDL-1414 "Four character Smart Alphanumeric Displays" 
+ *         Driver for HPDL-1414 "Four character Smart Alphanumeric Displays"
  *         from Avago. Parallell interface, decoding ASCII and shows on the
  *         beautiful 2.85 mm display:
  *         http://www.decadecounter.com/vta/articleview.php?item=465
- *         
+ *
  *         Top view:
  *            1.6   2.3   2.2   2.1   2.0    GND        LP/MSP430G2553 pin
  *            12    11    10    9     8      7          pin# acc to datasheet
@@ -51,12 +50,12 @@
  *            |     |     |     |     |      |
  *            1     2     3     4     5      6          pin# acc to datasheet
  *            2.5   2.4   1.7   1.5   1.4    +5V        LP/MSP430G2553 pin
- *         
+ *
  *         HP-versions are chafered in pin1-corner
  *         Siemens-versions (?) have a small letter on the side of pin1, and a
- *            big via in the opposite corner, by GND. 
+ *            big via in the opposite corner, by GND.
  * \author
- *        Marcus Lunden <marcus.lunden@gmail.com>
+ *         Marcus Linderoth <linderoth.marcus@gmail.com>
  */
 
 #ifndef __HPDL_DRIVER_H__
@@ -90,13 +89,13 @@
  * define the pins for the digits parallell interface.
  * assumes the whole port 2 is used for digits (needs 7 pins) but still lacks
  * one pin as port 2 on msp430g2452/2553 only has 6 pins on port 2.
- * 
- * 
+ *
+ *
  * assumes pin 0 == D0, pin 1 == D1 etc.
- * 
- * 
- * 
- * 
+ *
+ *
+ *
+ *
  */
 #define HPDL_DIGIT_PORT(type)           P2##type
 #define HPDL_DIGIT_PINS                 (0x3f)

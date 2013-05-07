@@ -33,8 +33,8 @@
  * \file
  *         MCU drivers for MSP430G2xxx chips
  * \author
- *         Marcus Lunden <marcus.lunden@gmail.com>
- *         and others
+ *         Marcus Linderoth <linderoth.marcus@gmail.com> ported this to the Launchpad
+ *         msp430gxxxx-series.
  */
 
 #include <msp430.h>
@@ -81,14 +81,14 @@ w_memset(void *out, int value, size_t n)
 void
 msp430_init_dco(void)
 {
-  /* 
+  /*
   this sets the following:
     DCO = 1,4,8,16 MHz
     MCLK source DCO, div suitable for the clock
     SMCLK source DCO, div -> 4 MHz
     ACLK source LFXT1, div 1 -> 32768 Hz
-    
-    see datasheet p26 and FUG p292 
+
+    see datasheet p26 and FUG p292
    */
   P2DIR &=~ (XTIN | XTOUT);
   P2SEL |= (XTIN | XTOUT);
@@ -130,7 +130,7 @@ msp430_init_dco(void)
 #error Wrong speed defined (see msp430.c, project-conf.h and platform-conf.h)!
 #endif
 
-  
+
 #if 0
   for reference, some settings and registers; 16,12,8,1 MHz factory calibrations
   #define CALDCO_16MHZ_         0x10F8    /* DCOCTL  Calibration Data for 16MHz */

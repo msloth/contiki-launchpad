@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Marcus Linderoth, http://forfunandprof.it
+ * Copyright (c) 2005, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -14,10 +14,10 @@
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -25,80 +25,50 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * This file is part of the Configurable Sensor Network Application
+ * Architecture for sensor nodes running the Contiki operating system.
+ *
+ * -----------------------------------------------------------------
+ *
+ * Author  : Adam Dunkels, Joakim Eriksson, Niclas Finne, Marcus Lunden
+ * Created : 2005-11-03
  */
 
-/**
- * \file
- *         Simple servo driver
- *         The servo uses PWM-device 0 and sets the freq of the PWM to 64 Hz.
- * \author
- *         Marcus Linderoth <linderoth.marcus@gmail.com>
- */
-
-#include <stdio.h>
 #include "contiki.h"
-#include "dev/servo.h"
-#include "dev/pwm.h"
 #include "dev/leds.h"
-
-/* what pin is the servo control at? */
-static uint8_t cpin;
-
-/* the control PWM freq, between 50-100 Hz but use power of two so timer input
-divider works; don't change this one */
-#define SERVO_PWMFREQ         50
-
-
-#define SERVO_MAX_DEG         180
-/* PWM settings */
-#define SERVO_MIN             26    /* 0 deg */
-#define SERVO_MAX             65    /* 180 deg */
+asdffs
 /*---------------------------------------------------------------------------*/
+/* init the ports and pins for all LEDs. */
 void
-servo_init(uint8_t controlpin)
+leds_arch_init(void)
 {
-#if _MCU_ == 2553
-  if(controlpin > 7) {
-    return;
-  }
-  cpin = controlpin;
-  pwm_confpin(controlpin);
-/*  P1DIR |= (1 << cpin);*/
-/*  P1SEL &= ~((1 << cpin));*/
-/*  P1SEL2 &= ~((1 << cpin));*/
-
-  pwm_init(SERVO_PWMFREQ);
-#endif    /* _MCU_ == 2553 */
+  LEDS_PORT(IE) &= ~LEDS_CONF_ALL;
+  LEDS_PORT(DIR) |= LEDS_CONF_ALL;
+  LEDS_PORT(OUT) &= ~LEDS_CONF_ALL;
+  LEDS_PORT(SEL) &= ~LEDS_CONF_ALL;
+  LEDS_PORT(SEL2) &= ~LEDS_CONF_ALL;
 }
 /*---------------------------------------------------------------------------*/
-void
-servo_set_position(uint16_t position)
+/* the LEDs API works internally as if the LEDs are active low, hence here 
+  returning a 0 if the LED is on and a 1 if off.  */
+unsigned char
+leds_arch_get(void)
 {
-#if _MCU_ == 2553
-  uint8_t ptime;
-  if(position > SERVO_MAX_DEG) {
-    /* error; halt motor and return */
-    pwm_off(0);
-    return;
-  }
-
-  /* convert position to absolute pulse time and set PWM */
-  ptime = SERVO_MIN + ((SERVO_MAX - SERVO_MIN) * position)/SERVO_MAX_DEG;
-  printf("Servo %u %u\n", position, ptime);
-  if(ptime == 0) {
-    /* handle rounding errors - ensure not zero PWM or the servo won't move */
-    ptime = 1;
-  }
-  pwm_pulsetime(0, cpin, ptime);
-#endif    /* _MCU_ == 2553 */
+  unsigned char leds = 0;
+  leds = LEDS_PxOUT;
+  
+  return ((leds & LEDS_GREEN) ? 0 : LEDS_GREEN) |
+         ((leds & LEDS_RED) ? 0 : LEDS_RED);
 }
 /*---------------------------------------------------------------------------*/
+/* The TI Launchpad LEDs are active high, in contrast to many other platforms
+   that sink current for LEDs instead of sourcing. */
 void
-servo_off(void)
+leds_arch_set(unsigned char leds)
 {
-#if _MCU_ == 2553
-  pwm_off(0);
-#endif    /* _MCU_ == 2553 */
+  LEDS_PxOUT = (LEDS_PxOUT & ~(LEDS_RED | LEDS_GREEN)) |
+                    ((leds & LEDS_RED) ? LEDS_RED : 0) |
+                    ((leds & LEDS_GREEN) ? LEDS_GREEN : 0);
 }
 /*---------------------------------------------------------------------------*/
-

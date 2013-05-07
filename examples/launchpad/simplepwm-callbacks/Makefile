@@ -1,5 +1,5 @@
 # Example Makefile for Contiki projects
-#     Author Marcus Lunden
+#     Author Marcus Linderoth
 
 # this defines where to find the Contiki root folder compared with this folder
 # I prefer to have my Contiki projects under eg /contiki/projects/myproject/

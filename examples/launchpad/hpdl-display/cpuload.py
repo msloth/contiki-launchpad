@@ -5,10 +5,7 @@
 # Display CPU load on a HPDL-1414 display over serial, using psutil
 #     http://code.google.com/p/psutil/
 #
-#
-#
-# Author: Marcus Lunden <marcus.lunden@gmail.com>
-#
+# Author: Marcus Linderoth
 # ------------------------------------------------------------------------------
 #
 import os, sys, glob, time
@@ -31,7 +28,7 @@ def main():
   except:
     print("Heck, couldn't open serial display device")
     sys.exit(-1)
-  
+
   launchpad.write("HPDL")
   time.sleep(0.5)
   launchpad.write("1414")

@@ -1,5 +1,5 @@
 # Example Makefile for Contiki projects
-#     Author Marcus Lunden
+#     Author Marcus Linderoth
 
 # this defines where to find the Contiki root folder compared with this folder
 # I prefer to have my Contiki projects under eg /contiki/projects/myproject/
@@ -21,7 +21,7 @@ PROJECT = servomotor
 #PROJECT_FOLDERS     += ./example ./example/deep/deeper
 
 # any overridden Contiki source file (in this project) is listed here
-#CONTIKI_SOURCEFILES += 
+#CONTIKI_SOURCEFILES +=
 
 # include project configuration file; use this if you need to override any defines
 # on a per-project-basis.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012
+ * Copyright (c) 2013, Marcus Linderoth, http://forfunandprof.it
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -14,10 +14,10 @@
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -25,7 +25,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
  */
 
 /**
@@ -34,13 +33,13 @@
  *         manipulate the LED. This way we can do more, such as instead change
  *         a display.
  * \author
- *         Marcus Lunden <marcus.lunden@gmail.com>
+ *         Marcus Linderoth <linderoth.marcus@gmail.com>
  */
 
 /* TODO:
   verify that the on_cb is actually the cb being invoked when /on/ and not vice versa
-      ie if DC=80% then on_cb should be invoked just before the 80% period starts  
-  
+      ie if DC=80% then on_cb should be invoked just before the 80% period starts
+
    */
 
 
@@ -60,7 +59,7 @@
 /*---------------------------------------------------------------------------*/
 PROCESS(pwmled_process, "PWM LED process");
 AUTOSTART_PROCESSES(&pwmled_process);
-/*---------------------------------------------------------------------------*/ 
+/*---------------------------------------------------------------------------*/
 #define TEST_PORT(type)          P1##type
 #define pin                      6
 void
@@ -134,11 +133,11 @@ PROCESS_THREAD(pwmled_process, ev, data)
         up = 1;
       }
     }
-    
+
     /* wait a little while */
     etimer_set(&etr, INTERVAL);
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
   }
   PROCESS_END();
 }
-/*--------------------------------------------------------------------------.*/ 
+/*--------------------------------------------------------------------------.*/

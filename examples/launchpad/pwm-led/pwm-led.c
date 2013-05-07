@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012
+ * Copyright (c) 2013, Marcus Linderoth, http://forfunandprof.it
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -14,10 +14,10 @@
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -25,7 +25,6 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
  */
 
 /**
@@ -35,7 +34,7 @@
  *          expected result from running it:
  *          red and green LEDs fading in and out, out of phase from eachother.
  * \author
- *         Marcus Lunden <marcus.lunden@gmail.com>
+ *         Marcus Linderoth <linderoth.marcus@gmail.com>
  */
 
 #include <stdio.h>
@@ -57,11 +56,11 @@
 #define INTERVAL          CLOCK_SECOND/64
 
 /*
- * lookup-table of sin(x) where x == [0 .. 1.5 .. 90], 63 elements but I added  
+ * lookup-table of sin(x) where x == [0 .. 1.5 .. 90], 63 elements but I added
  * one extra 255 to get 64 elements.
  */
-const uint8_t sin_lut[] = {0, 2, 4, 6, 13, 20, 26, 33, 40, 46, 53, 59, 66, 72, 79, 85, 91, 97, 
-    104, 110, 116, 122, 127, 133, 139, 144, 150, 155, 161, 166, 171, 176, 181, 
+const uint8_t sin_lut[] = {0, 2, 4, 6, 13, 20, 26, 33, 40, 46, 53, 59, 66, 72, 79, 85, 91, 97,
+    104, 110, 116, 122, 127, 133, 139, 144, 150, 155, 161, 166, 171, 176, 181,
     185, 190, 194, 198, 203, 207, 210, 214, 218, 221, 224, 228, 231, 233, 236,
     238, 241, 243, 245, 247, 248, 250, 251, 252, 253, 254, 255, 255, 255, 255,
     255};
@@ -71,7 +70,7 @@ const uint8_t sin_lut[] = {0, 2, 4, 6, 13, 20, 26, 33, 40, 46, 53, 59, 66, 72, 7
 PROCESS(button_process, "Button reader");
 PROCESS(pwmled_process, "PWM LED process");
 AUTOSTART_PROCESSES(&button_process, &pwmled_process);
-/*---------------------------------------------------------------------------*/ 
+/*---------------------------------------------------------------------------*/
 /* set the PWM duty cycle on the pins (ie the LEDs) out of phase from eachother */
 
 static struct etimer etr;
@@ -113,7 +112,7 @@ PROCESS_THREAD(pwmled_process, ev, data)
   }
   PROCESS_END();
 }
-/*--------------------------------------------------------------------------.*/ 
+/*--------------------------------------------------------------------------.*/
 /* Kill the PWM'ing with the push of the button. */
 PROCESS_THREAD(button_process, ev, data)
 {
@@ -123,7 +122,7 @@ PROCESS_THREAD(button_process, ev, data)
 
   /* wait for a button press */
   PROCESS_WAIT_EVENT_UNTIL(ev == button_event);
-  
+
   /* kill the PWM process */
   process_exit(&pwmled_process);
   PROCESS_END();

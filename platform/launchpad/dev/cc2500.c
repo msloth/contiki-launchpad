@@ -46,15 +46,18 @@
 /*#include "sys/timetable.h"*/
 
 /*---------------------------------------------------------------------------*/
-/* conf defines */
-/*#define WITH_SEND_CCA 1*/
+/* configurations */
 
-/* let the radio do destination address filtering in hardware, will conserve
-  power when used with SimpleRDC as unicasts will be ACKed immediately, letting
-  the sender go to sleep and we can use shorter wake-up periods on all nodes. */
-#define USE_HW_ADDRESS_FILTER     1
-
-
+/* do a clear channel assessment before sending anything */
+// XXX not implemented yet
+#define WITH_SEND_CCA             0
+#define CCA_BEFORE_TX_TIME        (RTIMER_SECOND / 1000)
+/*
+ * let the radio do destination address filtering in hardware, will conserve
+ * power when used with SimpleRDC as unicasts will be ACKed immediately, letting
+ * the sender go to sleep and we can use shorter wake-up periods on all nodes.
+ */
+#define USE_HW_ADDRESS_FILTER     0
 /*---------------------------------------------------------------------------*/
 /* debug settings */
 #define DEBUG 0
@@ -136,6 +139,8 @@
                             cc2500_strobe(CC2500_SFRX);                 \
                             cc2500_strobe(CC2500_SRX);                  \
                           } while(0);
+
+#define ACK_LEN   3
 
 /*---------------------------------------------------------------------------*/
 /* function prototypes for the radio driver */
@@ -315,11 +320,17 @@ cc2500_transmit(unsigned short payload_len)
     CC2500_SET_TXPOWER(packetbuf_attr(CC2500_DEFAULT_TXPOWER));
   }
 
-  /* do a CCA */
-/*  if(CC2500_STATUS() != CC2500_STATE_RX) {*/
-/*    cc2500_strobe(CC2500_SRX);*/
-/*    BUSYWAIT_UNTIL(CC2500_STATUS() == CC2500_STATE_RX, RTIMER_SECOND / 100);*/
-/*  }*/
+#if WITH_SEND_CCA
+  if(CC2500_STATUS() != CC2500_STATE_RX) {
+    cc2500_strobe(CC2500_SRX);
+    BUSYWAIT_UNTIL(CC2500_STATUS() == CC2500_STATE_RX, RTIMER_SECOND / 100);
+  }
+  // XXX wait a little while (?) then do CCA
+  BUSYWAIT_UNTIL(0, CCA_BEFORE_TX_TIME);
+  if(!CCA) {
+    return RADIO_TX_COLLISION;
+  }
+#endif /* WITH_SEND_CCA */
 
   /* transmit: strobe Tx, then wait until transmitting, then wait till done */
   cc2500_strobe(CC2500_STX);
@@ -568,31 +579,35 @@ cc2500_read(void *buf, unsigned short bufsize)
   } else {
     uint8_t l = cc2500_read_single(CC2500_RXBYTES);
     if(l > 0) {
-       //XXX another packet in buffer, handle it 
+       //XXX another packet in buffer, handle it
       pending_rxfifo++;
       process_poll(&cc2500_process);
     }
   }
 
-
 #if USE_HW_ADDRESS_FILTER
-  /* check if unicast, if so we ACK it (not broadcast or to us are already
-    filtered out by radio HW) */
-  /* XXX move earlier to save sender energy? if not interferes with reading rxfifo */
-  if(dest != 0) {
+  /*
+   * check if this is a unicast, if so we ACK it (not broadcast or to us are
+   * already filtered out by radio HW).
+   * Broadcasts are sent to address XX
+   *
+   *
+   * move earlier to save sender energy? if not interferes with reading rxfifo
+   * --no, we should do the previous checks to see that it was received properly
+   */
+  if(dest == rimeaddr_node_addr.u8[0]) {
     uint8_t ab[ACK_LEN];  // ACK-buffer
-    uint8_t len;
-    
-    len = NETSTACK_RADIO.read(ab, ACK_LEN);
-    if(len == ACK_LEN && 
-          ab[0] = packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[0] &&
-          ab[1] = packetbuf_addr(PACKETBUF_ADDR_RECEIVER)->u8[1] &&
-          ab[2] = tx_serial) {
-      /* ACK received */
-      PRINTF("Got ACK!\n");
+
+    ab[0] = rimeaddr_node_addr.u8[0];
+    ab[1] = rimeaddr_node_addr.u8[1];
+    ab[2] = tx_serial;    // XXX what's here
+
+    // XXX send the ACK
+    // XXX sadfpoksdfpko
+
+    PRINTF("CC2500 Sent ACK!\n");
   }
 #endif /* USE_HW_ADDRESS_FILTER */
-
 
 
 

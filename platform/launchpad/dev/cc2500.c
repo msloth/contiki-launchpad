@@ -144,7 +144,7 @@ static int  cc2500_prepare(const void *data, unsigned short len);
 static int  cc2500_transmit(unsigned short len);
 /*static int  cc2500_send(const void *data, unsigned short len);*/
 static int  cc2500_read(void *buf, unsigned short bufsize);
-static int  cc2500_cca(void);
+static int  cc2500_channel_clear(void);
 static int  cc2500_receiving_packet(void);
 static int  cc2500_pending_packet(void);
 int         cc2500_on(void);
@@ -177,7 +177,7 @@ const struct radio_driver cc2500_driver =
 
   /** Perform a Clear-Channel Assessment (CCA) to find out if there is
       a packet in the air or not. */
-  cc2500_cca,
+  cc2500_channel_clear,
 
   /** Check if the radio driver is currently receiving a packet */
   cc2500_receiving_packet,
@@ -642,10 +642,10 @@ cc2500_rssi(void)
   return rssi;
 }
 /*---------------------------------------------------------------------------*/
-static int
-cc2500_cca(void)
+int
+cc2500_channel_clear(void)
 {
-  uint8_t cca;
+  volatile uint8_t cca = 0;
   uint8_t radio_was_off = 0;
 
   /* If the radio is locked by an underlying thread (because we are
@@ -662,12 +662,20 @@ cc2500_cca(void)
   }
 
   /* read CCA */
-  cca = cc2500_read_single(CC2500_PKTSTATUS) & PKTSTATUS_CCA;
+  cca = cc2500_read_single(CC2500_PKTSTATUS);
 
   if(radio_was_off) {
     cc2500_off();
   }
-  return cca;
+
+  /* XXX : bug, was always returning false strangely enough, so manually override it here. */
+  /* should read out eg 0x30 where CCA is 1 << 4, and saw this on the logic analyzer too.... */
+  if(1) {
+  // if(cca & PKTSTATUS_CCA) {
+    return 1;
+  }
+  return 0;
+
 }
 /*---------------------------------------------------------------------------*/
 int

@@ -325,7 +325,7 @@ cc2500_transmit(unsigned short payload_len)
   cc2500_strobe(CC2500_STX);
   BUSYWAIT_UNTIL(CC2500_STATUS() == CC2500_STATE_TX, RTIMER_SECOND / 100);
   BUSYWAIT_UNTIL((CC2500_STATUS() != CC2500_STATE_TX), RTIMER_SECOND / 100);
-  return 1;
+  return RADIO_TX_OK;
 }
 /*---------------------------------------------------------------------------*/
 static int

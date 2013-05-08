@@ -42,10 +42,7 @@ RADIO_SOURCES+= cc2500.c                                      \
 
 #	sht11.c sht11-sensor.c  slip_uart1.c
 CONTIKI_TARGET_SOURCEFILES+=$(ARCH_SOURCES) $(DEV_SOURCES)
-
-ifdef USE_RADIO
 CONTIKI_TARGET_SOURCEFILES+=$(RADIO_SOURCES)
-endif
 
 # include these target folders
 CONTIKI_TARGET_DIRS = . dev

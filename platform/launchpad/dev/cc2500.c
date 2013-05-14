@@ -285,9 +285,9 @@ cc2500_reset(void)
   BUSYWAIT_UNTIL(CC2500_STATUS() != CC2500_STATE_CAL, RTIMER_SECOND / 100);
 
 #if USE_HW_ADDRESS_FILTER
-  /* write node address and address filter on (ADDR, broadcast 0x00) */
+  /* write node address and address filter on (ADDR, broadcast 0x00, 0xff) */
   cc2500_write_single(CC2500_ADDR, rimeaddr_node_addr.u8[0]);
-  cc2500_write_single(CC2500_PKTCTRL1, 0x06);
+  cc2500_write_single(CC2500_PKTCTRL1, 0x0B);
 #endif /* USE_HW_ADDRESS_FILTER */
 
   /* start in rx mode */

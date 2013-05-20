@@ -54,6 +54,7 @@
 struct nullmac_hdr {
   rimeaddr_t receiver;
   rimeaddr_t sender;
+  uint8_t seqnr;
 };
 
 /*---------------------------------------------------------------------------*/
@@ -61,14 +62,20 @@ static int
 create(void)
 {
   struct nullmac_hdr *hdr;
-
   if(packetbuf_hdralloc(sizeof(struct nullmac_hdr))) {
     hdr = packetbuf_hdrptr();
     rimeaddr_copy(&(hdr->sender), &rimeaddr_node_addr);
     rimeaddr_copy(&(hdr->receiver), packetbuf_addr(PACKETBUF_ADDR_RECEIVER));
+    hdr->seqnr = packetbuf_attr(PACKETBUF_ATTR_PACKET_ID);
+
+    PRINTF("PNULLMAC-OUT: ");
+    PRINTADDR(packetbuf_addr(PACKETBUF_ADDR_SENDER));
+    PRINTADDR(packetbuf_addr(PACKETBUF_ADDR_RECEIVER));
+    PRINTF("%u bytes, %u\n", packetbuf_datalen(), sizeof(struct nullmac_hdr));
+
     return sizeof(struct nullmac_hdr);
   }
-  PRINTF("PNULLMAC-UT: too large header: %u\n", len);
+  PRINTF("PNULLMAC-UT: too large header.\n");
   return FRAMER_FAILED;
 }
 /*---------------------------------------------------------------------------*/
@@ -80,11 +87,12 @@ parse(void)
   if(packetbuf_hdrreduce(sizeof(struct nullmac_hdr))) {
     packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &(hdr->sender));
     packetbuf_set_addr(PACKETBUF_ADDR_RECEIVER, &(hdr->receiver));
+    packetbuf_set_attr(PACKETBUF_ATTR_PACKET_ID, hdr->seqnr);
 
     PRINTF("PNULLMAC-IN: ");
     PRINTADDR(packetbuf_addr(PACKETBUF_ADDR_SENDER));
     PRINTADDR(packetbuf_addr(PACKETBUF_ADDR_RECEIVER));
-    PRINTF("%u (%u)\n", packetbuf_datalen(), len);
+    PRINTF("%u bytes\n", packetbuf_datalen());
 
     return sizeof(struct nullmac_hdr);
   }

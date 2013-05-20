@@ -789,6 +789,7 @@ channel_check_interval(void)
 }
 /*---------------------------------------------------------------------------*/
 const struct rdc_driver simplerdc_driver = {
+  /* Name of the driver */
   "SimpleRDC",
   /** Initialize the RDC driver */
   init,
@@ -804,20 +805,5 @@ const struct rdc_driver simplerdc_driver = {
   turn_off,
   /** Returns the channel check interval, expressed in clock_time_t ticks. */
   channel_check_interval,
-
-#if FOR_REFERENCE_ONLY_DONT_SET_TRUE
-/* The structure of a RDC (radio duty cycling) driver in Contiki. */
-/*this is just here for reference, this will never be included*/
-struct rdc_driver {
-  char *name;
-  void (* init)(void);
-  void (* send)(mac_callback_t sent_callback, void *ptr);
-  void (* send_list)(mac_callback_t sent_callback, void *ptr, struct rdc_buf_list *list);
-  void (* input)(void);
-  int (* on)(void);
-  int (* off)(int keep_radio_on);
-  unsigned short (* channel_check_interval)(void);
-};
-#endif /* if 0; commented out code */
 };
 /*---------------------------------------------------------------------------*/

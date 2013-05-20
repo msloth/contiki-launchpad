@@ -415,7 +415,11 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
     return MAC_TX_ERR_FATAL;
   }
 
-  packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &rimeaddr_node_addr);
+  tx_serial++;
+  packetbuf_set_attr(PACKETBUF_ADDR_SENDER, &rimeaddr_node_addr);
+  packetbuf_set_attr(PACKETBUF_ATTR_PACKET_ID, tx_serial);
+
+  hdrlen = packetbuf_totlen();
 
   /* simpleRDC header ------------------------------------------------------- */
   /* simplerdc header, like contikimac header, used to identify packets so they

@@ -417,42 +417,28 @@ PROCESS_THREAD(cc2500_process, ev, data)
 /*  timer_set(&radio_check_timer, CLOCK_SECOND);*/
   while(1) {
     PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
-/*    PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL || timer_expired(&radio_check_timer));*/
-/*    if(timer_expired(&radio_check_timer)) {*/
-      /*
-       * periodically check the radio for error states and if so reset the radio.
-       * This takes ca 8 bytes RAM and 100 bytes ROM so if necessary, remove.
-       */
-/*      uint8_t state = CC2500_STATUS();*/
-/*      if(state == CC2500_STATE_RXFIFO_OVERFLOW || state == CC2500_STATE_TXFIFO_UNDERFLOW) {*/
-/*        cc2500_reset();*/
-/*      }*/
-/*      timer_reset(&radio_check_timer);*/
-/*    } else {*/
+    /* We end up here after a radio GDO port ISR -> interrupt handler -> poll process */
+    static uint8_t len = 0;
+    PRINTF("CC2500 polled\n");
+    // pending_rxfifo--;    /* mli: TODO: pendingfix */
 
-      /* We end up here after a radio GDO port ISR -> interrupt handler -> poll process */
-      static uint8_t len = 0;
-      PRINTF("CC2500 polled\n");
-      pending_rxfifo--;
+    cc2500_read_burst(CC2500_RXBYTES, &len, 1);
 
-      cc2500_read_burst(CC2500_RXBYTES, &len, 1);
+    /* overflow in RxFIFO, drop all */
+    if(len & 0x80) {
+      FLUSH_FIFOS();
+      PRINTF("Overflow;F\n");
 
-      /* overflow in RxFIFO, drop all */
-      if(len & 0x80) {
-        FLUSH_FIFOS();
-        PRINTF("Overflow;F\n");
+    } else if(len > 0) {
+      /* prepare packetbuffer */
+      packetbuf_clear();
 
-      } else if(len > 0) {
-        /* prepare packetbuffer: clear it and set any attributes eg timestamp */
-        packetbuf_clear();
-        //packetbuf_set_attr(PACKETBUF_ATTR_TIMESTAMP, last_packet_timestamp);
-
-        /* read length of packet (first FIFO byte) then pass to higher layers */
-        len = cc2500_read(packetbuf_dataptr(), PACKETBUF_SIZE);
-        if(len > 0) {
-          packetbuf_set_datalen(len);
-          NETSTACK_RDC.input();
-          /* re-poll the radio process so it can check for any packet received while
+      /* read length of packet (first FIFO byte) then pass to higher layers */
+      len = cc2500_read(packetbuf_dataptr(), PACKETBUF_SIZE);
+      if(len > 0) {
+        packetbuf_set_datalen(len);
+        NETSTACK_RDC.input();
+        /* re-poll the radio process so it can check for any packet received while
           we were handling this one (it will check the rxfifo for data). */
 /*          cc2500_interrupt();*/
       } else {
@@ -471,14 +457,17 @@ cc2500_read(void *buf, unsigned short bufsize)
 
   PRINTF("CC2500:r\n");
 
+  len = cc2500_read_single(CC2500_RXBYTES);
   if(pending_rxfifo == 0) {
     /* we don't have anything in the FIFO (ie no interrupt has fired) */
+    if(len > 0) {
+      FLUSH_FIFOS();
+    }
     return 0;
   }
+  pending_rxfifo = 0;   /* TODO: mli pendingfix */
 
-#if 0
-  /* do an early check for FIFO overflow */
-  cc2500_read_burst(CC2500_RXBYTES, &len, 1);
+  /* check for FIFO overflow */
   if(len & 0x80) {
     /* overflow in RxFIFO, drop all */
     FLUSH_FIFOS();
@@ -488,7 +477,6 @@ cc2500_read(void *buf, unsigned short bufsize)
     /* nothing in buffer */
     return 0;
   }
-#endif /* if 0; commented out code */
 
   /* first byte in FIFO is length of the packet with no appended footer */
   cc2500_read_burst(CC2500_RXFIFO, &len, 1);
@@ -529,25 +517,24 @@ cc2500_read(void *buf, unsigned short bufsize)
   /* read automatically appended data (RSSI, LQI, CRC ok) */
   if(FOOTER_LEN > 0) {
     CC2500_READ_FIFO_BUF(footer, FOOTER_LEN);
-  }
-
-  if(footer[1] & FOOTER1_CRC_OK) {
-    /* set attributes: RSSI and LQI so they can be read out from packetbuf */
-    packetbuf_set_attr(PACKETBUF_ATTR_RSSI, footer[0]);
-    packetbuf_set_attr(PACKETBUF_ATTR_LINK_QUALITY, footer[1] & FOOTER1_LQI);
-  } else {
-    /* CRC fail -> drop packet */
-    FLUSH_FIFOS();
-    PRINTF("CRC fail;F\n");
-    return 0;
+    if(footer[1] & FOOTER1_CRC_OK) {
+      /* set attributes: RSSI and LQI so they can be read out from packetbuf */
+      packetbuf_set_attr(PACKETBUF_ATTR_RSSI, footer[0]);
+      packetbuf_set_attr(PACKETBUF_ATTR_LINK_QUALITY, footer[1] & FOOTER1_LQI);
+    } else {
+      /* CRC fail -> drop packet */
+      FLUSH_FIFOS();
+      PRINTF("CRC fail;F\n");
+      return 0;
+    }
   }
 
   /* check for FIFO overflow or if anything else is left in FIFO */
   if(CC2500_STATUS() == CC2500_STATE_RXFIFO_OVERFLOW) {
     FLUSH_FIFOS();
   } else {
-    uint8_t l = cc2500_read_single(CC2500_RXBYTES);
-    if(l > 0) {
+    uint8_t len = cc2500_read_single(CC2500_RXBYTES);
+    if(len > 0) {
        //XXX another packet in buffer, handle it
       pending_rxfifo++;
       process_poll(&cc2500_process);
@@ -660,7 +647,8 @@ cc2500_receiving_packet(void)
 static int
 cc2500_pending_packet(void)
 {
-  return pending_rxfifo;
+  return (int) cc2500_read_single(CC2500_RXBYTES);
+  // return pending_rxfifo;
 }
 /*--------------------------------------------------------------------------*/
 uint8_t

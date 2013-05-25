@@ -40,11 +40,10 @@
 #include "net/netstack.h"
 #include "dev/spi.h"
 #include "dev/cc2500.h"
+#include "dev/cc2500-arch.h"
 #include "dev/cc2500-const.h"
 #include "dev/cc2500-config.h"
 #include "dev/leds.h"
-/*#include "sys/timetable.h"*/
-
 /*---------------------------------------------------------------------------*/
 /* configurations */
 
@@ -52,11 +51,13 @@
 // XXX not implemented yet
 #define WITH_SEND_CCA             0
 #define CCA_BEFORE_TX_TIME        (RTIMER_SECOND / 1000)
+
 /*
- * let the radio do destination address filtering in hardware, will conserve
+ * let the radio do destination address filtering in hardware; will conserve
  * power when used with SimpleRDC as unicasts will be ACKed immediately, letting
  * the sender go to sleep and we can use shorter wake-up periods on all nodes.
  */
+/* NB: do not enable this, it is not working yet and will cause packet drops. */
 #define USE_HW_ADDRESS_FILTER     0
 /*---------------------------------------------------------------------------*/
 /* debug settings */
@@ -72,10 +73,8 @@
 #define LEDS_ON(x)
 #define LEDS_OFF(x)
 #endif
-
 /*---------------------------------------------------------------------------*/
 /* useful macros */
-
 #define BUSYWAIT_UNTIL(cond, max_time)                                  \
   do {                                                                  \
     rtimer_clock_t t0;                                                  \
@@ -83,17 +82,14 @@
     while(!(cond) && RTIMER_CLOCK_LT(RTIMER_NOW(), t0 + (max_time)));   \
   } while(0)
 
-
 /*
  * only OOK needs more than one field in PATABLE, the others are fine w one so
  * this works for all but OOK.
  */
 #define CC2500_SET_TXPOWER(x)       cc2500_write_single(CC2500_PATABLE, x)
 
-
 /* check radio status */
 #define CC2500_STATUS()   ((cc2500_strobe(CC2500_SNOP) & CC2500_STATUSBYTE_STATUSBITS))
-
 
 /* used in cc2500 read */
 #define CC2500_READ_FIFO_BYTE(data)                                     \
@@ -103,7 +99,6 @@
     SPI_READ(data);                                                     \
     CC2500_SPI_DISABLE();                                               \
   } while(0)
-
 
 /* used in cc2500 read */
 #define CC2500_READ_FIFO_BUF(buffer, count)                             \
@@ -116,7 +111,6 @@
     }                                                                   \
     CC2500_SPI_DISABLE();                                               \
   } while(0)
-
 
 /* used in cc2500 prepare */
 #define CC2500_WRITE_FIFO_BUF(buffer,count)                             \
@@ -131,7 +125,6 @@
     CC2500_SPI_DISABLE();                                               \
   } while(0)
 
-
 /* flush the Rx-/Tx-FIFOs */
 #define FLUSH_FIFOS()     do {                                          \
                             cc2500_strobe(CC2500_SIDLE);                \
@@ -140,20 +133,31 @@
                             cc2500_strobe(CC2500_SRX);                  \
                           } while(0);
 
+/* length of an ACK = address + seq# */
 #define ACK_LEN   3
 
+/* flags */
+static uint8_t is_on = 0;
+static uint8_t should_off = 0;
+
+/* the length of rssi, checksum etc bytes appended by radio to packet */
+#define FOOTER_LEN        2   // after the packet, two bytes RSSI+LQI+CRC are appended
+
+#define CC2500_DEFAULT_CONFIG_LEN    47
+extern const uint8_t cc2500_default_config[];
+extern const uint8_t cc2500_txp[];
 /*---------------------------------------------------------------------------*/
 /* function prototypes for the radio driver */
-int         cc2500_init(void);
+       int  cc2500_init(void);
 static int  cc2500_prepare(const void *data, unsigned short len);
 static int  cc2500_transmit(unsigned short len);
-/*static int  cc2500_send(const void *data, unsigned short len);*/
+       int  cc2500_send(const void *data, unsigned short len);
 static int  cc2500_read(void *buf, unsigned short bufsize);
 static int  cc2500_channel_clear(void);
 static int  cc2500_receiving_packet(void);
 static int  cc2500_pending_packet(void);
-int         cc2500_on(void);
-int         cc2500_off(void);
+       int  cc2500_on(void);
+       int  cc2500_off(void);
 
 /* define the radio driver */
 const struct radio_driver cc2500_driver =
@@ -168,13 +172,12 @@ const struct radio_driver cc2500_driver =
   cc2500_transmit,
 
   /** Prepare & transmit a packet. */
-      /* radio return values. */
-      /* enum {
+  /* radio return values.
         RADIO_TX_OK,
         RADIO_TX_ERR,
         RADIO_TX_COLLISION,
         RADIO_TX_NOACK,
-      }; */
+  */
   cc2500_send,
 
   /** Read a received packet into a buffer. */
@@ -196,43 +199,11 @@ const struct radio_driver cc2500_driver =
   /** Turn the radio off. */
   cc2500_off,
 };
-
 /* function prototypes for helper functions--------------- */
 #if 0
 /* check the status of the radio */
 #define CC2500_STATUS()   (cc2500_strobe(CC2500_SNOP) & CC2500_STATUSBYTE_STATUSBITS)
-/* set transmission power */
-#define CC2500_SET_TXPOWER(x)       cc2500_write_single(CC2500_PATABLE, x)
 #endif
-/*---------------------------------------------------------------------------*/
-/* variables and other stuff*/
-/*signed char                 cc2500_last_rssi;*/
-/*static volatile uint8_t     pending;*/
-/*static volatile uint16_t    last_packet_timestamp;*/
-/*static uint8_t              receive_on;*/
-/*static int                  channel;*/
-/*static uint8_t locked, lock_on, lock_off;*/
-
-
-/* state flags, uses the same numbering as the CC2500 status byte states:
-    #define CC2500_STATE_IDLE             0
-    #define CC2500_STATE_RX               1
-    #define CC2500_STATE_TX               2
-    #define CC2500_STATE_FSTXON           3
-    #define CC2500_STATE_CAL              4
-    #define CC2500_STATE_SETTLING         5
- */
-static uint8_t is_on = 0;         // XXX remove later
-static uint8_t should_off = 0;    // XXX remove later
-static uint8_t is_state = CC2500_STATE_IDLE;    /* current state */
-static uint8_t goto_state = CC2500_STATE_IDLE;  /* state to go to when eg tx is done */
-/*--------------------------------------------------------------------------*/
-/* the length of rssi, checksum etc bytes appended by radio to packet */
-#define FOOTER_LEN        2   // after the packet, two bytes RSSI+LQI+CRC are appended
-
-#define CC2500_DEFAULT_CONFIG_LEN    47
-extern const uint8_t cc2500_default_config[];
-extern const uint8_t cc2500_txp[];
 /*---------------------------------------------------------------------------*/
 PROCESS(cc2500_process, "CC2500 driver");
 /*---------------------------------------------------------------------------*/
@@ -343,14 +314,17 @@ static int
 cc2500_prepare(const void *payload, unsigned short payload_len)
 {
   /* Write packet to TX FIFO after flushing it. First byte is total length
-    (hdr+data), not including the lenght byte. */
+    (hdr+data), not including the length byte. */
   cc2500_strobe(CC2500_SIDLE);
   cc2500_strobe(CC2500_SFTX);
 
-  cc2500_write_burst(CC2500_TXFIFO, &payload_len, 1);
+  cc2500_write_burst(CC2500_TXFIFO, (uint8_t *)&payload_len, 1);
 #if USE_HW_ADDRESS_FILTER
-  /* write destination address high byte */
-  //cc2500_write_burst(CC2500_TXFIFO, &payload_len, 1);
+  /* write destination address high byte to FIFO to use HW address filtering */
+  {
+    rimeaddr_t dest = packetbuf_addr(PACKETBUF_ADDR_RECEIVER);
+    cc2500_write_burst(CC2500_TXFIFO, &(dest.u8[0]), 1);
+  }
 #endif /* USE_HW_ADDRESS_FILTER */
   cc2500_write_burst(CC2500_TXFIFO, (uint8_t*) payload, payload_len);
   return 0;
@@ -376,7 +350,7 @@ cc2500_off(void)
     should_off = 1;
     return 0;
   }
-  
+
   off();
   return 1;
 }
@@ -424,7 +398,7 @@ cc2500_set_channel(uint8_t c)
 }
 /*---------------------------------------------------------------------------*/
 /* this is called from the interrupt service routine; polls the radio process
-  which in turn reads the packet from the radio when it runs. The reason for 
+  which in turn reads the packet from the radio when it runs. The reason for
   this is to avoid blocking the radio from the ISR. */
 volatile uint8_t pending_rxfifo = 0;  // XXX
 int
@@ -438,10 +412,8 @@ cc2500_interrupt(void)
 /*static struct timer radio_check_timer;*/
 PROCESS_THREAD(cc2500_process, ev, data)
 {
-  PROCESS_POLLHANDLER();
-  PROCESS_EXITHANDLER();
   PROCESS_BEGIN();
-  
+
 /*  timer_set(&radio_check_timer, CLOCK_SECOND);*/
   while(1) {
     PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
@@ -483,13 +455,10 @@ PROCESS_THREAD(cc2500_process, ev, data)
           /* re-poll the radio process so it can check for any packet received while
           we were handling this one (it will check the rxfifo for data). */
 /*          cc2500_interrupt();*/
-        } else {
-          /* no received data or bad data that was dropped. Do nothing. */
-        }
+      } else {
+        /* no received data or bad data that was dropped. Do nothing. */
       }
-
-    //XXX
-/*    }*/
+    }
   }
   PROCESS_END();
 }
@@ -603,24 +572,9 @@ cc2500_read(void *buf, unsigned short bufsize)
     ab[2] = tx_serial;    // XXX what's here
 
     // XXX send the ACK
-    // XXX sadfpoksdfpko
-
     PRINTF("CC2500 Sent ACK!\n");
   }
 #endif /* USE_HW_ADDRESS_FILTER */
-
-
-
-#if 0
-  if(CC2500_FIFOP_IS_1) {
-    if(!CC2500_FIFO_IS_1) {
-      /* Clean up in case of FIFO overflow!  This happens for every
-       * full length frame and is signaled by FIFOP = 1 and FIFO =
-       * 0. */
-      flushrx();
-    }
-  }
-#endif
 
   return len;
 }
@@ -713,7 +667,7 @@ uint8_t
 cc2500_strobe(uint8_t strobe)
 {
   uint8_t s;
-  /* sth sets the MISO pin (button?) so lets reset all pins we need */
+  /* sth (the button?) sets the MISO pin so lets reset all pins we need */
   SPI_PORT(SEL)  |= SPI_MISO | SPI_MOSI | SPI_SCL;
   SPI_PORT(SEL2) |= SPI_MISO | SPI_MOSI | SPI_SCL;
 
@@ -728,7 +682,7 @@ uint8_t
 cc2500_read_single(uint8_t adr)
 {
   uint8_t d;
-  /* sth sets the MISO pin (button?) so lets reset all pins we need */
+  /* sth (the button?) sets the MISO pin so lets reset all pins we need */
   SPI_PORT(SEL)  |= SPI_MISO | SPI_MOSI | SPI_SCL;
   SPI_PORT(SEL2) |= SPI_MISO | SPI_MOSI | SPI_SCL;
 
@@ -749,7 +703,7 @@ uint8_t
 cc2500_read_burst(uint8_t adr, uint8_t *dest, uint8_t len)
 {
   uint8_t s, i;
-  /* sth sets the MISO pin (button?) so lets reset all pins we need */
+  /* sth (the button?) sets the MISO pin so lets reset all pins we need */
   SPI_PORT(SEL)  |= SPI_MISO | SPI_MOSI | SPI_SCL;
   SPI_PORT(SEL2) |= SPI_MISO | SPI_MOSI | SPI_SCL;
 
@@ -767,7 +721,7 @@ uint8_t
 cc2500_write_single(uint8_t adr, uint8_t data)
 {
   uint8_t s;
-  /* sth sets the MISO pin (button?) so lets reset all pins we need */
+  /* sth (the button?) sets the MISO pin so lets reset all pins we need */
   SPI_PORT(SEL)  |= SPI_MISO | SPI_MOSI | SPI_SCL;
   SPI_PORT(SEL2) |= SPI_MISO | SPI_MOSI | SPI_SCL;
 
@@ -783,7 +737,7 @@ uint8_t
 cc2500_write_burst(uint8_t adr, uint8_t *src, uint8_t len)
 {
   uint8_t s, i;
-  /* sth sets the MISO pin (button?) so lets reset all pins we need */
+  /* sth (the button?) sets the MISO pin so lets reset all pins we need */
   SPI_PORT(SEL)  |= SPI_MISO | SPI_MOSI | SPI_SCL;
   SPI_PORT(SEL2) |= SPI_MISO | SPI_MOSI | SPI_SCL;
 

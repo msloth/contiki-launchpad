@@ -391,7 +391,7 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
   /* increase sequence number, used for eg dupe packet detection */
   tx_serial++;
   packetbuf_set_attr(PACKETBUF_ATTR_PACKET_ID, tx_serial);
-  packetbuf_set_attr(PACKETBUF_ADDR_SENDER, &rimeaddr_node_addr);
+  packetbuf_set_addr(PACKETBUF_ADDR_SENDER, &rimeaddr_node_addr);
 
 #if RADIO_ACKS_UNICASTS
   /* simplerdc header, like contikimac header, used to identify packets so they

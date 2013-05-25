@@ -96,7 +96,7 @@
 /* soon to be deprecated, used during pending-packet radio driver bug. */
 #define PENDINGBUG_WORKAROUND   0
 /*---------------------------------------------------------------------------*/
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -261,7 +261,7 @@ Ie, time to receive a packet, copy ACK->fifo, send ACK, would be < 0.30 ms, but
  * This is the time between two such transmissions. It is related to how
  * long time it takes to receive and ACK, and the channel sample time.
  */
-#define BETWEEN_TX_TIME                   ((2ul * RTIMER_SECOND) / 1000)
+#define BETWEEN_TX_TIME                   (2 * (RTIMER_SECOND / 1000))
 
 /* for how long to transmit (broadcast, *casts stop at ACK). */
 #define TX_GUARDTIME                      (CLOCK_SECOND / 128)
@@ -485,14 +485,10 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
 #endif
 
     if(ret == RADIO_TX_COLLISION) {
-      if(simplerdc_was_on == 0) {
-        simplerdc_is_on = 0;
-      }
+      simplerdc_is_on = simplerdc_was_on;
       return MAC_TX_COLLISION;
     } else if(ret == RADIO_TX_ERR) {
-      if(simplerdc_was_on == 0) {
-        simplerdc_is_on = 0;
-      }
+      simplerdc_is_on = simplerdc_was_on;
       return MAC_TX_ERR;
     }
 
@@ -531,16 +527,12 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
                 ab[2] == tx_serial) {
             /* ACK received */
             PRINTF("Got ACK!\n");
-            if(simplerdc_was_on == 0) {
-              simplerdc_is_on = 0;
-            }
+            simplerdc_is_on = simplerdc_was_on;
             return MAC_TX_OK;
           } else {
             /* Not an ACK or ACK not correct: collision, ie someone else is transmitting at the same time */
             PRINTF("SimpleRDC: ACK was not good ACK. Collision.\n");
-            if(simplerdc_was_on == 0) {
-              simplerdc_is_on = 0;
-            }
+            simplerdc_is_on = simplerdc_was_on;
 #if PENDINGBUG_WORKAROUND
             // skip returning if error    pendingbug
 #else
@@ -553,9 +545,7 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
   }   /* /repeated transmissions */
 
   off();
-  if(simplerdc_was_on == 0) {
-    simplerdc_is_on = 0;
-  }
+  simplerdc_is_on = simplerdc_was_on;
   if(is_broadcast == 0) {
     /* if unicast and we end up here, we didn't receive an ACK */
     return MAC_TX_NOACK;
@@ -612,15 +602,27 @@ qsend_list(mac_callback_t sent, void *ptr, struct rdc_buf_list *buf_list)
 static void
 input_packet(void)
 {
+  int len;
   off();
 
-  if(packetbuf_totlen() > 0 && NETSTACK_FRAMER.parse() >= 0) {
+  if(packetbuf_totlen() == 0) {
+    /* nothing to parse */
+    return;
+  }
 
+  len = NETSTACK_FRAMER.parse();
+  if(len <= 0) {
+    /* bad frame, drop */
+    return;
+  }
+
+  if(1) {
 #if RADIO_ACKS_UNICASTS
     /* remove the SimpleRDC header read out by the radio */
     packetbuf_hdrreduce(sizeof(struct hdr));
     // packetbuf_set_datalen(packetbuf_totlen());    // XXX ???
 #endif  /* RADIO_ACKS_UNICASTS */
+    packetbuf_hdrreduce(len);
 
     if(packetbuf_datalen() > 0 && packetbuf_totlen() > 0 &&
        (rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER),

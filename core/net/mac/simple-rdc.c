@@ -256,12 +256,12 @@ Ie, time to receive a packet, copy ACK->fifo, send ACK, would be < 0.30 ms, but
 #define SIMPLERDC_BWU_ON                  (4 * (RTIMER_SECOND / 1000))
 
 /*
- * Time between transmissions.
+ * Time waiting for ACK between transmissions before starting the next.
  * When sending, the transmitting device will send the frame repeatedly.
  * This is the time between two such transmissions. It is related to how
  * long time it takes to receive and ACK, and the channel sample time.
  */
-#define BETWEEN_TX_TIME                   (2 * (RTIMER_SECOND / 1000))
+#define BETWEEN_TX_WAITACK_TIME           (2 * (RTIMER_SECOND / 1000))
 
 /* for how long to transmit (broadcast, *casts stop at ACK). */
 #define TX_GUARDTIME                      (CLOCK_SECOND / 128)
@@ -486,13 +486,13 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
     /* wait between transmissions - either turn off to save power, or wait for ACK */
     if(is_broadcast) {
       off();
-      BUSYWAIT_UNTIL(0, BETWEEN_TX_TIME);
+      BUSYWAIT_UNTIL(0, BETWEEN_TX_WAITACK_TIME);
     } else {
       on();
 #if PENDINGBUG_WORKAROUND
-      BUSYWAIT_UNTIL(0, BETWEEN_TX_TIME);
+      BUSYWAIT_UNTIL(0, BETWEEN_TX_WAITACK_TIME);
 #else
-      BUSYWAIT_UNTIL(NETSTACK_RADIO.pending_packet(), BETWEEN_TX_TIME);
+      BUSYWAIT_UNTIL(NETSTACK_RADIO.pending_packet(), BETWEEN_TX_WAITACK_TIME);
 #endif
     }
 

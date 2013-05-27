@@ -96,7 +96,7 @@
 /* soon to be deprecated, used during pending-packet radio driver bug. */
 #define PENDINGBUG_WORKAROUND   0
 /*---------------------------------------------------------------------------*/
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -316,7 +316,6 @@ static struct seqno received_seqnos[MAX_SEQNOS];
 static volatile uint8_t simplerdc_is_on = 0;
 static volatile uint8_t simplerdc_keep_radio_on = 0;
 static volatile uint8_t we_are_sending = 0;
-static volatile uint8_t radio_is_on = 0;
 /*---------------------------------------------------------------------------*/
 #define BUSYWAIT_UNTIL(cond, max_time)                                      \
       do {                                                                  \
@@ -333,8 +332,7 @@ static volatile uint8_t radio_is_on = 0;
 static void
 on(void)
 {
-  if(simplerdc_is_on && radio_is_on == 0) {
-    radio_is_on = 1;
+  if(simplerdc_is_on) {
     NETSTACK_RADIO.on();
   }
 }
@@ -343,8 +341,7 @@ on(void)
 static void
 off(void)
 {
-  if(simplerdc_is_on && radio_is_on && simplerdc_keep_radio_on == 0) {
-    radio_is_on = 0;
+  if(simplerdc_is_on && simplerdc_keep_radio_on == 0) {
     NETSTACK_RADIO.off();
   }
 }
@@ -370,9 +367,7 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
   /* bad length */
   if(packetbuf_totlen() == 0) {
     PRINTF("simplerdc: send_packet data len 0\n");
-    if(simplerdc_was_on == 0) {
-      simplerdc_is_on = 0;
-    }
+    simplerdc_is_on = simplerdc_was_on;
     return MAC_TX_ERR_FATAL;
   }
 
@@ -389,9 +384,7 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
   if(packetbuf_hdralloc(sizeof(struct hdr)) == 0) {
     /* Failed to allocate space for contikimac header */
     PRINTF("simplerdc: send failed, too large header\n");
-    if(simplerdc_was_on == 0) {
-      simplerdc_is_on = 0;
-    }
+    simplerdc_is_on = simplerdc_was_on;
     return MAC_TX_ERR_FATAL;
   }
 #endif  /* if 0; commented out code */
@@ -410,9 +403,7 @@ send_packet(mac_callback_t mac_callback, void *mac_callback_ptr, struct rdc_buf_
   if(hdrlen < 0) {
     /* Failed to send */
     PRINTF("simplerdc: send failed, too large header\n");
-    if(simplerdc_was_on == 0) {
-      simplerdc_is_on = 0;
-    }
+    simplerdc_is_on = simplerdc_was_on;
     return MAC_TX_ERR_FATAL;
   }
 
@@ -766,7 +757,6 @@ static void
 init(void)
 {
   PRINTF("SimpleRDC starting\n");
-  radio_is_on = 0;
 
   tx_serial = random_rand();
 
@@ -789,11 +779,9 @@ turn_off(int keep_radio_on)
 {
   simplerdc_is_on = 0;
   if(keep_radio_on > 0) {
-    radio_is_on = 1;
     simplerdc_keep_radio_on = 1;
     return NETSTACK_RADIO.on();
   } else {
-    radio_is_on = 0;
     simplerdc_keep_radio_on = 0;
     return NETSTACK_RADIO.off();
   }

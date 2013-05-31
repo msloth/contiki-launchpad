@@ -729,6 +729,11 @@ PROCESS_THREAD(simplerdc_process, ev, data)
     }
     off();
 
+    if(cc2500_radio_ok() == 0) {
+      cc2500_reset();
+      off();
+    }
+
     #if 0
     chk = after_on_check();
     if(chk == 0) {

@@ -359,7 +359,8 @@ int
 cc2500_on(void)
 {
   /* if we are transmitting or currently receiving, don't call on() */
-  if(is_on) {
+  if(0) {
+  // if(is_on) {
 /*  if(CC2500_STATUS() != CC2500_STATE_IDLE) {*/
     return 1;
   }
@@ -738,6 +739,16 @@ cc2500_write_burst(uint8_t adr, uint8_t *src, uint8_t len)
   SPI_WAIT_WHILE_BUSY();
   CC2500_SPI_DISABLE();
   return s;
+}
+/*---------------------------------------------------------------------------*/
+int
+cc2500_radio_ok(void)
+{
+  if(CC2500_STATUS() == CC2500_STATE_RX) {
+    return 0;
+  }
+
+  return 1;
 }
 /*---------------------------------------------------------------------------*/
 

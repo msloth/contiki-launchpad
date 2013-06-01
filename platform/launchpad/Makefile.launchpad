@@ -103,11 +103,11 @@ erase:
 
 # open a serial connection to Launchpad
 login:
-	$(SERIALDUMP) -b115200 $(USBDEVPREFIX)$(firstword $(CMOTES))
+	$(SERIALDUMP) -b9600 $(USBDEVPREFIX)$(firstword $(CMOTES))
 
 # as 'login' but with timestamps
 serialdump:
-	$(SERIALDUMP) -b115200 $(USBDEVPREFIX)$(firstword $(CMOTES)) | $(CONTIKI)/tools/timestamp | tee serialdump-`date +%Y%m%d-%H%M`
+	$(SERIALDUMP) -b9600 $(USBDEVPREFIX)$(firstword $(CMOTES)) | $(CONTIKI)/tools/timestamp | tee serialdump-`date +%Y%m%d-%H%M`
 
 # print out some helpful messages
 help:

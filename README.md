@@ -1,7 +1,7 @@
 # Contiki for Launchpad
 
 This repo contains a port of Contiki for the TI MSP430 Launchpad.
-It is aimed at the msp430g2553 as the 'g2452 has some limitations (RAM, no hw 
+It is aimed at the msp430g2553 as the 'g2452 has some limitations (RAM, no hw
 UART etc) that requires extra care that is at best rudimentary now and likely
 won't happen soon.
 
@@ -39,7 +39,7 @@ virtual machine with mspgcc and other tools installed from start.
   see www.contiki-os.org for download links to the latest version.
 * in the virtual machine, open a terminal and clone this repository
     ''git clone git://github.com/MarcusLunden/contiki-launchpad.git contiki-launchpad''
-* check that your compiler path is ok by going into eg 
+* check that your compiler path is ok by going into eg
     contiki-launchpad/examples/launchpad/blink
   and running
     ''msp430-gcc --version''
@@ -50,15 +50,21 @@ virtual machine with mspgcc and other tools installed from start.
   (I don't remember if mspdebug is included in the VM, otherwise you may need to
   download it first and make sure it is in the path)
 * Check the examples in contiki/examples/launchpad
-  Follow the README in that folder and experiment. Learn and get a feel for 
+  Follow the README in that folder and experiment. Learn and get a feel for
   how to use processes, timers etc, working your way through and experimenting
   with processes.
+
+If you choose not to pursue this path you can still compile and upload it in Linux,
+Windows, or OSX, as long as you have a working compiler and some utility to upload
+it to the device with. I use mspgcc and mspdebug, both free and open source. You
+could theoretically compile with IAR or Keil or whatever, but I haven't massaged
+the makefiles for this.
 
 ## Limitations
 
 The msp430g2553 is very capable for being such a small and inexpensive device but
 is first and foremost limited in peripherals and RAM. For example, it has only
-two timers and not much RAM and thus I had to cut down on a lot of Contiki 
+two timers and not much RAM and thus I had to cut down on a lot of Contiki
 features and simplify others to make it fit. Other limitations are some Contiki
 features that I haven't ported yet.
 
@@ -76,6 +82,15 @@ features that I haven't ported yet.
    (planned but not done yet...)
 
 ### New stuff, and some re-written to simplify/fit
+*  radio drivers for the cheap yet powerful CC2500 transceiver. You can buy these
+   as radio modules on ebay or aliexpress for approx 2$ each.
+*  SimpleRDC, a power-saving, low-power listening, radio duty cycling protocol.
+   Stems from among others ContikiMAC, but with reduced complexity and RAM/ROM-requirements.
+   Tweakable, defaults to 3% idle duty cycling with on avgerage 65ms latency.
+   With the CC2500, this equates to an average power consumption of about 2 mW for
+   the radio.
+*  node-id is burnt into Infomem with the script in tools/launchpad/burnid which
+   uses mspdebug
 *  adc - instead of the sensors API, there is now a generic ADC API with functions
    for synchronous and asynch conversions etc. Pick your flavor.
 *  button - simple yet powerful button API
@@ -85,18 +100,15 @@ features that I haven't ported yet.
    the clock so even the 2452 has one, but the 'pwm' needs a separate hw-timer
    but gives two pwm-channels
 *  Servo motor API
-*  node-id is burnt into Infomem with the script in tools/launchpad/burnid
 *  lots and lots of shrinking of buffers etc.
+*  a driver for alphanumeric displays (a la Sparkfun)
 
 ## Coming features
 
-Of course, this is subject to change and this file might not be up-to-date.
+Of course, this is subject to change and this file might not be up-to-date, and
+some of these points are likely more of the wishful thinking-character.
 
-*  radio drivers for CC2500 (they are there and almost fully working)
-*  simple power-saving MAC protocol, like a re-implementation of X-MAC or ContikiMAC
-   to reduce complexity and RAM/ROM-requirements --it's there, running at 7% idle DC with avg 64ms latency.
 *  a driver for HD44780-based LCD displays
-*  a driver for alphanumeric displays (a la Sparkfun) --done!
 *  really simple (eg likely not that reliable or high performance) network stuff
    like leaf nodes to sink data routing, data dissemination through polite gossip
    and similar things.
@@ -105,9 +117,11 @@ Of course, this is subject to change and this file might not be up-to-date.
 *  Contiki serial shell; now serial input works (wait for serial_input_events)
    but you have to parse the input yourself. I'll see how much space this takes,
    might have to skip it.
-*  simple uni-directed UDP-messages
+*  simple unicast UDP
 *  would be cool with some simple service discovery stuff, or growl notifications!
    (growl could work nice, it's mostly static strings anyway that easily fit in ROM)
+*  having radio and serial output at the same time. Now, even with 100 bytes RAM
+   left at compiletime, we still haven't got enough so applications crash.
 
 ## Most likely won't come
 
@@ -118,13 +132,13 @@ Of course, this is subject to change and this file might not be up-to-date.
 
 ## What did I do to make it fit?
 
-The biggest problem wasn't flash space (program and const variables), it's RAM.
+The biggest problem wasn't ROM space (program and const variables), it's RAM.
 By the way Contiki works, you use static variables a lot. This has the benefit
 that an application becomes more easy to analyze as you know more about it at
 compile time but the RAM requirements become harder. There is little hope of
 doing any serious routing on these for example.
 
-The protothread abstraction basically folds out (preprocessor macro expansion) into 
+The protothread abstraction basically folds out (preprocessor macro expansion) into
 function calls with a big switch-case for each process; any YIELD or WAIT_EVENT
 exits the function, hence any automatic (ie non-static or larger scope) variables
 are not saved across the block. So you use static a lot, and so they are stored

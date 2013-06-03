@@ -42,7 +42,7 @@ const uint8_t cc2500_txp[] = {0x50, 0x44, 0xC0, 0x84, 0x81, 0x46, 0x93, 0x55, 0x
 #define CC2500_DEFAULT_TXPOWER    0xA9
 
 /* the length of the below default settings = 2*the number of regs being set */
-#define CC2500_DEF_CONF_LEN      (2 * 33)
+#define CC2500_DEF_CONF_LEN      (2 * 34)
 
 const uint8_t cc2500_default_config[] = {
   /* tweaked SmartRF-settings: */
@@ -73,8 +73,8 @@ const uint8_t cc2500_default_config[] = {
   CC2500_IOCFG2,   IOCFG_GDO_CFG_PKT_SYNCW_EOP,    // assert on sync word sent, de-assert on end-of-packet
   CC2500_IOCFG0,   IOCFG_GDO_CFG_PKT_SYNCW_EOP,    // assert on sync word sent, de-assert on end-of-packet
   CC2500_PKTLEN,   0xFF,
-  CC2500_PKTCTRL1, 0x04,  // no address check or autoflush
-  CC2500_PKTCTRL0, 0x05,  // no whitening, calc and check CRC
+  CC2500_PKTCTRL1, 0x04,  // no address check or autoflush, do append status (RSSI/LQI and CRC ok)
+  CC2500_PKTCTRL0, 0x05,  // no whitening, do calc and check CRC, length indicated by first byte
 
 //  CC2500_ADDR,     0x00,
 //  CC2500_CHANNR,   0x00,
@@ -91,8 +91,9 @@ const uint8_t cc2500_default_config[] = {
   CC2500_MDMCFG1,  0x22,  // 4 B pre-amble
   CC2500_MDMCFG0,  0xF8,
   CC2500_DEVIATN,  0x00,
-  CC2500_MCSM1,    0x3F,  // Tx->Rx,Rx->Rx
+  CC2500_MCSM1,    (3 << 4 | 0 << 2 | 0 << 0),  // Tx->idle, Rx->idle, CCA threshold
   CC2500_MCSM0,    0x08,  // no autocalibration
+  CC2500_PKTLEN,   61,    // max packet len, to allow for length byte and footer; see errata 7
 
   CC2500_FOCCFG,   0x1D,
   CC2500_BSCFG,    0x1C,

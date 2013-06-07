@@ -33,6 +33,7 @@ ARCH_SOURCES+=  spi.c                                         \
 DEV_SOURCES+=   alphanumeric.c                                \
                 servo.c                                       \
                 hpdl1414.c                                    \
+                simple-serial.c                               \
                 en25qxx.c
 #                logging.c                                     \
 

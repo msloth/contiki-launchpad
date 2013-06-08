@@ -47,28 +47,26 @@
 #include "dev/serial-line.h"
 
 /*---------------------------------------------------------------------------*/
-PROCESS(blink_process, "Blink");
 PROCESS(serial_read_process, "Serial Reader");
-AUTOSTART_PROCESSES(&blink_process, &serial_read_process);
+AUTOSTART_PROCESSES(&serial_read_process);
 /*--------------------------------------------------------------------------*/
 /* will repeatedly wait for serial data and then repeat back what it received.
  * If the data is "red" or "green", it will toggle the corresponding LED */
 PROCESS_THREAD(serial_read_process, ev, data) {
-  PROCESS_POLLHANDLER();
-  PROCESS_EXITHANDLER();
   PROCESS_BEGIN();
+  printf("starting serial echo\n");
   while (1) {
     char* buf;
     PROCESS_WAIT_EVENT_UNTIL(ev == serial_line_event_message);
     buf = data;
 
-    if(!strncmp(buf, "red", 3)) {
-      leds_toggle(LEDS_RED);
-    } else if (!strncmp(buf, "green", 5)) {
-      leds_toggle(LEDS_GREEN);
-    } else if (!strncmp(buf, "off", 3)) {
-      leds_off(LEDS_GREEN | LEDS_RED);
-    }
+    // if(!strncmp(buf, "red", 3)) {
+    //   leds_toggle(LEDS_RED);
+    // } else if (!strncmp(buf, "green", 5)) {
+    //   leds_toggle(LEDS_GREEN);
+    // } else if (!strncmp(buf, "off", 3)) {
+    //   leds_off(LEDS_GREEN | LEDS_RED);
+    // }
 
     printf("Got:%s\n", buf);
   }
@@ -90,4 +88,3 @@ PROCESS_THREAD(blink_process, ev, data)
   PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
-

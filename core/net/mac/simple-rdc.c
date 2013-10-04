@@ -728,7 +728,7 @@ PROCESS_THREAD(simplerdc_process, ev, data)
       BUSYWAIT_UNTIL(NETSTACK_RADIO.receiving_packet() == 0, SIMPLERDC_POWERCYCLE_RX_TIMEOUT);
     }
     off();
-
+    cc2500_calibrate();
     if(cc2500_radio_ok() == 0) {
       cc2500_reset();
       off();
@@ -816,4 +816,4 @@ const struct rdc_driver simplerdc_driver = {
   /** Returns the channel check interval, expressed in clock_time_t ticks. */
   channel_check_interval,
 };
-/*---------------------------------------------------------------------------*/
+

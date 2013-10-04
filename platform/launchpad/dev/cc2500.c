@@ -740,13 +740,22 @@ cc2500_write_burst(uint8_t adr, uint8_t *src, uint8_t len)
   return s;
 }
 /*---------------------------------------------------------------------------*/
+/* Checks whether the radio is still in RX mode, so we can reset it otherwise. 
+Expect this to be removed later. */
 int
 cc2500_radio_ok(void)
 {
   if(CC2500_STATUS() == CC2500_STATE_RX) {
     return 0;
   }
-
+  return 1;
+}
+/*---------------------------------------------------------------------------*/
+int
+cc2500_calibrate(void)
+{
+  cc2500_strobe(CC2500_SIDLE);
+  cc2500_strobe(CC2500_SCAL);
   return 1;
 }
 /*---------------------------------------------------------------------------*/

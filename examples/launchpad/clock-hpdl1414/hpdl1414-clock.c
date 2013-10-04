@@ -390,6 +390,7 @@ PROCESS_THREAD(clockdisplay_process, ev, data)
   /* the big 'ole clock loop; counts seconds and sets time accordingly. */
   etimer_set(&clock_timer, CLOCK_SECOND);
   while(1) {
+    /* wait for timer and reset it ('set' again will cause a drift) */
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&clock_timer));
     etimer_reset(&clock_timer);
 

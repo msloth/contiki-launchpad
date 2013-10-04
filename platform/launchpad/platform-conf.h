@@ -33,11 +33,8 @@
  * \author
  *         Marcus Linderoth <linderoth.marcus@gmail.com>
  */
-
 #ifndef __PLATFORM_CONF_H__
 #define __PLATFORM_CONF_H__
-
-
 /*--------------------------------------------------------------------------*/
 /*
  * The following are some defines that can be changed in order to change what
@@ -51,8 +48,7 @@
 //#define F_CPU                   16000000uL
 #define F_CPU                   8000000uL
 //#define F_CPU                   4000000uL
-
-//#define F_CPU                   12000000uL    // don't use the 12 MHz just yet, not ready (UART etc)
+//#define F_CPU                   12000000uL    // don't use the 12 MHz, it is not ready (UART etc)
 
 /* is it an 2452 or 2553 mcu? Only these two can be defined for now.
 XXX I will fix (later) so that the Makefile automatically choses the right mcu define
@@ -126,8 +122,6 @@ Here is a short summary of the Launchpad mcu's
  * on other pins. You will likely have to change in cpu/msp430/g2xxx/leds-arch.c
  * as well as core/dev/leds.{c, h} if you want to add more LEDs or change pins.
  */
-//#define LEDS_PxDIR              P1DIR
-//#define LEDS_PxOUT              P1OUT
 #define LEDS_PORT(type)         P1##type
 #define LEDS_CONF_RED           (1<<0)
 #define LEDS_CONF_GREEN         (1<<6)

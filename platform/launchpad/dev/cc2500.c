@@ -130,7 +130,6 @@
                             cc2500_strobe(CC2500_SIDLE);                \
                             cc2500_strobe(CC2500_SFTX);                 \
                             cc2500_strobe(CC2500_SFRX);                 \
-                            cc2500_strobe(CC2500_SRX);                  \
                           } while(0);
 
 /* length of an ACK = address + seq# */

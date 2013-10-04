@@ -39,7 +39,7 @@
 
 /* transmission power setting, 0..16 (17 elements) ranging from lowest to highest */
 const uint8_t cc2500_txp[] = {0x50, 0x44, 0xC0, 0x84, 0x81, 0x46, 0x93, 0x55, 0x8D, 0xC6, 0x97, 0x6E, 0x7F, 0xA9, 0xBB, 0xFE, 0xFF};
-#define CC2500_DEFAULT_TXPOWER    0xA9
+#define CC2500_DEFAULT_TXPOWER    0xFE
 
 /* the length of the below default settings = 2*the number of regs being set */
 #define CC2500_DEF_CONF_LEN      (2 * 34)
@@ -81,14 +81,14 @@ const uint8_t cc2500_default_config[] = {
   CC2500_FSCTRL1,  0x07,
   CC2500_FSCTRL0,  0x00,
   CC2500_FREQ2,    0x5D,
-
   CC2500_FREQ1,    0x93,
+
   CC2500_FREQ0,    0xB1,
   CC2500_MDMCFG4,  0x2D,
   CC2500_MDMCFG3,  0x3B,
   CC2500_MDMCFG2,  0x73,  // MSK, 30 of 32 bits
-
   CC2500_MDMCFG1,  0x22,  // 4 B pre-amble
+
   CC2500_MDMCFG0,  0xF8,
   CC2500_DEVIATN,  0x00,
   CC2500_MCSM1,    (3 << 4 | 0 << 2 | 0 << 0),  // Tx->idle, Rx->idle, CCA threshold

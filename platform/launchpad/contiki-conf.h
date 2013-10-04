@@ -5,7 +5,6 @@
  *
  * @{
  */
-
 /*
  * Copyright (c) 2013, Marcus Linderoth, http://forfunandprof.it
  * All rights reserved.
@@ -34,7 +33,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
 /**
  * \file
  *         Contiki configuration file for Launchpad platform
@@ -63,7 +61,7 @@
 /* These can be lowered to reduce RAM size, to a certain point. Remember that
   a printf may not exceed this buffer size or unpredictable things will happen! */
 // dev/serial-line.h
-#define SERIAL_LINE_CONF_BUFSIZE            32
+#define SERIAL_LINE_CONF_BUFSIZE            16
 
 // g2xxxx/uart1.c; XXX until interrupt driven UART is done, these have no effect (and no RAM will be allocated either)
 #define TX_INTERRUPT_BUFSIZE_CONF           32
@@ -88,18 +86,13 @@
 #endif /* NETSTACK_CONF_RADIO */
 
 /* set packetbuf buffer sizes */
-#define PACKETBUF_CONF_SIZE         64    /* 128 */
-//#define PACKETBUF_CONF_SIZE         66
-#define PACKETBUF_CONF_HDR_SIZE     16    /* 48 */  // XXX how do they relate?
+#define PACKETBUF_CONF_SIZE         64    /* max frame size on cc2500 is 64, two byte footer */
+#define PACKETBUF_CONF_HDR_SIZE     20
 
 /* what channel to start at */
 #ifndef RF_CHANNEL
 #define RF_CHANNEL                  1
 #endif /* RF_CHANNEL */
-
-
-
-
 
 /* make sure to use short Rime addresses */
 #define RIMEADDR_CONF_SIZE          2
@@ -107,16 +100,10 @@
 /* save ~80 B RAM by not using Announcements*/
 #define USE_ANNOUNCEMENTS_CONF      0
 
-
 /* used by eg ContikiMAC; for future use */
 #ifndef NETSTACK_CONF_RDC_CHANNEL_CHECK_RATE
 #define NETSTACK_CONF_RDC_CHANNEL_CHECK_RATE 8
 #endif /* NETSTACK_CONF_RDC_CHANNEL_CHECK_RATE */
-
-
-
-
-
 
 #if !WITH_UIP6
   /* Network setup for non-IPv6 (rime). */
@@ -156,31 +143,21 @@
 #define CONTIKIMAC_CONF_BROADCAST_RATE_LIMIT    0
 
 #define IEEE802154_CONF_PANID                   0xABCD
-
-
 /*--------------------------------------------------------------------------*/
 /* not so important configs for us, we are not using these features but save for
 future use, compiler errors, and completeness */
-
 #define PACKETBUF_CONF_ATTRS_INLINE     1     /* less: 72B ROM, 0 RAM if set to 1; what does it do? */
-
 #define PROFILE_CONF_ON                 0
 #define ENERGEST_CONF_ON                0
-
 #define PROCESS_CONF_NUMEVENTS          8     /* each takes 8 B RAM */
 #define PROCESS_CONF_STATS              1     /* less: 18 B ROM, 0 RAM if set to 1 */
 //#define PROCESS_CONF_FASTPOLL         4
-
-
 //#define AODV_COMPLIANCE
 //#define AODV_NUM_RT_ENTRIES           32
 //#define WITH_ASCII                    1
 //#define ELFLOADER_CONF_TEXT_IN_ROM    0
 //#define SHELL_VARS_CONF_RAM_BEGIN     0x1100
 //#define SHELL_VARS_CONF_RAM_END       0x2000
-
-
-
 
 #if WITH_UIP6
   /* Network setup for IPv6 */
@@ -192,14 +169,11 @@ future use, compiler errors, and completeness */
      used. */
   #define SICSLOWPAN_CONF_COMPRESSION_THRESHOLD 63
   #define CONTIKIMAC_CONF_WITH_CONTIKIMAC_HEADER 0
-
   #define CXMAC_CONF_ANNOUNCEMENTS         0
-
   #ifndef QUEUEBUF_CONF_NUM
   #define QUEUEBUF_CONF_NUM                8
   #endif
 
-
   #define UIP_CONF_ICMP_DEST_UNREACH 1
   #define UIP_CONF_DHCP_LIGHT
   #define UIP_CONF_LLH_LEN         0
@@ -240,9 +214,7 @@ future use, compiler errors, and completeness */
   #define UIP_CONF_PINGADDRCONF    0
   #define UIP_CONF_LOGGING         0
   #define UIP_CONF_TCP_SPLIT       0
-
 
 #endif /* WITH_UIP6 */
-
 #endif /* CONTIKI_CONF_H */
 /** @} */

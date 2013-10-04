@@ -49,7 +49,6 @@ static volatile uint8_t transmitting = 0;
 #define   TXBUF        UCA0TXBUF
 #define   RXBUF        UCA0RXBUF
 #endif /* _MCU_ */
-
 /*--------------------------------------------------------------------------*/
 // shouldn't really be here (in uart0-putchar.c) but makes compiler warnings go away..
 int
@@ -59,7 +58,6 @@ putchar(int c)
   uart0_writeb(c);
   return c;
 }
-
 /*--------------------------------------------------------------------------*/
 #ifdef UART0_CONF_TX_WITH_INTERRUPT
   #define TX_WITH_INTERRUPT UART0_CONF_TX_WITH_INTERRUPT
@@ -78,7 +76,6 @@ putchar(int c)
   static uint8_t txbuf_data[TXBUFSIZE];
 #endif /* TX_WITH_INTERRUPT */
 #endif /* _MCU_ */
-
 /*---------------------------------------------------------------------------*/
 uint8_t
 uart0_active(void)
@@ -184,7 +181,6 @@ ISR(USCIAB0RX, uartA0B0_rx_interrupt)
   }
 }
 #endif /* _MCU_ */
-
 /*---------------------------------------------------------------------------*/
 #if _MCU_ == 2553
 #if TX_WITH_INTERRUPT

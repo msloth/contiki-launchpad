@@ -36,7 +36,7 @@
  *          but RAM is very, very scarce on msp430g2452 and '2553. So we sacrifice
  *          some ROM and some cycles for a simplistic approach.
  * \author
- *         Marcus Lunden <marcus.lunden@gmail.com>
+ *         Marcus Linderoth <linderoth.marcus@gmail.com>
  */
 
 #include "contiki.h"

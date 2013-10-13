@@ -32,7 +32,7 @@
  * \file
  *         Platform configuration header file
  * \author
- *         Marcus Lunden <marcus.lunden@gmail.com>
+ *         Marcus Linderoth <linderoth.marcus@gmail.com>
  */
 
 #ifndef __PLATFORM_CONF_H__

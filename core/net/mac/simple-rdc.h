@@ -34,7 +34,7 @@
  *         low-RAM alternative to ContikiMAC.
  *         
  * \author
- *         Marcus Lunden <marcus.lunden@gmail.com>
+ *         Marcus Linderoth <linderoth.marcus@gmail.com>
  */
 
 #ifndef __SIMPLE_RDC_H__

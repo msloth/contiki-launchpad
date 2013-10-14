@@ -63,7 +63,7 @@ PROCESS_THREAD(button_process, ev, data)
   PROCESS_BEGIN();
   static uint8_t btnpresses = 0;
   while(1) {
-    PROCESS_WAIT_EVENT_UNTIL(ev == button_event && (*((uint8_t*)data) & BUTTON_2));
+    PROCESS_WAIT_EVENT_UNTIL(ev == button_event);
     leds_toggle(LEDS_RED);
     btnpresses++;
     if(btnpresses == 5) {

@@ -47,21 +47,16 @@
 /* add all defined pins here, like this: (BUTTON_2 | BUTTON_HOME) */
 #define BUTTON_PINS           (BUTTON_2)
 
-/* convenience macro used for checking what button was pressed */
-// XXX not working
-//#define BUTTON_IS(x)          ((uint8_t)*data & x)
-
 /*
   this example shows how you define more buttons; NB they all have to be on
   the same port (eg P1).
     #define TEST_SW               (1<<4)
     #define BUTTON_PINS           (SWITCH_2 | TEST_SW)
     ...
-    PROCESS_WAIT_EVENT_UNTIL(ev == button_event && BUTTON_IS(SwITCH_2));
+    PROCESS_WAIT_EVENT_UNTIL(ev == button_event);
 */
 
 process_event_t   button_event;
-
 void              button_init(void);
 uint8_t           button_pressed(void);
 

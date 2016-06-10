@@ -106,10 +106,8 @@ main(void)
   adc_init();
 
   #if _MCU_ == 2553
-  #if HAS_EXT_OSC
   /* pwm only available on 2553 with external crystal as it has two hw timers */
   pwm_init(PWM_FREQ);
-  #endif    /* HAS_EXT_OSC */
   #endif    /* _MCU_ == 2553 */
 
   #if USE_SERIAL

@@ -44,11 +44,13 @@
  */
 
 /* CPU speed in Hz; these correspond to the factory calibrated settings */
+#ifndef F_CPU
 // #define F_CPU                   18000000uL
 #define F_CPU                   16000000uL
 // #define F_CPU                   8000000uL
 //#define F_CPU                   4000000uL
 //#define F_CPU                   12000000uL    // don't use the 12 MHz, it is not ready (UART etc)
+#endif /* F_CPU */
 
 /* is it an 2452 or 2553 mcu? Only these two can be defined for now.
 XXX I will fix (later) so that the Makefile automatically choses the right mcu define

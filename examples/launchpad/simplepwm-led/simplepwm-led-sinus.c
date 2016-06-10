@@ -42,15 +42,9 @@
 #include "dev/leds.h"
 #include "dev/pwm.h"
 #include "dev/button.h"
-
+/*---------------------------------------------------------------------------*/
 /* pins to PWM */
 #define LEDRED_PIN       (0)   // P1.0
-#define LEDGRN_PIN       (6)   // P1.6
-
-/* the PWM duty cycle will step back and forth between these limits, with this step */
-#define PWM_MIN           0
-#define PWM_MAX           100
-#define PWM_STEP          1
 
 /* wait this long between setting a new PWM setting */
 #define INTERVAL          CLOCK_SECOND/32
@@ -65,15 +59,15 @@ const uint8_t sin_lut[] = {0, 2, 4, 6, 13, 20, 26, 33, 40, 46, 53, 59, 66, 72, 7
     238, 241, 243, 245, 247, 248, 250, 251, 252, 253, 254, 255, 255, 255, 255,
     255};
 
-#define SIN_MAXELEMENTS    45
+#define SIN_MAXELEMENTS    45 // don't use all, not a big difference at the top
 /*---------------------------------------------------------------------------*/
 PROCESS(pwmled_process, "PWM LED process");
 AUTOSTART_PROCESSES(&pwmled_process);
 /*---------------------------------------------------------------------------*/
-static struct etimer etr;
 PROCESS_THREAD(pwmled_process, ev, data)
 {
   PROCESS_BEGIN();
+  static struct etimer etr;
   static uint8_t up = 1;    /* counting up or down? */
   static int tstart;
 
@@ -90,9 +84,9 @@ PROCESS_THREAD(pwmled_process, ev, data)
     } else {
       ix--;
     }
-    if(ix >= 63) {
+    if(ix >= SIN_MAXELEMENTS) {
       up = 0;
-      ix = 63;
+      ix = SIN_MAXELEMENTS;
     } else if(ix == 0) {
       up = 1;
     }

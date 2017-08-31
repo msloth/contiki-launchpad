@@ -109,7 +109,7 @@ erase:
 	mspdebug tilib "erase"
 
 # upload to the Launchpad
-%.upload: %.hex
+%.upload: erase %.hex
 	@echo "Programming Launchpad with $<"
 	mspdebug tilib "prog $<"
 # ------------------------------------------------------------------------------

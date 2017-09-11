@@ -3,48 +3,38 @@
 #include "dev/leds.h"
 /*---------------------------------------------------------------------------*/
 /*
- * Perform some stuff, then go to eternal sleep that can only be disturbed by
+ * Perform some stuff, then go to eternal sleep that can only be fixed by
  * POR or hardware reset.
+ *
+ * The purpose of this is to be in mostly either off (as in no power supply), or
+ * in deep sleep. Basically,
+ *   off -> on and doing something -> deep sleep (until off again)
  */
 /* -------------------------------------------------------------------------- */
-PROCESS(red_process, "Red light process");
 PROCESS(blink_process, "Blink");
 AUTOSTART_PROCESSES(&blink_process);
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(red_process, ev, data)
-{
-  PROCESS_BEGIN();
-  while(1) {
-    static struct etimer etr;
-    leds_toggle(LEDS_RED);
-
-    etimer_set(&etr, CLOCK_SECOND/8);
-    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&etr));
-  }
-  PROCESS_END();
-}
-/*--------------------------------------------------------------------------*/
+/* we want this to do something a while, then go to eternal sleep. */
 PROCESS_THREAD(blink_process, ev, data)
 {
   PROCESS_BEGIN();
 
   while(1) {
     static struct etimer et;
-    if(clock_seconds() & 1) {
-      leds_on(LEDS_GREEN);
+    static int onoff;
+
+    /* before sleep, we blink a little */
+    onoff = !onoff;
+    if(onoff) {
+      leds_on(LEDS_ALL);
     } else {
-      leds_off(LEDS_GREEN);
+      leds_off(LEDS_ALL);
     }
-    etimer_set(&et, CLOCK_SECOND);
+    etimer_set(&et, CLOCK_SECOND / 8);
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
-    /* some time after booting */
-    if(clock_seconds() == 5) {
-      /* start blinking red for 5 seconds before sleeping */
-      process_start(&red_process, NULL);
-      etimer_set(&et, CLOCK_SECOND * 5);
-      PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-
+#define TIME_BEFORE_ETERNAL_SLEEP (10) // seconds
+    if(clock_seconds() >= TIME_BEFORE_ETERNAL_SLEEP) {
       /* turn off all LEDs to be as power efficient as possible */
       leds_off(LEDS_ALL);
 
@@ -52,11 +42,11 @@ PROCESS_THREAD(blink_process, ev, data)
       watchdog_stop();
       dint();
 
-      /* rest in peace */
+      /* enter low-power mode */
       LPM3;
+      /* ... and rest in peace; only reset/POR can resurrect us now */
     }
   }
-
   PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/

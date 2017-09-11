@@ -92,16 +92,27 @@ else
 endif
 endif
 
-# upload to the Launchpad
-%.upload: %.ihex
-	@echo "Programming Launchpad with $<"
-	mspdebug rf2500 "prog $<"
+# ------------------------------------------------------------------------------
+# note, the rf2500 interface seems more likely not to work, at least on cygwin on Win10
+# it fails with the error message that it cannot find the USB device with the proper ID.
+# 
+# Instead, we use the tilib interface. For that, install the TI Launchpad drivers.
+# Then, download + unzip the TI msp430.dll drivers. Then, copy the msp430.dll files
+# into the mspdebug folder. This enables mspdebug to use the tilib interface.
+# 
+# For future reference, the rf2500 commands are exactly the same, just with rf2500
+# instead of tilib.
 
 # full (except Info segments) chip erase
 .PHONY: erase
 erase:
-	mspdebug rf2500 "erase"
+	mspdebug tilib "erase"
 
+# upload to the Launchpad
+%.upload: erase %.hex
+	@echo "Programming Launchpad with $<"
+	mspdebug tilib "prog $<"
+# ------------------------------------------------------------------------------
 # open a serial connection to Launchpad
 login:
 	$(SERIALDUMP) -b9600 $(USBDEVPREFIX)$(firstword $(CMOTES))

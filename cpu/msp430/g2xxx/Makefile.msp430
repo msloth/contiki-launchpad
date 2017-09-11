@@ -195,14 +195,15 @@ PROJECT_OBJECTFILES += ${addprefix $(OBJECTDIR)/,$(CONTIKI_TARGET_MAIN:.c=.o)}
 %.o: ${CONTIKI_TARGET}/loader/%.S
 	$(AS) -o $(notdir $(<:.S=.o)) $<
 
-.PRECIOUS: %.ihex
-ifdef IAR
-%.ihex: %.co $(PROJECT_OBJECTFILES) $(PROJECT_LIBRARIES) contiki-$(TARGET).a
-	$(LD) $(LDFLAGSNO) -Fintel-extended $(TARGET_STARTFILES) ${filter-out %.a,$^} ${filter %.a,$^} $(TARGET_LIBFILES) -o $@
-else
-%.ihex: %.$(TARGET)
+# create a binary file
+.PRECIOUS: %.bin
+%.bin: %.$(TARGET)
+	$(OBJCOPY) $^ -O binary $@
+
+# create a intel hex file
+.PRECIOUS: %.hex
+%.hex: %.$(TARGET)
 	$(OBJCOPY) $^ -O ihex $@
-endif
 
 ifdef CORE
 .PHONY: symbols.c symbols.h

@@ -11,13 +11,11 @@ ifndef TARGET
 TARGET=launchpad
 endif
 
-PROJECT_CONF_H=\"project-conf.h\"
-
 # Change this to the main file of your project (NB without file ending)
-PROJECT = periodic-bc
+PROJECT = eutanasi
 
 # if you have more than one source file to include, list them here
-PROJECT_SOURCEFILES += button.c
+#PROJECT_SOURCEFILES += example.c other.c
 
 # if files are in several folders, list them here
 #PROJECT_FOLDERS     += ./example ./example/deep/deeper
@@ -25,10 +23,7 @@ PROJECT_SOURCEFILES += button.c
 # any overridden Contiki source file (in this project) is listed here
 #CONTIKI_SOURCEFILES +=
 
-CFLAGS += -Wl,--oihex
-
 all: $(PROJECT)
-	@msp430-size $(PROJECT).launchpad
 
 # must be here, it makes sure Contiki is included :)
 include $(CONTIKI)/Makefile.include

@@ -1,11 +1,14 @@
 *.a
+*.co
 *.bin
 *.map
 *.png
 *.log
 *.elf
 *.ihex
+*.hex
 *.jar
+*.launchpad
 obj_*
 Makefile.target
 doc/html

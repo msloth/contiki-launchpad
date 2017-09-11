@@ -42,7 +42,13 @@
 
 #ifndef CONTIKI_CONF_H
 #define CONTIKI_CONF_H
-
+/*---------------------------------------------------------------------------*/
+/* include the project config */
+/* PROJECT_CONF_H might be defined in the project Makefile */
+#ifdef PROJECT_CONF_H
+#include PROJECT_CONF_H
+#endif /* PROJECT_CONF_H */
+/*---------------------------------------------------------------------------*/
 #ifdef PLATFORM_CONF_H
 #include PLATFORM_CONF_H
 #else
@@ -51,12 +57,6 @@
 /*---------------------------------------------------------------------------*/
 /* we are not using uip6, due to memory constraints. Needs to be set early. */
 #define WITH_UIP6                     0
-
-/* include the project config */
-/* PROJECT_CONF_H might be defined in the project Makefile */
-#ifdef PROJECT_CONF_H
-#include PROJECT_CONF_H
-#endif /* PROJECT_CONF_H */
 
 /* These can be lowered to reduce RAM size, to a certain point. Remember that
   a printf may not exceed this buffer size or unpredictable things will happen! */

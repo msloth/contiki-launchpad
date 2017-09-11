@@ -44,11 +44,13 @@
  */
 
 /* CPU speed in Hz; these correspond to the factory calibrated settings */
-//#define F_CPU                   18000000uL
-//#define F_CPU                   16000000uL
-#define F_CPU                   8000000uL
+#ifndef F_CPU
+// #define F_CPU                   18000000uL
+#define F_CPU                   16000000uL
+// #define F_CPU                   8000000uL
 //#define F_CPU                   4000000uL
 //#define F_CPU                   12000000uL    // don't use the 12 MHz, it is not ready (UART etc)
+#endif /* F_CPU */
 
 /* is it an 2452 or 2553 mcu? Only these two can be defined for now.
 XXX I will fix (later) so that the Makefile automatically choses the right mcu define
@@ -56,9 +58,10 @@ but until then you also have to change that in the Makefile.launchpad. You'll
 see, if you get lots of "undefined reference to UCSB0..." it's because the wrong
 mcu is defined there. This define just removes lots of code that, should you have
 a 2452, it will compile anyway. */
+#ifndef _MCU_
 #define _MCU_                   2553
 //#define _MCU_                   2452
-
+#endif /* _MCU_ */
 /*
 Here is a short summary of the Launchpad mcu's
                  2211     2231    2452      2553
@@ -90,17 +93,14 @@ Here is a short summary of the Launchpad mcu's
 */
 
 /* use serial port? (printfs); saves space if not */
+#ifndef USE_SERIAL
 #define USE_SERIAL              1
+#endif /* USE_SERIAL */
 
 /* use the Rime networking stack and a radio driver? */
+#ifndef USE_RADIO
 #define USE_RADIO               0
-
-/*
- * Does the board have an external 32kHz osc? Currently mandatory and this switch
- * won't make a difference, but included for ev future use so clocks and timers
- * can use the DCO instead.
- */
-#define HAS_EXT_OSC             1
+#endif /* USE_RADIO */
 
 /*
  * board revision: older boards had a pull-up resistor connected to the button
@@ -115,7 +115,9 @@ Here is a short summary of the Launchpad mcu's
  * on >=rev1.5 boards; if set to 0 the button will work on rev1.3, 1.4 and 1.5 but
  * draw more power on the 1.3 and 1.4 revisions.
  */
+#ifndef BOARD_OLD_REVISION
 #define BOARD_OLD_REVISION      0
+#endif /* BOARD_OLD_REVISION */
 
 /*
  * LEDs; only change if you are not using the Launchpad board and have LEDs
@@ -159,7 +161,6 @@ Here is a short summary of the Launchpad mcu's
 #define INFOMEM_B                     ((uint8_t*)0x00001080)
 #define INFOMEM_A                     ((uint8_t*)0x000010c0)
 #define NODEID_INFOMEM_LOCATION       INFOMEM_C
-
 /*--------------------------------------------------------------------------*/
 /*
  * The CC2500 definitions - pins, ports, interrupt vector etc - are defined in
@@ -177,7 +178,6 @@ Here is a short summary of the Launchpad mcu's
 typedef unsigned short uip_stats_t;
 typedef unsigned long clock_time_t;
 typedef unsigned long off_t;
-
 /* errors ------------------------------------*/
 #if _MCU_ != 2452 && _MCU_ != 2553
 #error "Wrong mcu type defined; check your platform-conf.h and/or project-conf.h!"
@@ -187,17 +187,8 @@ typedef unsigned long off_t;
 #error "Unsupported CPU speed; check your platform-conf.h and/or project-conf.h!"
 #endif
 
-#if F_CPU == 12000000uL
-#error "CPU speed 12 MHz not supported, chose another (platform-conf.h and/or \
-project-conf.h)!"
-#endif
-
 #if _MCU_ == 2452 && USE_SERIAL
 #error "2452 has no hardware UART, either set 2553 or set USE_SERIAL to 0 in platform-conf.h"
-#endif
-
-#if HAS_EXT_OSC != 1
-#error "You must have the external 32.768 oscillator populated on board."
 #endif
 /* other various things ----------------------------*/
 #define BAUD2UBR(baud) ((F_CPU/baud))

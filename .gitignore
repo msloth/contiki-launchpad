@@ -5,7 +5,9 @@
 *.log
 *.elf
 *.ihex
+*.hex
 *.jar
+*.launchpad
 obj_*
 Makefile.target
 doc/html

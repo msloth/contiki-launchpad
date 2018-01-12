@@ -106,24 +106,22 @@ msp430_init_dco(void)
 #if F_CPU == 1000000ul
   DCOCTL = CALDCO_8MHZ;
   BCSCTL1 = CALBC1_8MHZ;
+  // divide by 8
   BCSCTL2 = SELM_0 | DIVM_3 | DIVS_1;
 #elif F_CPU == 4000000ul
-  // divide by two
   DCOCTL = CALDCO_8MHZ;
   BCSCTL1 = CALBC1_8MHZ;
+  // divide by 2
   BCSCTL2 = SELM_0 | DIVM_1 | DIVS_1;
 #elif F_CPU == 8000000ul
   DCOCTL = CALDCO_8MHZ;
   BCSCTL1 = CALBC1_8MHZ;
+  // no divide of clock freq
   BCSCTL2 = SELM_0 | DIVM_0 | DIVS_1;
-#elif F_CPU == 12000000ul
-  #error F_CPU 12 MHz not supported due to UART not adapted to that speed yet; choose another speed in platform-conf.h!
-/*  DCOCTL = CALDCO_12MHZ;*/
-/*  BCSCTL1 = CALBC1_12MHZ;*/
-/*  BCSCTL2 = SELM_0 | DIVM_1 | DIVS_2;*/
 #elif F_CPU == 16000000ul
   DCOCTL = CALDCO_16MHZ;
   BCSCTL1 = CALBC1_16MHZ;
+  // no divide of clock freq
   BCSCTL2 = SELM_0 | DIVM_0 | DIVS_2;
 #else
 #error Wrong speed defined (see msp430.c, project-conf.h and platform-conf.h)!

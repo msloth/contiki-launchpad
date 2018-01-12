@@ -18,7 +18,7 @@ CFLAGS += -DWITH_UIP6=0
 CFLAGS += -Wl,--oihex
 
 # remove these too when running 'make clean'
-CLEAN += *.launchpad symbols.c symbols.h
+CLEAN += *.launchpad symbols.c symbols.h *.hex
 
 # Core arch sources
 ARCH_SOURCES+=  spi.c                                         \

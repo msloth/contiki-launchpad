@@ -19,11 +19,20 @@ AUTOSTART_PROCESSES(&startup_process);
  * 
  * This is based on slaa383.
  * NOTE: 10k external pull-ups are needed on SDA/SCL.
+ * Also note that the callbacks are in interrupt context since the i2c driver
+ * calls them directly from the i2c ISR. As such, minimal work should be done
+ * in them.
  */
 /*---------------------------------------------------------------------------*/
-#define CMD_UNKNOWN 0xff
+/*
+ * we could/should instead use a separate variable to keep track of state,
+ * however since it's just for this simple purpose, we just claim the command
+ * code 0xff for this - meaning that no command can be 0xff. 
+ */
+#define WAITING_FOR_COMMAND 0xff
+
 /* keep track of what the last command was, for the state machine */
-static volatile uint8_t last_cmd = CMD_UNKNOWN;
+static volatile uint8_t last_cmd = WAITING_FOR_COMMAND;
 
 /* input and output buffers */
 static volatile unsigned int i2c_in_buffer_ix;
@@ -45,7 +54,7 @@ static void
 start_cb(void)
 {
   /* we get a start condition == reset of the slave state machine */
-  last_cmd = CMD_UNKNOWN;
+  last_cmd = WAITING_FOR_COMMAND;
   i2c_in_buffer_ix = 0;
 }
 /*---------------------------------------------------------------------------*/
@@ -72,7 +81,7 @@ static void
 receive_cb(unsigned char b)
 {
   /* this is what we receive in write mode, ie the master writes to us */
-  if(last_cmd == CMD_UNKNOWN) {
+  if(last_cmd == WAITING_FOR_COMMAND) {
     /* THIS IS THE FIRST BYTE WE RECEIVE, the command byte */
     last_cmd = b;
 

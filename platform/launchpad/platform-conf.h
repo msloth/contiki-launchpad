@@ -92,7 +92,7 @@ Here is a short summary of the Launchpad mcu's
     will it accomodate the PWM or serial modules as they use the second timer.
 */
 
-/* use serial port? (printfs); saves space if not */
+/* use UART serial port? (printfs), note, edit contiki-main if higher speed than 9600 is wanted. */
 #ifndef USE_SERIAL
 #define USE_SERIAL              1
 #endif /* USE_SERIAL */

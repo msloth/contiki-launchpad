@@ -165,6 +165,7 @@ uart0_init(unsigned long ubr)
 }
 /*---------------------------------------------------------------------------*/
 #if _MCU_ == 2553
+#if USE_SERIAL
 ISR(USCIAB0RX, uartA0B0_rx_interrupt)
 {
   uint8_t c;
@@ -175,15 +176,17 @@ ISR(USCIAB0RX, uartA0B0_rx_interrupt)
     c = UCA0RXBUF;
     if(uart0_input_handler != NULL) {
       if(uart0_input_handler(c)) {
-      	LPM4_EXIT;
+        LPM4_EXIT;
       }
     }
   }
 }
+#endif /* USE_SERIAL */
 #endif /* _MCU_ */
 /*---------------------------------------------------------------------------*/
 #if _MCU_ == 2553
 #if TX_WITH_INTERRUPT
+#if USE_SERIAL
 ISR(USCIAB0TX, uartA0B0_tx_interrupt)
 {
   if(IFG2 & UCA0TXIFG) {
@@ -194,6 +197,7 @@ ISR(USCIAB0TX, uartA0B0_tx_interrupt)
     }
   }
 }
+#endif /* USE_SERIAL */
 #endif /* TX_WITH_INTERRUPT */
 #endif /* _MCU_ */
 /*---------------------------------------------------------------------------*/

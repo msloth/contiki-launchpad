@@ -92,11 +92,31 @@ Here is a short summary of the Launchpad mcu's
     will it accomodate the PWM or serial modules as they use the second timer.
 */
 
+/*---------------------------------------------------------------------------*/
 /* use UART serial port? (printfs), note, edit contiki-main if higher speed than 9600 is wanted. */
 #ifndef USE_SERIAL
 #define USE_SERIAL              1
 #endif /* USE_SERIAL */
 
+/*
+ * The Launchpad is limited to 9600 by the msp430-usb bridge; higher speeds can
+ * be used with a separate uartserial->usb cable connected to the rxtx pins on
+ * the header, but this Contiki port is kept at a maximum simplicity now, hence
+ * 9600. If you do get one such cable, you can increase this to eg 115200.
+ */
+#ifndef UART_SPEED
+#define UART_SPEED              9600
+#endif /* UART_SPEED */
+/*---------------------------------------------------------------------------*/
+/*
+ * the LEDs on pins P1.6 and P1.0 can interfere with other peripherals, therefore
+ * one can disable them with this config. Notably, the green LED P1.6 interferes
+ * with i2c.
+ */
+#ifndef USE_LEDS
+#define USE_LEDS              1
+#endif /* USE_LEDS */
+/*---------------------------------------------------------------------------*/
 /* use the Rime networking stack and a radio driver? */
 #ifndef USE_RADIO
 #define USE_RADIO               0

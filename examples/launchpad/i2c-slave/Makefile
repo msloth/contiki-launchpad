@@ -11,19 +11,20 @@ ifndef TARGET
 TARGET=launchpad
 endif
 
+# Change this to the main file of your project (NB without file ending)
+PROJECT = example-i2c-slave
 CFLAGS += -DPROJECT_CONF_H=\"project-conf.h\"
 
-# Change this to the main file of your project (NB without file ending)
-PROJECT = dumb
-
 # if you have more than one source file to include, list them here
-#PROJECT_SOURCEFILES += button.c
+PROJECT_SOURCEFILES += i2c-slave.c
 
 # if files are in several folders, list them here
 #PROJECT_FOLDERS     += ./example ./example/deep/deeper
 
 # any overridden Contiki source file (in this project) is listed here
 #CONTIKI_SOURCEFILES +=
+
+CFLAGS += -Wl,--oihex
 
 all: $(PROJECT)
 	@msp430-size $(PROJECT).launchpad

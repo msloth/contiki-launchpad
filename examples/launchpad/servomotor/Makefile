@@ -25,7 +25,7 @@ PROJECT = servomotor
 
 # include project configuration file; use this if you need to override any defines
 # on a per-project-basis.
-DEFINES=PROJECT_CONF_H=\"project-conf.h\"
+CFLAGS += -DPROJECT_CONF_H=\"project-conf.h\"
 
 #CFLAGS += -Wl,--oihex
 

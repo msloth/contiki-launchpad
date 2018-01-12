@@ -76,25 +76,26 @@ int
 main(void)
 {
   msp430_cpu_init();
+#if USE_LEDS
   leds_init();
-  leds_on(LEDS_ALL);
+#endif /* USE_LEDS */
   clock_init();
 
-  #if USE_SERIAL
+#if USE_SERIAL
   /*
-   * The Launchpad is limited to 9600 by the msp430--usb bridge; higher speeds can
+   * The Launchpad is limited to 9600 by the msp430-usb bridge; higher speeds can
    * be used with a separate uartserial->usb cable connected to the rxtx pins on
    * the header, but this Contiki port is kept at a maximum simplicity now, hence
    * 9600. If you do get one such cable, you can increase this to eg 115200.
    */
-  uart0_init(BAUD2UBR(9600));
-  #else
+  uart0_init(BAUD2UBR(UART_SPEED));
+#else /* USE_SERIAL */
   /*
    * any printf's makes compiler complain of unresolved references to putchar;
    * this solves that. Must come before first printf.
    */
   #define printf(...)
-  #endif  /* USE_SERIAL */
+#endif  /* USE_SERIAL */
 
   rtimer_init();
   process_init();
@@ -104,18 +105,17 @@ main(void)
   button_init();
   adc_init();
 
-  #if _MCU_ == 2553
+#if _MCU_ == 2553
   /* pwm only available on 2553 with external crystal as it has two hw timers */
   pwm_init(PWM_FREQ);
-  #endif    /* _MCU_ == 2553 */
+#endif    /* _MCU_ == 2553 */
 
-  #if USE_SERIAL
+#if USE_SERIAL
   uart0_set_input(serial_line_input_byte);
   serial_line_init();
-  #endif  /* USE_SERIAL */
+#endif  /* USE_SERIAL */
 
-
-  #if USE_RADIO
+#if USE_RADIO
   {
     rimeaddr_t addr;
     uint8_t i;
@@ -137,22 +137,22 @@ main(void)
     }
     printf("%d\n", addr.u8[i]);
   }
-
   netstack_init();
-  #endif  /* USE_RADIO */
+#endif  /* USE_RADIO */
 
   watchdog_start();
   autostart_start(autostart_processes);
-  leds_off(LEDS_ALL);
   printf(CONTIKI_VERSION_STRING " started.\n");
 
-  //XXX sth messes with LEDs; find and fix
-  leds_init();  // XXX remove when fixed.
+  //XXX sth messes with LEDs; find and fix; remove when fixed.
+  //this is probably a timer, or peripherals such as i2c/spi
+#if USE_LEDS
+  leds_init();
+#endif /* USE_LEDS */
 
   while(1) {
     /*
-     * The Contiki main loop, greatly simplified and shortened compared with eg
-     * msp430f1611 due to severe space constraints (mainly RAM).
+     * The Contiki main loop.
      * As soon as we are not doing anything, we spend the time in LPM3.
      */
     int r;
@@ -163,11 +163,11 @@ main(void)
     } while(r > 0);
 
     /* if not printing or pending events, sleep. */
-    #if USE_SERIAL
+#if USE_SERIAL
       if(process_nevents() == 0 && !uart0_active()) {
-    #else
+#else
       if(process_nevents() == 0) {
-    #endif  /* USE_SERIAL */
+#endif  /* USE_SERIAL */
       /* we are ready to go to sleep, LPM3 */
       if(dcoreq == 0) {
         LPM3;

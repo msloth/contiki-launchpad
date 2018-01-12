@@ -18,7 +18,7 @@ CFLAGS += -DWITH_UIP6=0
 CFLAGS += -Wl,--oihex
 
 # remove these too when running 'make clean'
-CLEAN += *.launchpad symbols.c symbols.h
+CLEAN += *.launchpad symbols.c symbols.h *.hex
 
 # Core arch sources
 ARCH_SOURCES+=  spi.c                                         \
@@ -106,12 +106,18 @@ endif
 # full (except Info segments) chip erase
 .PHONY: erase
 erase:
+	@echo "--------------------------"
+	@echo "Erasing msp430"
 	mspdebug tilib "erase"
 
 # upload to the Launchpad
-%.upload: erase %.hex
-	@echo "Programming Launchpad with $<"
-	mspdebug tilib "prog $<"
+%.upload: %.hex
+	@echo "--------------------------"
+	@echo "Erasing msp430"
+	mspdebug tilib "erase"
+	@echo "--------------------------"
+	@echo "Programming Launchpad with $< $@"
+	mspdebug tilib "prog $?"
 # ------------------------------------------------------------------------------
 # open a serial connection to Launchpad
 login:
@@ -162,4 +168,3 @@ linslip: $(CONTIKI)/tools/tunslip
 
 $(CONTIKI)/tools/tunslip:
 	(cd $(CONTIKI)/tools; $(MAKE) tunslip)
-

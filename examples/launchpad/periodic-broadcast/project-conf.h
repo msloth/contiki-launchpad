@@ -1,5 +1,5 @@
-#ifndef __PLATFORM_CONF_H__
-#define __PLATFORM_CONF_H__
+#ifndef __PROJECT_CONF_H__
+#define __PROJECT_CONF_H__
 /*---------------------------------------------------------------------------*/
 /* see platform-conf.h for more details */
 #define F_CPU                   8000000uL
@@ -8,4 +8,4 @@
 #define USE_RADIO               1
 #define BOARD_OLD_REVISION      0
 /*---------------------------------------------------------------------------*/
-#endif /* __PLATFORM_CONF_H__ */
+#endif /* __PROJECT_CONF_H__ */

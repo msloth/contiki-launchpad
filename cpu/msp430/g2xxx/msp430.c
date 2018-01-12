@@ -36,7 +36,7 @@
  *         Marcus Linderoth <linderoth.marcus@gmail.com> ported this to the Launchpad
  *         msp430gxxxx-series.
  */
-
+/*---------------------------------------------------------------------------*/
 #include <msp430.h>
 #include "contiki.h"
 #include "dev/watchdog.h"
@@ -45,7 +45,6 @@
 #if defined(__MSP430__) && defined(__GNUC__)
 #define asmv(arg) __asm__ __volatile__(arg)
 #endif
-
 /*---------------------------------------------------------------------------*/
 #if defined(__MSP430__) && defined(__GNUC__) && MSP430_MEMCPY_WORKAROUND
 void *
@@ -188,86 +187,3 @@ msp430_cpu_init(void)
 #endif
 }
 /*---------------------------------------------------------------------------*/
-#if 0
-// XXX these are old legacy and not used in this port
-/*---------------------------------------------------------------------------*/
-/* add/remove_lpm_req - for requiring a specific LPM mode. currently Contiki */
-/* jumps to LPM3 to save power, but DMA will not work if DCO is not clocked  */
-/* so some modules might need to enter their LPM requirements                */
-/* NOTE: currently only works with LPM1 (e.g. DCO) requirements.             */
-/*---------------------------------------------------------------------------*/
-void
-msp430_add_lpm_req(int req)
-{
-}
-
-/*--------------------------------------------------------------------------*/
-void
-msp430_remove_lpm_req(int req)
-{
-}
-/*--------------------------------------------------------------------------*/
-#define STACK_EXTRA 32
-
-/*
- * Allocate memory from the heap. Check that we don't collide with the
- * stack right now (some other routine might later). A watchdog might
- * be used to check if cur_break and the stack pointer meet during
- * runtime.
- */
-#if defined(__MSP430__) && defined(__GNUC__)
-void *
-sbrk(int incr)
-{
-  char *stack_pointer;
-
-  asmv("mov r1, %0" : "=r" (stack_pointer));
-  stack_pointer -= STACK_EXTRA;
-  if(incr > (stack_pointer - cur_break))
-    return (void *)-1;		/* ENOMEM */
-
-  void *old_break = cur_break;
-  cur_break += incr;
-  /*
-   * If the stack was never here then [old_break .. cur_break] should
-   * be filled with zeros.
-  */
-  return old_break;
-}
-#endif
-/*---------------------------------------------------------------------------*/
-/*
- * Mask all interrupts that can be masked.
- */
-int
-splhigh_(void)
-{
-  int sr;
-  /* Clear the GIE (General Interrupt Enable) flag. */
-#ifdef __IAR_SYSTEMS_ICC__
-  sr = __get_SR_register();
-  __bic_SR_register(GIE);
-#else
-  asmv("mov r2, %0" : "=r" (sr));
-  asmv("bic %0, r2" : : "i" (GIE));
-#endif
-  return sr & GIE;		/* Ignore other sr bits. */
-}
-/*---------------------------------------------------------------------------*/
-#ifdef __IAR_SYSTEMS_ICC__
-int __low_level_init(void)
-{
-  /* turn off watchdog so that C-init will run */
-  WDTCTL = WDTPW + WDTHOLD;
-  /*
-   * Return value:
-   *
-   *  1 - Perform data segment initialization.
-   *  0 - Skip data segment initialization.
-   */
-  return 1;
-}
-#endif
-/*---------------------------------------------------------------------------*/
-#endif    /* old, not used */
-

@@ -11,7 +11,7 @@ ifndef TARGET
 TARGET=launchpad
 endif
 
-PROJECT_CONF_H=\"project-conf.h\"
+CFLAGS += -DPROJECT_CONF_H=\"project-conf.h\"
 
 # Change this to the main file of your project (NB without file ending)
 PROJECT = dumb

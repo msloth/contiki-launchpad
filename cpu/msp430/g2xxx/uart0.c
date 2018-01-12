@@ -32,7 +32,7 @@
  * \file
  *         MSP430 UART0 code
  */
-
+/*---------------------------------------------------------------------------*/
 #include "contiki.h"
 #include "sys/energest.h"
 #include "dev/uart0.h"

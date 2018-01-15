@@ -39,6 +39,10 @@ static volatile unsigned int i2c_in_buffer_ix;
 static volatile uint8_t i2c_in_buffer[10];
 static volatile unsigned int i2c_out_len; /* how many bytes the response will be */
 static volatile uint8_t i2c_out_buffer[10];
+
+#define SLAVE_ADDRESS       0x39 /* this is our i2c slave address */
+#define SDA_PIN             BIT7 /* P1.7 */
+#define SCL_PIN             BIT6 /* P1.6 */
 /*---------------------------------------------------------------------------*/
 /* these are the commands we respond to, except 0x88 they are copies from the tsl2561 sensor */
 #define WRITE_TO_CONTROL_REGISTER_0     0x80 /* params necessary, one single byte */
@@ -136,36 +140,10 @@ PROCESS_THREAD(startup_process, ev, data)
 {
   PROCESS_BEGIN();
 
-  // WDTCTL = WDTPW + WDTHOLD;                      // Stop WDT
-  // P1DIR |= BIT0;                                 // Set P1.0 to output direction
-  // P1DIR &= ~BIT3;                                // Set P1.3 to input  direction
-  // P1OUT &= ~BIT0;
-
-#define SLAVE_ADDRESS       0x39
-#define SDA_PIN             BIT7 // P1.7
-#define SCL_PIN             BIT6 // P1.6
   i2c_slave_init(start_cb, transmit_cb, receive_cb, SLAVE_ADDRESS, SDA_PIN, SCL_PIN);
 
-  // BCSCTL1 = CALBC1_16MHZ; // run at 16MHz, global interrupts enabled
-  // DCOCTL  = CALDCO_16MHZ;
+  /* enable global interrupts, test if necessary */
   __bis_SR_register(GIE);
-
-  /* code is interrupt-driven, so we just nop away here */
-  // while(1) __asm__("nop");
-
-  static struct etimer et;
-  while(1) {
-    static int k;
-    // if(k) {
-    //   leds_on(LEDS_RED);
-    // } else {
-    //   leds_off(LEDS_RED);
-    // }
-    k = !k;
-    etimer_set(&et, CLOCK_SECOND);
-    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-  }
-
 
   /* nothing more to do, the fw is interrupt-driven */
   PROCESS_WAIT_EVENT_UNTIL(0);

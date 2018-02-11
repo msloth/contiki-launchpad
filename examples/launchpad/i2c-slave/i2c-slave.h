@@ -66,5 +66,7 @@ void i2c_slave_init(start_stop_callback_t start_stop_callback,
                    uint8_t slave_address,
                    uint8_t sda_pin,
                    uint8_t scl_pin);
+
+void i2c_slave_send_nack(void);
 /*---------------------------------------------------------------------------*/
 #endif /* I2C_SLAVE_DRIVER */

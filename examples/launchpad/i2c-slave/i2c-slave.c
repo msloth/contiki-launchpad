@@ -102,6 +102,12 @@ i2c_slave_init(start_stop_callback_t start_stop_callback,
   transmit_callback = tx_callback;
 }
 /*---------------------------------------------------------------------------*/
+void
+i2c_slave_send_nack(void)
+{
+  UCB0CTL1 |= UCTXNACK;
+}
+/*---------------------------------------------------------------------------*/
 interrupt(USCIAB0TX_VECTOR) usci_i2c_data_isr(void)
 {
   if(IFG2 & UCB0TXIFG) {

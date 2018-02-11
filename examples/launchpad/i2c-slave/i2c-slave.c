@@ -74,12 +74,12 @@
 #include <msp430.h>
 #include <legacymsp430.h>
 /*---------------------------------------------------------------------------*/
-static start_callback_t start_condition_callback = NULL;
+static start_stop_callback_t start_stop_condition_callback = NULL;
 static tx_callback_t transmit_callback = NULL;
 static rx_callback_t receive_callback = NULL;
 /*---------------------------------------------------------------------------*/
 void
-i2c_slave_init(start_callback_t start_callback,
+i2c_slave_init(start_stop_callback_t start_stop_callback,
                tx_callback_t tx_callback,
                rx_callback_t rx_callback,
                uint8_t slave_address,
@@ -95,9 +95,9 @@ i2c_slave_init(start_callback_t start_callback,
   UCB0CTL1 &= ~UCSWRST;                     // Clear SW reset, resume operation
 
   IE2 |= UCB0TXIE + UCB0RXIE;               // Enable TX interrupt
-  UCB0I2CIE |= UCSTTIE;                     // Enable STT interrupt
+  UCB0I2CIE |= UCSTTIE | UCSTPIE;                     // Enable START and STOP condition interrupt
 
-  start_condition_callback = start_callback;
+  start_stop_condition_callback = start_stop_callback;
   receive_callback = rx_callback;
   transmit_callback = tx_callback;
 }
@@ -116,8 +116,9 @@ interrupt(USCIAB0TX_VECTOR) usci_i2c_data_isr(void)
 /*---------------------------------------------------------------------------*/
 interrupt(USCIAB0RX_VECTOR) usci_i2c_state_isr(void)
 {
-  /* clear start condition/address match flag */
-  UCB0STAT &= ~UCSTTIFG;
-  start_condition_callback();
+  /* clear start/stop condition/address match flag */
+  int start = (UCB0STAT & UCSTTIFG) ? 1 : 0;
+  UCB0STAT &= ~(UCSTTIFG | UCSTPIFG);
+  start_stop_condition_callback(start);
 }
 /*---------------------------------------------------------------------------*/

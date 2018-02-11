@@ -56,11 +56,11 @@
 #include <msp430.h>
 #include <legacymsp430.h>
 /*---------------------------------------------------------------------------*/
-typedef void (*start_callback_t)(void);
+typedef void (*start_stop_callback_t)(int start_condition_active);
 typedef void (*tx_callback_t)(volatile uint8_t *value);
 typedef void (*rx_callback_t)(uint8_t value);
 
-void i2c_slave_init(start_callback_t start_callback,
+void i2c_slave_init(start_stop_callback_t start_stop_callback,
                    tx_callback_t tx_callback,
                    rx_callback_t rx_callback,
                    uint8_t slave_address,

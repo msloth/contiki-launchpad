@@ -161,7 +161,7 @@ uart0_init(unsigned long ubr)
   IFG2 &= ~UCA0RXIFG;
   IE2 |= UCA0RXIFG;
 
-  #if TX_WITH_INTERRUPT
+#if TX_WITH_INTERRUPT
   ringbuf_init(&txbuf, txbuf_data, sizeof(txbuf_data));
   IE2 |= UCA0TXIFG;
   #endif /* TX_WITH_INTERRUPT */

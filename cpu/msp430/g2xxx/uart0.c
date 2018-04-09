@@ -49,6 +49,10 @@ static volatile uint8_t transmitting = 0;
 #define   TXBUF        UCA0TXBUF
 #define   RXBUF        UCA0RXBUF
 #endif /* _MCU_ */
+
+#ifndef UART_SPEED
+#define UART_SPEED              9600
+#endif /* UART_SPEED */
 /*--------------------------------------------------------------------------*/
 // shouldn't really be here (in uart0-putchar.c) but makes compiler warnings go away..
 int
@@ -139,7 +143,7 @@ uart0_init(unsigned long ubr)
 
   /*  2. Initialize all USCI registers with UCSWRST = 1 (including UCAxCTL1)*/
   UCA0CTL1 |= UCSSEL_2;   /* SMCLK, 4 MHz */
-  ubr = 4000000ul/9600;
+  ubr = 4000000ul/UART_SPEED;
   UCA0BR0 = ubr & 0xff;
   UCA0BR1 = (ubr & 0xff00) >> 8;
   UCA0MCTL = UCBRS_1;

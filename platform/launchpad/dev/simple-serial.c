@@ -26,7 +26,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
 /*---------------------------------------------------------------------------*/
 #include "simple-serial.h"
 #include "uart0.h"

@@ -26,29 +26,16 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-/**
- * \file
- *        Testing serial in-/output
- *        usage
- *          compile, upload to LP, login over serial
- *          remember to adjust the rxtx headers on the board
- *        expected result when running it:
- *          will print out the time every second, will repeat back anything sent to it
- *          and if sent "red" or "green", it will toggle the corresponding LED
- * \author
- *         Marcus Linderoth <linderoth.marcus@gmail.com>
- */
-
+/*---------------------------------------------------------------------------*/
 #include <stdio.h>
 #include <string.h>
 #include "contiki.h"
 #include "dev/leds.h"
 #include "dev/serial-line.h"
-
 /*---------------------------------------------------------------------------*/
 PROCESS(serial_read_process, "Serial Reader");
-AUTOSTART_PROCESSES(&serial_read_process);
+PROCESS(periodic_process, "Some Process");
+AUTOSTART_PROCESSES(&serial_read_process, &periodic_process);
 /*--------------------------------------------------------------------------*/
 /* will repeatedly wait for serial data and then repeat back what it received.
  * If the data is "red" or "green", it will toggle the corresponding LED */
@@ -59,28 +46,17 @@ PROCESS_THREAD(serial_read_process, ev, data) {
     char* buf;
     PROCESS_WAIT_EVENT_UNTIL(ev == serial_line_event_message);
     buf = data;
-
-    // if(!strncmp(buf, "red", 3)) {
-    //   leds_toggle(LEDS_RED);
-    // } else if (!strncmp(buf, "green", 5)) {
-    //   leds_toggle(LEDS_GREEN);
-    // } else if (!strncmp(buf, "off", 3)) {
-    //   leds_off(LEDS_GREEN | LEDS_RED);
-    // }
-
-    printf("Got:%s\n", buf);
+    printf("echo:%s\n", buf);
   }
   PROCESS_END();
 }
-
-/*--------------------------------------------------------------------------*/
-/* repeatedly printing out the time over the serial port (9600 baud, 8,n,1) */
-static struct etimer et;
-
-PROCESS_THREAD(blink_process, ev, data)
+/*---------------------------------------------------------------------------*/
+PROCESS_THREAD(periodic_process, ev, data)
 {
   PROCESS_BEGIN();
+  static struct etimer et;
   while(1) {
+    leds_toggle(LEDS_ALL);
     printf("Time since bootup: %lu\n", clock_seconds());
     etimer_set(&et, CLOCK_SECOND);
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));

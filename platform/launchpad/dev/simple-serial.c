@@ -195,6 +195,7 @@ simple_serial_print_u16(uint16_t u)
   uint8_t i = 0;
   uint8_t buf[] = {'0', '0', '0', '0', '0'};
 
+  /* special case */
   if(u == 0) {
     printchar('0');
     printchar('0');
@@ -204,8 +205,7 @@ simple_serial_print_u16(uint16_t u)
     return;
   }
 
-
-
+  /* 10ks */
   i = 0;
   while(t >= 10000) {
     i++;
@@ -215,8 +215,7 @@ simple_serial_print_u16(uint16_t u)
     buf[4] = '0' + i;
   }
 
-
-
+  /* 1ks */
   i = 0;
   while(t >= 1000) {
     i++;
@@ -226,8 +225,7 @@ simple_serial_print_u16(uint16_t u)
     buf[3] = '0' + i;
   }
 
-
-
+  /* hundreds */
   i = 0;
   while(t >= 100) {
     i++;
@@ -237,9 +235,7 @@ simple_serial_print_u16(uint16_t u)
     buf[2] = '0' + i;
   }
 
-
-
-
+  /* tens */
   i = 0;
   while(t >= 10) {
     i++;
@@ -249,7 +245,10 @@ simple_serial_print_u16(uint16_t u)
     buf[1] = '0' + i;
   }
 
+  /* finally, singles */
   buf[0] = '0' + t;
+
+  /* print it */
   for(i = 0; i < 5; i += 1) {
     printchar(buf[4-i]);
   }

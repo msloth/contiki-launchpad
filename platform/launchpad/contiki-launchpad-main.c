@@ -142,7 +142,7 @@ main(void)
 
   watchdog_start();
   autostart_start(autostart_processes);
-  printf(CONTIKI_VERSION_STRING " started.\n");
+  // printf(CONTIKI_VERSION_STRING " started.\n");
 
   //XXX sth messes with LEDs; find and fix; remove when fixed.
   //this is probably a timer, or peripherals such as i2c/spi

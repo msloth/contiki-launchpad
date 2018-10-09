@@ -127,7 +127,7 @@ receive_cb(unsigned char b)
 static void
 transmit_cb(unsigned char volatile *wbuffer)
 {
-  /* if caller reads more than intended, we return zeroes */
+  /* if caller reads more than intended, we return zeroes (should NACK instead) */
   if(i2c_out_len > 0) {
     *wbuffer = i2c_out_buffer[i2c_out_len - 1];
     i2c_out_len--;
